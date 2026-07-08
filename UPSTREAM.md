@@ -16,4 +16,18 @@ Changes in this fork that are not yet accepted upstream are listed in [apps/kimi
 
 ## Installing from this fork
 
-Build from source in this repository, or download release assets from this fork's GitHub Releases page. The official `kimi` install scripts and npm package `@moonshot-ai/kimi-code` point at upstream unless you configure otherwise.
+**Recommended:** use the one-line install script (no Node.js required):
+
+```sh
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
+```
+
+The script downloads the latest GitHub Release, verifies checksums, and installs to `~/.kimi-code/bin`. You can also build from source in this repository, or download release assets manually from the [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) page.
+
+The official `kimi` install scripts at `code.kimi.com` and the npm package `@moonshot-ai/kimi-code` point at upstream unless you configure otherwise.

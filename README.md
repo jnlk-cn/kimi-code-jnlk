@@ -8,7 +8,7 @@
 > This repository (**kimi-code-jnlk**) is a community fork of [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), maintained independently under the [MIT License](LICENSE). It is **not** affiliated with, endorsed by, or supported by Moonshot AI.
 >
 > - **Upstream**: use the official project for the default release channel, docs site, and marketplace plugins.
-> - **This fork**: adds community patches (for example DeepSeek V4 official API fixes and Windows test stabilization). Install and run from this repo only if you intend to use this fork's builds.
+> - **This fork**: community patches on top of upstream; see [What this fork changes](#what-this-fork-changes) below. Install from this repo only if you intend to use this fork's builds.
 > - **Support**: report issues in [jnlk-cn/kimi-code-jnlk](https://github.com/jnlk-cn/kimi-code-jnlk/issues); for upstream behavior, refer to MoonshotAI/kimi-code.
 > - **License**: retain the original MIT copyright notice in `LICENSE`; see also [UPSTREAM.md](UPSTREAM.md).
 
@@ -18,37 +18,126 @@
 
 Kimi Code CLI is an AI coding agent that runs in your terminal — it can read and edit code, run shell commands, search files, fetch web pages, and choose the next step based on the feedback it receives. It works out of the box with Moonshot AI’s Kimi models and can also be configured to use other compatible providers.
 
+## What this fork changes
+
+This fork layers community patches on upstream **0.23.2** (current release **0.24.0**). If you use the official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), the differences below may not be included yet.
+
+### DeepSeek V4 official API
+
+Upstream support for DeepSeek V4 (`deepseek-v4-pro`, `deepseek-v4-flash`) against the **official API** (`api.deepseek.com`) is still incomplete. This fork focuses on:
+
+- **Wire compatibility**: via the `openai` provider, correctly sends `thinking.type` and `reasoning_effort`, round-trips `reasoning_content` across tool-call turns, and maps the UI `max` effort tier to DeepSeek's wire values.
+- **Catalog and config**: parses `reasoning_options` from the model catalog, surfaces `support_efforts` / `default_effort`, and avoids incorrectly clamping Thinking to `off` when tool-bound think history is present.
+- **Docs**: the in-repo [provider configuration](docs/en/configuration/providers.md#openai) includes a `config.toml` example for `api.deepseek.com` (the upstream docs site may not be synced yet).
+
+### Windows development and testing
+
+- Fixes `agent-core` test failures on Windows (path assertions, cross-platform hook blocking, large-image compression timeouts).
+- Re-enables the `test-windows` CI job for more reliable Windows development and contributions.
+
+### Distribution
+
+- Ships through this repo's [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and one-line install scripts (`install.sh` / `install.ps1`).
+- Does **not** use the official `code.kimi.com` CDN or the npm package `@moonshot-ai/kimi-code`.
+
+See [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md) (0.24.0 entry) for the full list. If you only need official Kimi models and the upstream release channel, stick with the upstream project.
+
 ## Install
 
-Install with the official script. No Node.js required.
+This fork is **not** distributed through the official `code.kimi.com` install scripts or the npm package `@moonshot-ai/kimi-code`. Use one of the methods below.
 
-- **macOS or Linux**:
+### Install script (recommended)
 
-```sh
-curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
-```
+The script fetches the latest [GitHub Release](https://github.com/jnlk-cn/kimi-code-jnlk/releases/latest), verifies the checksum, and installs `kimi` to `~/.kimi-code/bin` (or `%USERPROFILE%\.kimi-code\bin` on Windows), then updates your `PATH`. **No Node.js required.**
 
-- **Homebrew (macOS/Linux)**:
+- **macOS / Linux**:
 
 ```sh
-brew install kimi-code
+curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
 ```
 
 - **Windows (PowerShell)**:
 
 ```powershell
-irm https://code.kimi.com/kimi-code/install.ps1 | iex
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 ```
 
-> On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch because Kimi Code CLI uses the bundled Git Bash as its shell environment. If Git Bash is installed in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
+> On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch — Kimi Code CLI uses Git Bash as its shell environment. If Git Bash is in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
 
-Then, run it with a new shell session:
+Pin a specific release (replace the tag with one from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases), e.g. `v0.24.0-jnlk`):
+
+```sh
+KIMI_VERSION=v0.24.0-jnlk curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
+```
+
+```powershell
+$env:KIMI_VERSION = 'v0.24.0-jnlk'
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
+```
+
+Open a new terminal and verify:
 
 ```sh
 kimi --version
 ```
 
-For npm install, upgrade, uninstall, see [Getting Started](https://moonshotai.github.io/kimi-code/en/guides/getting-started).
+### Manual download
+
+Download the archive for your platform from [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases/latest) (`kimi-code-<os>-<arch>.zip`), extract it, and put the `kimi` binary on your `PATH`.
+
+| Platform | Archive name |
+|---|---|
+| macOS (Apple Silicon) | `kimi-code-darwin-arm64.zip` |
+| macOS (Intel) | `kimi-code-darwin-x64.zip` |
+| Linux (x64) | `kimi-code-linux-x64.zip` |
+| Linux (arm64) | `kimi-code-linux-arm64.zip` |
+| Windows (x64) | `kimi-code-win32-x64.zip` |
+| Windows (arm64) | `kimi-code-win32-arm64.zip` |
+
+Example on macOS (Apple Silicon):
+
+```sh
+VERSION=v0.24.0-jnlk
+curl -fsSL -o kimi.zip \
+  "https://github.com/jnlk-cn/kimi-code-jnlk/releases/download/${VERSION}/kimi-code-darwin-arm64.zip"
+unzip kimi.zip
+install -m 755 kimi "$HOME/.local/bin/kimi"   # or another directory on your PATH
+kimi --version
+```
+
+Pick the archive name from the table above for your OS and CPU.
+
+### Build from source
+
+Requirements: Node.js ≥ 24.15.0, pnpm 10.33.0.
+
+```sh
+git clone https://github.com/jnlk-cn/kimi-code-jnlk.git
+cd kimi-code-jnlk
+pnpm install
+pnpm run build
+node apps/kimi-code/dist/main.mjs --version
+```
+
+To run in dev mode without a full native bundle:
+
+```sh
+pnpm dev:cli
+```
+
+To expose the built CLI as `kimi` on your PATH (optional):
+
+```sh
+pnpm -C apps/kimi-code link --global
+kimi --version
+```
+
+### Official upstream install
+
+If you want the **official** Moonshot AI release channel (not this fork), use the upstream project instead:
+
+- Install scripts: [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code)
+- Docs: [Getting Started](https://moonshotai.github.io/kimi-code/en/guides/getting-started)
 
 ## Quick Start
 
@@ -112,8 +201,8 @@ Then open a new conversation in Zed's Agent panel. See [Using in IDEs](https://m
 Requirements: Node.js ≥ 24.15.0, pnpm 10.33.0.
 
 ```sh
-git clone https://github.com/MoonshotAI/kimi-code.git
-cd kimi-code
+git clone https://github.com/jnlk-cn/kimi-code-jnlk.git
+cd kimi-code-jnlk
 pnpm install
 ```
 
@@ -125,11 +214,12 @@ pnpm lint       # oxlint
 pnpm build      # build all packages
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide. Upstream contribution policy lives at [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/CONTRIBUTING.md).
 
 ## Community
 
-- [Issues](https://github.com/MoonshotAI/kimi-code/issues)
+- [Issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues) (this fork)
+- [Upstream issues](https://github.com/MoonshotAI/kimi-code/issues)
 - For security vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Acknowledgements
