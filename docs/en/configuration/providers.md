@@ -83,6 +83,41 @@ For connecting to the OpenAI Chat Completions protocol, as well as any third-par
 
 Third-party reasoning models (DeepSeek, Qwen, One API, etc.) work out of the box: the CLI automatically handles the `reasoning_content` field and `reasoning_effort` injection. If your gateway returns reasoning content under a non-standard field name, set `reasoning_key` on the model alias to override.
 
+DeepSeek V4 (`deepseek-v4-pro`, `deepseek-v4-flash`) uses an OpenAI-compatible Chat Completions surface with request-level thinking mode. Kimi Code sends `thinking.type` (`enabled` / `disabled`) together with `reasoning_effort`, preserves `reasoning_content` across tool-call turns, and maps the `max` effort to DeepSeek's wire value. Use `/provider` to add DeepSeek from the catalog, or configure manually for the **official API** at `api.deepseek.com`.
+
+::: warning Note
+`/provider` catalog entries may point at third-party gateways rather than `api.deepseek.com`. For the official DeepSeek API, use the manual configuration below. With `type = "openai"`, credentials are read from `config.toml` (`api_key` or `[providers.*.env]` `OPENAI_API_KEY`); shell `DEEPSEEK_API_KEY` is not used.
+:::
+
+```toml
+[providers.deepseek]
+type = "openai"
+base_url = "https://api.deepseek.com"
+api_key = "YOUR_API_KEY"
+
+[models."deepseek/deepseek-v4-pro"]
+provider = "deepseek"
+model = "deepseek-v4-pro"
+max_context_size = 1000000
+max_output_size = 384000
+capabilities = ["thinking", "tool_use"]
+support_efforts = ["high", "max"]
+default_effort = "high"
+
+[models."deepseek/deepseek-v4-flash"]
+provider = "deepseek"
+model = "deepseek-v4-flash"
+max_context_size = 1000000
+max_output_size = 384000
+capabilities = ["thinking", "tool_use"]
+support_efforts = ["high", "max"]
+default_effort = "high"
+```
+
+The trailing `/v1` on `base_url` (for example `https://api.deepseek.com/v1`) usually works as well.
+
+The legacy model IDs `deepseek-chat` and `deepseek-reasoner` are scheduled for retirement on 2026-07-24 (UTC); migrate to `deepseek-v4-pro` or `deepseek-v4-flash`.
+
 - Default `base_url`: `https://api.openai.com/v1`
 - Credential key names: `OPENAI_API_KEY`, `OPENAI_BASE_URL`
 

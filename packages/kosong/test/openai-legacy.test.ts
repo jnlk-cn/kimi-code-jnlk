@@ -693,6 +693,23 @@ describe('OpenAILegacyChatProvider', () => {
       // the request trace records this field.
       expect(provider.maxCompletionTokens).toBe(131072);
     });
+
+    it('withMaxCompletionTokens preserves DeepSeek V4 output above the generic 128k ceiling', async () => {
+      const provider = createProvider({ model: 'deepseek-v4-flash' }).withMaxCompletionTokens(
+        384000,
+        {
+          usedContextTokens: 30000,
+          maxContextTokens: 1_000_000,
+        },
+      );
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hi' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['max_tokens']).toBe(384000);
+      expect(provider.maxCompletionTokens).toBe(384000);
+    });
   });
 
   describe('maxTokens option', () => {
@@ -909,7 +926,7 @@ describe('OpenAILegacyChatProvider', () => {
       expect(body['reasoning_effort']).toBe('high');
     });
 
-    it.each(['deepseek/deepseek-v4-flash', 'gpt-5.4-pro', 'some-model'])(
+    it.each(['gpt-5.4-pro', 'some-model'])(
       '.withThinking("xhigh") passes through reasoning_effort for model %s',
       async (model) => {
         const provider = createProvider({ model }).withThinking('xhigh');
@@ -923,7 +940,18 @@ describe('OpenAILegacyChatProvider', () => {
       },
     );
 
-    it('.withThinking("max") maps to xhigh without model-specific clamping', async () => {
+    it('maps xhigh to max for DeepSeek V4 models', async () => {
+      const provider = createProvider({ model: 'deepseek/deepseek-v4-flash' }).withThinking('xhigh');
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Think' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['reasoning_effort']).toBe('max');
+      expect(body['thinking']).toEqual({ type: 'enabled' });
+    });
+
+    it('.withThinking("max") maps to xhigh for OpenAI models and max for DeepSeek V4', async () => {
       const history: Message[] = [
         { role: 'user', content: [{ type: 'text', text: 'Think' }], toolCalls: [] },
       ];
@@ -949,7 +977,137 @@ describe('OpenAILegacyChatProvider', () => {
 
       expect(openAIChatModel['reasoning_effort']).toBe('xhigh');
       expect(openAIProModel['reasoning_effort']).toBe('xhigh');
-      expect(deepSeekModel['reasoning_effort']).toBe('xhigh');
+      expect(deepSeekModel['reasoning_effort']).toBe('max');
+      expect(deepSeekModel['thinking']).toEqual({ type: 'enabled' });
+    });
+  });
+
+  describe('DeepSeek V4 thinking protocol', () => {
+    it('.withThinking("off") sends thinking disabled without reasoning_effort', async () => {
+      const provider = createProvider({ model: 'deepseek-v4-pro' }).withThinking('off');
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hi' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['thinking']).toEqual({ type: 'disabled' });
+      expect(body['reasoning_effort']).toBeUndefined();
+      expect(body['extra_body']).toBeUndefined();
+    });
+
+    it.each(['on', 'high'] as const)(
+      '.withThinking("%s") enables thinking with high reasoning_effort',
+      async (effort) => {
+        const provider = createProvider({ model: 'deepseek-v4-pro' }).withThinking(effort);
+        const history: Message[] = [
+          { role: 'user', content: [{ type: 'text', text: 'Think' }], toolCalls: [] },
+        ];
+        const body = await captureRequestBody(provider, '', [], history);
+
+        expect(body['thinking']).toEqual({ type: 'enabled' });
+        expect(body['reasoning_effort']).toBe('high');
+      },
+    );
+
+    it('preserves reasoning_content and enables thinking for tool-call follow-ups', async () => {
+      const toolCall: ToolCall = {
+        type: 'function',
+        id: 'call_1',
+        name: 'add',
+        arguments: '{"a":1,"b":2}',
+      };
+      const provider = createProvider({ model: 'deepseek-v4-pro' }).withThinking('high');
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Add 1+2' }], toolCalls: [] },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'think', think: 'I will call add' },
+            { type: 'text', text: 'Calling tool' },
+          ],
+          toolCalls: [toolCall],
+        },
+        {
+          role: 'tool',
+          content: [{ type: 'text', text: '3' }],
+          toolCallId: 'call_1',
+          toolCalls: [],
+        },
+        { role: 'user', content: [{ type: 'text', text: 'Thanks' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [ADD_TOOL], history);
+
+      expect(body['thinking']).toEqual({ type: 'enabled' });
+      expect(body['reasoning_effort']).toBe('high');
+      const messages = body['messages'] as Record<string, unknown>[];
+      expect(messages[1]!['reasoning_content']).toBe('I will call add');
+    });
+
+    it('auto-enables DeepSeek thinking when history has ThinkPart without explicit withThinking', async () => {
+      const provider = createProvider({ model: 'deepseek-v4-pro' });
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hello' }], toolCalls: [] },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'think', think: 'Thinking...' },
+            { type: 'text', text: 'Hi!' },
+          ],
+          toolCalls: [],
+        },
+        { role: 'user', content: [{ type: 'text', text: 'Again?' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['thinking']).toEqual({ type: 'enabled' });
+      expect(body['reasoning_effort']).toBe('high');
+    });
+
+    it.each(['deepseek-v4-pro', 'deepseek-v4-flash'] as const)(
+      '.withThinking("off") forces thinking enabled when tool-bound ThinkPart is in history (%s)',
+      async (model) => {
+        const toolCall: ToolCall = {
+          type: 'function',
+          id: 'call_1',
+          name: 'add',
+          arguments: '{"a":1,"b":2}',
+        };
+        const provider = createProvider({ model }).withThinking('off');
+        const history: Message[] = [
+          { role: 'user', content: [{ type: 'text', text: 'Add 1+2' }], toolCalls: [] },
+          {
+            role: 'assistant',
+            content: [
+              { type: 'think', think: 'I will call add' },
+              { type: 'text', text: 'Calling tool' },
+            ],
+            toolCalls: [toolCall],
+          },
+          {
+            role: 'tool',
+            content: [{ type: 'text', text: '3' }],
+            toolCallId: 'call_1',
+            toolCalls: [],
+          },
+          { role: 'user', content: [{ type: 'text', text: 'Thanks' }], toolCalls: [] },
+        ];
+        const body = await captureRequestBody(provider, '', [ADD_TOOL], history);
+
+        expect(body['thinking']).toEqual({ type: 'enabled' });
+        expect(body['reasoning_effort']).toBe('high');
+        const messages = body['messages'] as Record<string, unknown>[];
+        expect(messages[1]!['reasoning_content']).toBe('I will call add');
+      },
+    );
+
+    it('strips provider/model alias prefix from the wire model id', async () => {
+      const provider = createProvider({ model: 'deepseek/deepseek-v4-pro' }).withThinking('high');
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hi' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['model']).toBe('deepseek-v4-pro');
     });
   });
 

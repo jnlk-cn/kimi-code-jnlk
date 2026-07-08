@@ -23,6 +23,10 @@ describe('inferWireType', () => {
     expect(inferWireType({ id: 'google-vertex' })).toBe('vertexai');
   });
 
+  it('infers deepseek as openai wire', () => {
+    expect(inferWireType({ id: 'deepseek' })).toBe('openai');
+  });
+
   it('returns undefined for unknown / invalid wire types', () => {
     expect(inferWireType({ id: 'some-proxy' })).toBeUndefined();
     expect(inferWireType({ id: 'x', type: 'not-a-wire' })).toBeUndefined();
@@ -137,6 +141,32 @@ describe('catalogModelToCapability', () => {
   ])('derives reasoningKey from interleaved=%j → %j', (interleaved, expected) => {
     const model = catalogModelToCapability({ id: 'm', limit: { context: 1000 }, interleaved });
     expect(model?.reasoningKey).toBe(expected);
+  });
+
+  it('parses reasoning_options effort values into supportEfforts', () => {
+    expect(
+      catalogModelToCapability({
+        id: 'custom-reasoner',
+        limit: { context: 1000 },
+        reasoning_options: [{ type: 'effort', values: ['high', 'max'] }],
+      }),
+    ).toMatchObject({
+      supportEfforts: ['high', 'max'],
+      defaultEffort: 'high',
+    });
+  });
+
+  it('infers DeepSeek V4 efforts from model id when reasoning_options is absent', () => {
+    expect(
+      catalogModelToCapability({
+        id: 'deepseek-v4-flash',
+        limit: { context: 1_000_000 },
+        reasoning: true,
+      }),
+    ).toMatchObject({
+      supportEfforts: ['high', 'max'],
+      defaultEffort: 'high',
+    });
   });
 });
 

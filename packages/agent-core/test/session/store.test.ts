@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { expectPathEqual } from '../fixtures/path';
 import { SessionStore } from '../../src/session/store/session-store';
 import { appendSessionIndexEntry, readSessionIndex } from '../../src/session/store/session-index';
 import { encodeWorkDirKey, normalizeWorkDir } from '../../src/session/store/workdir-key';
@@ -103,7 +104,7 @@ describe('SessionStore', () => {
       expect(stats).toEqual({ scanned: 1, added: 0, repaired: 1 });
 
       const index = await readSessionIndex(homeDir, store.sessionsDir);
-      expect(index.get(sessionId)?.sessionDir).toBe(realDir);
+      expectPathEqual(index.get(sessionId)?.sessionDir, realDir);
     });
 
     it('repairs an index entry whose sessionDir is correct but workDir is stale', async () => {

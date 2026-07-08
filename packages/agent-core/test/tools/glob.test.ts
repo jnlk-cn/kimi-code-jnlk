@@ -16,6 +16,7 @@ import {
 } from '../../src/tools/builtin/file/glob';
 import { ensureRgPath } from '../../src/tools/support/rg-locator';
 import type { WorkspaceConfig } from '../../src/tools/support/workspace';
+import { expectPathEqual } from '../fixtures/path';
 import { createFakeKaos } from './fixtures/fake-kaos';
 import { executeTool } from './fixtures/execute-tool';
 import { recordingTelemetry, type TelemetryRecord } from '../fixtures/telemetry';
@@ -722,7 +723,7 @@ describe('GlobTool integration (real ripgrep)', () => {
 
       const result = await executeTool(tool, context({ pattern: '*.ts', path: externalDir }));
 
-      expect(result.output).toBe(extFile);
+      expectPathEqual(result.output, extFile);
     } finally {
       await fs.rm(externalDir, { recursive: true, force: true });
     }

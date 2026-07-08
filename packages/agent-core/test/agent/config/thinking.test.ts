@@ -109,6 +109,28 @@ describe('resolveThinkingEffort', () => {
     expect(resolveThinkingEffort('off', undefined, booleanModel)).toBe('off');
     expect(resolveThinkingEffort(undefined, { enabled: false }, booleanModel)).toBe('off');
   });
+
+  it('clamps off to the model default when DeepSeek V4 has tool-bound thinking history', () => {
+    const deepSeekModel = model({
+      model: 'deepseek-v4-pro',
+      capabilities: ['thinking', 'tool_use'],
+      supportEfforts: ['high', 'max'],
+      defaultEffort: 'high',
+    });
+    const history = [
+      {
+        role: 'assistant' as const,
+        content: [{ type: 'think' as const, think: 'call tool' }],
+        toolCalls: [{ type: 'function' as const, id: 'c1', name: 'Read', arguments: '{}' }],
+      },
+    ];
+
+    expect(resolveThinkingEffort('off', undefined, deepSeekModel, history)).toBe('high');
+    expect(resolveThinkingEffort(undefined, { enabled: false }, deepSeekModel, history)).toBe(
+      'high',
+    );
+    expect(resolveThinkingEffort('off', undefined, deepSeekModel)).toBe('off');
+  });
 });
 
 describe('defaultThinkingEffortFor overrides', () => {

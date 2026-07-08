@@ -28,6 +28,12 @@ const OPENAI_VISION_TOOL_PREFIXES = [
   'gpt-4.5',
 ] as const;
 
+const DEEPSEEK_THINKING_TOOL_PREFIXES = [
+  'deepseek-v4-',
+  'deepseek-reasoner',
+  'deepseek-chat',
+] as const;
+
 // Claude prefixes are grouped by capability set, not by version family:
 // a new model joins the group whose capability it matches (e.g. Fable sits
 // with Opus/Sonnet/Haiku 4), rather than getting a per-version group.
@@ -118,6 +124,10 @@ const GEMINI_THINKING_MULTIMODAL_TOOL_CAPABILITY: ModelCapability = Object.freez
 const OPENAI_LEGACY_CAPABILITY_CATALOG: readonly CapabilityCatalogEntry[] = [
   {
     matches: isOpenAIReasoningModel,
+    capability: OPENAI_REASONING_CAPABILITY,
+  },
+  {
+    matches: (name) => hasPrefix(name, DEEPSEEK_THINKING_TOOL_PREFIXES),
     capability: OPENAI_REASONING_CAPABILITY,
   },
   {

@@ -83,6 +83,41 @@ max_context_size = 200000
 
 第三方推理模型（DeepSeek、Qwen、One API 等）开箱即用：CLI 自动处理 `reasoning_content` 字段和 `reasoning_effort` 注入。如果你的网关用非标准字段名返回推理内容，在模型别名上设 `reasoning_key` 覆盖。
 
+DeepSeek V4（`deepseek-v4-pro`、`deepseek-v4-flash`）使用 OpenAI 兼容的 Chat Completions 接口，Thinking 由请求级参数控制。Kimi Code 会同时发送 `thinking.type`（`enabled` / `disabled`）与 `reasoning_effort`，在 tool call 多轮对话中保留 `reasoning_content`，并将 `max` 档位映射为 DeepSeek 的 wire 值。可通过 `/provider` 从目录添加 DeepSeek，也可按下方示例手动配置 **官方 API**（`api.deepseek.com`）。
+
+::: warning 注意
+`/provider` 目录中的供应商可能指向第三方网关，而非 `api.deepseek.com`。使用 DeepSeek 官方 API 时，请采用下方手动配置。`type = "openai"` 时，凭证只从 `config.toml` 读取（`api_key` 或 `[providers.*.env]` 中的 `OPENAI_API_KEY`），不会使用 shell 环境变量 `DEEPSEEK_API_KEY`。
+:::
+
+```toml
+[providers.deepseek]
+type = "openai"
+base_url = "https://api.deepseek.com"
+api_key = "YOUR_API_KEY"
+
+[models."deepseek/deepseek-v4-pro"]
+provider = "deepseek"
+model = "deepseek-v4-pro"
+max_context_size = 1000000
+max_output_size = 384000
+capabilities = ["thinking", "tool_use"]
+support_efforts = ["high", "max"]
+default_effort = "high"
+
+[models."deepseek/deepseek-v4-flash"]
+provider = "deepseek"
+model = "deepseek-v4-flash"
+max_context_size = 1000000
+max_output_size = 384000
+capabilities = ["thinking", "tool_use"]
+support_efforts = ["high", "max"]
+default_effort = "high"
+```
+
+`base_url` 末尾带 `/v1`（例如 `https://api.deepseek.com/v1`）通常也可正常使用。
+
+旧模型 ID `deepseek-chat` 与 `deepseek-reasoner` 将于 2026-07-24（UTC）退役，请迁移至 `deepseek-v4-pro` 或 `deepseek-v4-flash`。
+
 - 默认 `base_url`：`https://api.openai.com/v1`
 - 凭证键名：`OPENAI_API_KEY`、`OPENAI_BASE_URL`
 

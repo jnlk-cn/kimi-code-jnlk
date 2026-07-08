@@ -1,5 +1,11 @@
 # @moonshot-ai/kosong
 
+## 0.6.0
+
+### Minor Changes
+
+- DeepSeek V4 Pro and Flash work on the official `openai` provider (`api.deepseek.com`), including thinking toggles, `max` effort, and reasoning round-trips during tool calls. Stabilize Windows agent-core tests and re-enable the Windows CI job.
+
 ## 0.5.3
 
 ### Patch Changes

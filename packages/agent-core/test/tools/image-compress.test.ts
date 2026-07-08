@@ -189,7 +189,7 @@ describe('compressImageForModel — dimension cap', () => {
     expect(result.height).toBe(1500);
     const dims = sniffImageDimensions(result.data);
     expect(dims).toEqual({ width: 3000, height: 1500 });
-  });
+  }, 30_000);
 
   it('respects a custom maxEdge', async () => {
     const png = await solidPng(1600, 800);
@@ -384,7 +384,7 @@ describe('compressImageForModel — invariants', () => {
         expect(sniffImageDimensions(result.data)).not.toBeNull();
       }
     }
-  });
+  }, 30_000);
 });
 
 // ── base64 wrapper ───────────────────────────────────────────────────
@@ -439,8 +439,9 @@ describe('compressImageForModel — performance', () => {
     const result = await compressImageForModel(png, 'image/png');
     const elapsed = performance.now() - start;
     expect(result.changed).toBe(true);
-    expect(elapsed).toBeLessThan(5000);
-  });
+    const generousMs = process.platform === 'win32' ? 25_000 : 5_000;
+    expect(elapsed).toBeLessThan(generousMs);
+  }, 30_000);
 
   it('exposes a sane default budget', () => {
     expect(IMAGE_BYTE_BUDGET).toBeGreaterThan(0);

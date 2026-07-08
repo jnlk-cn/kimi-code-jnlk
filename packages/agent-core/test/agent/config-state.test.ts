@@ -75,7 +75,7 @@ describe('ConfigState model capabilities', () => {
     });
   });
 
-  it('clamps the LLM completion cap to 128k for openai-compatible providers', async () => {
+  it('preserves DeepSeek V4 max_output_size above the generic 128k openai ceiling', async () => {
     let requestMaxTokens: unknown;
     const ctx = testAgent({
       generate: async (provider) => {
@@ -122,9 +122,8 @@ describe('ConfigState model capabilities', () => {
       signal: new AbortController().signal,
     });
 
-    // maxOutputSize (384000) is clamped to the 128k ceiling applied to
-    // non-Kimi chat-completions providers.
-    expect(requestMaxTokens).toBe(131072);
+    // DeepSeek V4 uses a higher chat-completions output ceiling than generic openai wire.
+    expect(requestMaxTokens).toBe(384000);
   });
 
   it('uses session id as a provider prompt cache hint without storing it on Agent', () => {

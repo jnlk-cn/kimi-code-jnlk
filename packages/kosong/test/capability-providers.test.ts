@@ -139,6 +139,13 @@ describe('getModelCapability: openai', () => {
     expect(cap.tool_use).toBe(true);
   });
 
+  it('deepseek-v4-pro → thinking=true, tool_use=true', () => {
+    const cap = getModelCapability('openai', 'deepseek-v4-pro');
+    expect(cap.thinking).toBe(true);
+    expect(cap.tool_use).toBe(true);
+    expect(cap.image_in).toBe(false);
+  });
+
   it('unknown OpenAI-legacy model → UNKNOWN_CAPABILITY', () => {
     expect(getModelCapability('openai', 'gpt-mystery')).toEqual(UNKNOWN_CAPABILITY);
   });

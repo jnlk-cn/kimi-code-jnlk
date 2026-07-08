@@ -717,7 +717,7 @@ describe('ReadMediaFileTool', () => {
     const systemText = noteText(result);
     expect(systemText).toContain('3600x3600');
     expect(systemText).toContain(`${String(big.length)} bytes`);
-  });
+  }, 30_000);
 
   it('reports an EXIF-rotated original in the decoded coordinate space', async () => {
     // Orientation 6 (rotate 90° CW): the header says 3600x1800, but jimp
@@ -747,7 +747,7 @@ describe('ReadMediaFileTool', () => {
     const systemText = noteText(result);
     expect(systemText).toContain('Original dimensions: 1800x3600');
     expect(systemText).toMatch(/downsampled to 1500x3000/);
-  });
+  }, 30_000);
 
   it('reports the decoded size for a region read of an EXIF-rotated image', async () => {
     // Region coordinates live in the decoded (rotated) space; the note's
@@ -896,7 +896,7 @@ describe('ReadMediaFileTool', () => {
       expect(systemText).toMatch(/The attached image was downsampled to 3000x3000/);
       expect(systemText).toMatch(/fine detail/i);
       expect(systemText).toContain('region');
-    });
+    }, 30_000);
 
     it('does not claim downsampling for an image sent untouched', async () => {
       // A real 3x4 PNG passes through unchanged — the <system> block must not

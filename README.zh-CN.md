@@ -1,9 +1,17 @@
-# Kimi Code CLI
+# Kimi Code CLI（kimi-code-jnlk）
 
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/zh/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Fork](https://img.shields.io/badge/upstream-MoonshotAI%2Fkimi--code-lightgrey)](https://github.com/MoonshotAI/kimi-code)
 
-[Documentation](https://moonshotai.github.io/kimi-code/zh/) · [Issues](https://github.com/MoonshotAI/kimi-code/issues) · [English](README.md)
+[文档](https://moonshotai.github.io/kimi-code/zh/) · [Issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues) · [English](README.md)
 
+> **Fork 说明**
+>
+> 本仓库（**kimi-code-jnlk**）是 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) 的社区 fork，在 [MIT 许可证](LICENSE) 下独立维护，**与 Moonshot AI 无隶属、背书或官方支持关系**。
+>
+> - **上游**：官方发行渠道、文档站与插件市场请使用上游仓库。
+> - **本 fork**：包含社区补丁（例如 DeepSeek V4 官方 API 修复与 Windows 测试稳定化）。仅在你明确要使用本 fork 构建时再从此仓库安装运行。
+> - **支持**：问题请提交到 [jnlk-cn/kimi-code-jnlk](https://github.com/jnlk-cn/kimi-code-jnlk/issues)；上游行为请参考 MoonshotAI/kimi-code。
+> - **许可证**：保留 `LICENSE` 中的原始 MIT 版权声明；详见 [UPSTREAM.md](UPSTREAM.md)。
 
 ![Kimi Code 的使用演示](./docs/media/intro.gif)
 

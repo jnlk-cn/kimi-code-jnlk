@@ -2,6 +2,7 @@ import type { KimiConfig, ModelAlias } from '@moonshot-ai/agent-core';
 import {
   catalogBaseUrl,
   catalogProviderModels,
+  deepSeekV4Efforts,
   inferWireType,
   type Catalog,
   type CatalogModel,
@@ -53,7 +54,7 @@ function capabilityToStrings(capability: ModelCapability): string[] | undefined 
 
 /** Builds a kimi-code model alias from a normalized catalog model. */
 export function catalogModelToAlias(providerId: string, model: CatalogModel): ModelAlias {
-  return {
+  const alias: ModelAlias = {
     provider: providerId,
     model: model.id,
     maxContextSize: model.capability.max_context_tokens,
@@ -62,6 +63,17 @@ export function catalogModelToAlias(providerId: string, model: CatalogModel): Mo
     displayName: model.name,
     reasoningKey: model.reasoningKey,
   };
+  if (model.supportEfforts !== undefined && model.supportEfforts.length > 0) {
+    alias.supportEfforts = [...model.supportEfforts];
+    alias.defaultEffort = model.defaultEffort ?? model.supportEfforts[0];
+  } else {
+    const fallback = deepSeekV4Efforts(model.id);
+    if (fallback !== undefined) {
+      alias.supportEfforts = [...fallback.supportEfforts];
+      alias.defaultEffort = fallback.defaultEffort;
+    }
+  }
+  return alias;
 }
 
 export interface ApplyCatalogProviderOptions {

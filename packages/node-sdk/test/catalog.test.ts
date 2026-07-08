@@ -122,6 +122,30 @@ describe('applyCatalogProvider', () => {
       provider: 'deepseek',
       model: 'deepseek-v4-pro',
       reasoningKey: 'reasoning_content',
+      supportEfforts: ['high', 'max'],
+      defaultEffort: 'high',
+    });
+  });
+
+  it('infers DeepSeek V4 efforts for third-party catalog providers by model id', () => {
+    const models = catalogProviderModels({
+      id: 'alibaba-cn',
+      models: {
+        'deepseek-v4-flash': {
+          id: 'deepseek-v4-flash',
+          name: 'DeepSeek V4 Flash',
+          limit: { context: 1_000_000, output: 384_000 },
+          reasoning: true,
+          tool_call: true,
+        },
+      },
+    });
+
+    expect(catalogModelToAlias('alibaba-cn', models[0]!)).toMatchObject({
+      provider: 'alibaba-cn',
+      model: 'deepseek-v4-flash',
+      supportEfforts: ['high', 'max'],
+      defaultEffort: 'high',
     });
   });
 

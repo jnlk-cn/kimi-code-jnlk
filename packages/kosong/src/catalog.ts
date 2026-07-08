@@ -6,6 +6,11 @@ import type { ProviderType } from './providers';
  * consume a snapshot of this shape to populate provider + model configuration
  * without hand-writing context windows or capabilities.
  */
+export interface CatalogReasoningOption {
+  readonly type?: string;
+  readonly values?: readonly string[];
+}
+
 export interface CatalogModelEntry {
   readonly id?: string;
   readonly name?: string;
@@ -16,6 +21,7 @@ export interface CatalogModelEntry {
   /** Accepts message-level tool declarations (`messages[].tools`). Defaults to false. */
   readonly select_tools?: boolean;
   readonly interleaved?: boolean | { readonly field?: string };
+  readonly reasoning_options?: readonly CatalogReasoningOption[];
   readonly modalities?: {
     readonly input?: readonly string[];
     readonly output?: readonly string[];
@@ -45,6 +51,8 @@ export interface CatalogModel {
   readonly name?: string;
   readonly maxOutputSize?: number;
   readonly reasoningKey?: string;
+  readonly supportEfforts?: readonly string[];
+  readonly defaultEffort?: string;
   readonly capability: ModelCapability;
 }
 
@@ -94,6 +102,7 @@ export function inferWireType(entry: CatalogProviderEntry): ProviderType | undef
     return 'google-genai';
   }
   if (npm.includes('openai') || id.includes('openai')) return 'openai';
+  if (id.includes('deepseek')) return 'openai';
   return undefined;
 }
 
@@ -118,6 +127,31 @@ export function catalogBaseUrl(
   return api;
 }
 
+function catalogModelBaseId(modelId: string): string {
+  const slash = modelId.lastIndexOf('/');
+  return (slash >= 0 ? modelId.slice(slash + 1) : modelId).toLowerCase();
+}
+
+/** Infers DeepSeek V4 effort metadata from a bare or aliased model id. */
+export function deepSeekV4Efforts(
+  modelId: string,
+): { supportEfforts: readonly string[]; defaultEffort: string } | undefined {
+  if (!catalogModelBaseId(modelId).startsWith('deepseek-v4-')) return undefined;
+  return { supportEfforts: ['high', 'max'], defaultEffort: 'high' };
+}
+
+function catalogEfforts(
+  model: CatalogModelEntry,
+): { supportEfforts?: readonly string[]; defaultEffort?: string } {
+  for (const option of model.reasoning_options ?? []) {
+    if (option.type !== 'effort') continue;
+    const values = option.values?.filter((value) => value.length > 0);
+    if (values === undefined || values.length === 0) continue;
+    return { supportEfforts: values, defaultEffort: values[0] };
+  }
+  return deepSeekV4Efforts(model.id ?? '') ?? {};
+}
+
 /** Normalizes one catalog model entry into a {@link CatalogModel}; skips invalid entries. */
 export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel | undefined {
   if (typeof model.id !== 'string' || model.id.length === 0) return undefined;
@@ -126,7 +160,8 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
   if (!isUsableChatModel(model)) return undefined;
   const inputs = model.modalities?.input ?? [];
   const output = model.limit?.output;
-  return {
+  const efforts = catalogEfforts(model);
+  const result: CatalogModel = {
     id: model.id,
     name: typeof model.name === 'string' && model.name.length > 0 ? model.name : undefined,
     maxOutputSize: typeof output === 'number' && output > 0 ? output : undefined,
@@ -141,6 +176,14 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
       select_tools: model.select_tools === true,
     },
   };
+  if (efforts.supportEfforts !== undefined) {
+    return {
+      ...result,
+      supportEfforts: efforts.supportEfforts,
+      defaultEffort: efforts.defaultEffort,
+    };
+  }
+  return result;
 }
 
 function catalogReasoningKey(interleaved: CatalogModelEntry['interleaved']): string | undefined {

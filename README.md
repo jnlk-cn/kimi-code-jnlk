@@ -1,7 +1,16 @@
-# Kimi Code CLI
+# Kimi Code CLI (kimi-code-jnlk)
 
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/en/) <br>
-[Documentation](https://moonshotai.github.io/kimi-code/en/) · [Issues](https://github.com/MoonshotAI/kimi-code/issues) · [中文](README.zh-CN.md)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Fork](https://img.shields.io/badge/upstream-MoonshotAI%2Fkimi--code-lightgrey)](https://github.com/MoonshotAI/kimi-code) <br>
+[Documentation](https://moonshotai.github.io/kimi-code/en/) · [Issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues) · [中文](README.zh-CN.md)
+
+> **Fork notice**
+>
+> This repository (**kimi-code-jnlk**) is a community fork of [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), maintained independently under the [MIT License](LICENSE). It is **not** affiliated with, endorsed by, or supported by Moonshot AI.
+>
+> - **Upstream**: use the official project for the default release channel, docs site, and marketplace plugins.
+> - **This fork**: adds community patches (for example DeepSeek V4 official API fixes and Windows test stabilization). Install and run from this repo only if you intend to use this fork's builds.
+> - **Support**: report issues in [jnlk-cn/kimi-code-jnlk](https://github.com/jnlk-cn/kimi-code-jnlk/issues); for upstream behavior, refer to MoonshotAI/kimi-code.
+> - **License**: retain the original MIT copyright notice in `LICENSE`; see also [UPSTREAM.md](UPSTREAM.md).
 
 ![Demo of using Kimi Code](./docs/media/intro.gif)
 

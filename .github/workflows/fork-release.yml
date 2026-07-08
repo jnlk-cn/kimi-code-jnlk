@@ -1,0 +1,117 @@
+name: Fork Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create (e.g. v0.24.0-jnlk)'
+        required: true
+        type: string
+
+concurrency: fork-release-${{ github.ref }}
+
+jobs:
+  validate:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Kimi Code built-in catalog
+        shell: bash
+        run: |
+          CATALOG_FILE="$RUNNER_TEMP/kimi-code-built-in-catalog.json"
+          node apps/kimi-code/scripts/update-catalog.mjs --out "$CATALOG_FILE"
+          echo "KIMI_CODE_BUILT_IN_CATALOG_FILE=$CATALOG_FILE" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+  native-artifacts:
+    name: Native release artifacts
+    needs: validate
+    uses: ./.github/workflows/_native-build.yml
+    with:
+      upload-artifact-prefix: kimi-code-jnlk-native
+      retention-days: 14
+      sign-macos: false
+
+  publish-release:
+    name: Publish GitHub Release
+    needs:
+      - validate
+      - native-artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read CLI version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/kimi-code/package.json').version")
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: kimi-code-jnlk-native-*
+          path: dist-native-release
+          merge-multiple: true
+
+      - name: Produce manifest.json
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: node apps/kimi-code/scripts/native/produce-manifest.mjs dist-native-release "$RELEASE_TAG"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          {
+            echo "# kimi-code-jnlk ${RELEASE_VERSION}"
+            echo
+            echo "Community fork release. See [UPSTREAM.md](UPSTREAM.md) and [README.md](README.md) for attribution and usage notes."
+            echo
+            echo "Changelog: [apps/kimi-code/CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${RELEASE_TAG}/apps/kimi-code/CHANGELOG.md)"
+          } > "$NOTES_FILE"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist-native-release/* --clobber
+          else
+            gh release create "$RELEASE_TAG" dist-native-release/* \
+              --title "kimi-code-jnlk ${RELEASE_VERSION}" \
+              --notes-file "$NOTES_FILE"
+          fi

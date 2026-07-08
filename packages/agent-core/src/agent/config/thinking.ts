@@ -1,4 +1,4 @@
-import type { ThinkingEffort } from '@moonshot-ai/kosong';
+import type { Message, ThinkingEffort } from '@moonshot-ai/kosong';
 
 import { effectiveModelAlias } from '../../config';
 import type { ModelAlias, ThinkingConfig } from '../../config/schema';
@@ -17,6 +17,20 @@ function supportsThinking(model: ModelAlias | undefined): boolean {
 
 function middleOf(efforts: readonly string[]): string {
   return efforts[Math.floor(efforts.length / 2)]!;
+}
+
+function isDeepSeekV4Model(model: ModelAlias | undefined): boolean {
+  if (model === undefined) return false;
+  return model.model.toLowerCase().startsWith('deepseek-v4-');
+}
+
+export function deepSeekToolBoundThinkingRequired(history: readonly Message[]): boolean {
+  return history.some(
+    (message) =>
+      message.role === 'assistant' &&
+      message.toolCalls.length > 0 &&
+      message.content.some((part) => part.type === 'think'),
+  );
 }
 
 /**
@@ -55,6 +69,7 @@ export function resolveThinkingEffort(
   requested: ThinkingEffort | undefined,
   config: ThinkingConfig | undefined,
   model: ModelAlias | undefined,
+  history?: readonly Message[],
 ): ThinkingEffort {
   const effectiveModel = model === undefined ? undefined : effectiveModelAlias(model);
   let effort: ThinkingEffort;
@@ -72,6 +87,15 @@ export function resolveThinkingEffort(
     // disable, it should not also discard a chosen effort. Fall back to the
     // model default only when no effort is configured.
     effort = config?.effort ?? defaultThinkingEffortFor(effectiveModel);
+  }
+
+  if (
+    effort === 'off' &&
+    isDeepSeekV4Model(effectiveModel) &&
+    history !== undefined &&
+    deepSeekToolBoundThinkingRequired(history)
+  ) {
+    effort = defaultThinkingEffortFor(effectiveModel);
   }
 
   return effort;

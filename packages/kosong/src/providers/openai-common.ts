@@ -145,6 +145,16 @@ export function isFunctionToolCall<T extends { type: string }>(
 ): tc is T & FunctionToolCallShape {
   return tc.type === 'function';
 }
+/** Strip an optional `provider/model` alias prefix before wire matching. */
+export function openAIModelBaseId(model: string): string {
+  const slash = model.lastIndexOf('/');
+  return (slash >= 0 ? model.slice(slash + 1) : model).toLowerCase();
+}
+
+export function isDeepSeekModel(model: string): boolean {
+  return openAIModelBaseId(model).startsWith('deepseek-');
+}
+
 /**
  * Map kosong `ThinkingEffort` to OpenAI `reasoning_effort` string.
  */
@@ -167,6 +177,24 @@ export function thinkingEffortToReasoningEffort(effort: ThinkingEffort): string 
       // default, rather than throwing on a value the model itself advertised.
       return undefined;
   }
+}
+
+/**
+ * Map kosong `ThinkingEffort` to `reasoning_effort`, honoring model-specific wire
+ * conventions (DeepSeek V4 uses `max`, not OpenAI's `xhigh`).
+ */
+export function thinkingEffortToReasoningEffortForModel(
+  model: string,
+  effort: ThinkingEffort,
+): string | undefined {
+  if (effort === 'off') return undefined;
+  if (isDeepSeekModel(model)) {
+    if (effort === 'on') return 'high';
+    if (effort === 'max' || effort === 'xhigh') return 'max';
+    if (effort === 'low' || effort === 'medium' || effort === 'high') return effort;
+    return undefined;
+  }
+  return thinkingEffortToReasoningEffort(effort);
 }
 
 /**

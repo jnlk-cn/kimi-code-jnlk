@@ -1,5 +1,12 @@
 # @moonshot-ai/agent-core
 
+## 0.15.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @moonshot-ai/kosong@0.6.0
+
 ## 0.15.3
 
 ### Patch Changes

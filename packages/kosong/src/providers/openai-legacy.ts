@@ -27,6 +27,9 @@ import {
   type ToolMessageConversion,
   reasoningEffortToThinkingEffort,
   thinkingEffortToReasoningEffort,
+  thinkingEffortToReasoningEffortForModel,
+  isDeepSeekModel,
+  openAIModelBaseId,
   toolToOpenAI,
 } from './openai-common';
 import {
@@ -56,6 +59,38 @@ const DEFAULT_OUTBOUND_REASONING_KEY = KNOWN_REASONING_KEYS[0];
  * (the documented range is `[1, 131072]`).
  */
 const CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING = 128 * 1024;
+/** DeepSeek V4 catalog output limit (thinking-max window). */
+const DEEPSEEK_V4_MAX_OUTPUT_TOKENS_CEILING = 384_000;
+
+interface DeepSeekThinkingConfig {
+  readonly type: 'enabled' | 'disabled';
+}
+
+function maxOutputTokensCeiling(model: string): number {
+  return isDeepSeekModel(model)
+    ? DEEPSEEK_V4_MAX_OUTPUT_TOKENS_CEILING
+    : CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING;
+}
+
+function readExtraBody(
+  kwargs: OpenAILegacyGenerationKwargs,
+): Record<string, unknown> | undefined {
+  const extra = kwargs.extra_body;
+  if (typeof extra !== 'object' || extra === null) return undefined;
+  return extra as Record<string, unknown>;
+}
+
+function mergeDeepSeekThinkingKwargs(
+  kwargs: OpenAILegacyGenerationKwargs,
+  thinking: DeepSeekThinkingConfig,
+): OpenAILegacyGenerationKwargs {
+  const oldExtra = readExtraBody(kwargs) ?? {};
+  return {
+    ...kwargs,
+    extra_body: { ...oldExtra, thinking },
+  };
+}
+
 const OPENAI_CHAT_TOOL_CALL_ID_POLICY: ToolCallIdPolicy = {
   normalize: (id) => sanitizeToolCallId(id, 64),
   maxLength: 64,
@@ -112,6 +147,7 @@ export interface OpenAILegacyGenerationKwargs {
   presence_penalty?: number | undefined;
   frequency_penalty?: number | undefined;
   stop?: string | string[] | undefined;
+  extra_body?: Record<string, unknown> | undefined;
   [key: string]: unknown;
 }
 interface OpenAIMessage {
@@ -554,6 +590,10 @@ export class OpenAILegacyChatProvider implements ChatProvider {
       this._generationKwargs,
     );
 
+    const hasThinkPart = history.some((message) =>
+      message.content.some((part) => part.type === 'think'),
+    );
+
     // Determine reasoning_effort
     let reasoningEffort: string | undefined = this._reasoningEffort;
 
@@ -564,12 +604,14 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     // their value would otherwise be silently overwritten below.
     // See: https://github.com/MoonshotAI/kimi-code/issues/1616
     if (reasoningEffort === undefined && kwargs['reasoning_effort'] === undefined) {
-      const hasThinkPart = history.some((message) =>
-        message.content.some((part) => part.type === 'think'),
-      );
       if (hasThinkPart) {
-        reasoningEffort = 'medium';
+        reasoningEffort = isDeepSeekModel(this._model) ? 'high' : 'medium';
       }
+    }
+
+    if (isDeepSeekModel(this._model) && hasThinkPart) {
+      const extraBody = readExtraBody(kwargs) ?? readExtraBody(this._generationKwargs) ?? {};
+      kwargs['extra_body'] = { ...extraBody, thinking: { type: 'enabled' } };
     }
 
     // Remove undefined values from kwargs
@@ -580,12 +622,15 @@ export class OpenAILegacyChatProvider implements ChatProvider {
       }
     }
 
+    const { extra_body: extraBody, ...requestKwargs } = kwargs;
+
     // Build the create params
     const createParams: Record<string, unknown> = {
-      model: this._model,
+      model: openAIModelBaseId(this._model),
       messages,
       stream: this._stream,
-      ...kwargs,
+      ...requestKwargs,
+      ...(extraBody as Record<string, unknown> | undefined),
     };
     if (options?.responseFormat !== undefined) {
       createParams['response_format'] = responseFormatToOpenAI(options.responseFormat);
@@ -617,8 +662,22 @@ export class OpenAILegacyChatProvider implements ChatProvider {
   }
 
   withThinking(effort: ThinkingEffort): OpenAILegacyChatProvider {
-    const reasoningEffort = thinkingEffortToReasoningEffort(effort);
     const clone = this._clone();
+    if (isDeepSeekModel(this._model)) {
+      if (effort === 'off') {
+        clone._reasoningEffort = undefined;
+        clone._generationKwargs = mergeDeepSeekThinkingKwargs(clone._generationKwargs, {
+          type: 'disabled',
+        });
+        return clone;
+      }
+      clone._reasoningEffort = thinkingEffortToReasoningEffortForModel(this._model, effort);
+      clone._generationKwargs = mergeDeepSeekThinkingKwargs(clone._generationKwargs, {
+        type: 'enabled',
+      });
+      return clone;
+    }
+    const reasoningEffort = thinkingEffortToReasoningEffort(effort);
     clone._reasoningEffort = reasoningEffort;
     return clone;
   }
@@ -641,7 +700,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     ) {
       cap = Math.min(cap, options.maxContextTokens - options.usedContextTokens);
     }
-    cap = Math.min(cap, CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING);
+    cap = Math.min(cap, maxOutputTokensCeiling(this._model));
     return this.withGenerationKwargs(completionTokenKwargs(this._model, Math.max(1, cap)));
   }
 
