@@ -36,7 +36,7 @@ describe('ChoicePickerComponent', () => {
     expect(lines[titleIdx]).not.toContain('type to filter');
     // Hint sits directly under the title and uses lowercase key vocabulary.
     const hint = lines[titleIdx + 1];
-    expect(hint).toContain('↑↓ navigate');
+    expect(hint).toContain('?? navigate');
     expect(hint).toContain('Enter select');
     expect(hint).toContain('Esc cancel');
     expect(hint).not.toContain('enter select');
@@ -67,7 +67,7 @@ describe('ChoicePickerComponent', () => {
 
     const out = picker.render(120).map(strip);
 
-    expect(out).toContain('  ❯ Manual ← current');
+    expect(out).toContain('  ? Manual ? current');
     expect(out).toContain('    Ask before commands, edits, and other risky actions.');
     expect(out).toContain('    Automatically approve tool actions and plan transitions.');
   });
@@ -81,30 +81,30 @@ describe('ChoicePickerComponent', () => {
       onSelect,
       onCancel,
     });
-    expect(editor.render(120).map(strip)).toContain('  ❯ Vim ← current');
+    expect(editor.render(120).map(strip)).toContain('  ? Vim ? current');
 
     const theme = new ThemeSelectorComponent({
       currentValue: 'light',
       onSelect,
       onCancel,
     });
-    expect(theme.render(120).map(strip)).toContain('  ❯ Light ← current');
+    expect(theme.render(120).map(strip)).toContain('  ? Light ? current');
 
     const permission = new PermissionSelectorComponent({
       currentValue: 'manual',
       onSelect,
       onCancel,
     });
-    expect(permission.render(120).map(strip)).toContain('  ❯ Manual ← current');
+    expect(permission.render(120).map(strip)).toContain('  ? Manual ? current');
 
     const settings = new SettingsSelectorComponent({
       onSelect,
       onCancel,
     });
     const settingsOutput = settings.render(120).map(strip);
-    expect(settingsOutput).toContain('  ❯ Model');
+    expect(settingsOutput).toContain('  ? Model');
     expect(settingsOutput).toContain('    Switch the active model and thinking mode.');
-    expect(settingsOutput).toContain('    Turn automatic CLI updates on or off.');
+    expect(settingsOutput).toContain('    Background silent updates, or prompt with one-click install.');
 
     const upgradePreference = new UpdatePreferenceSelectorComponent({
       currentValue: true,
@@ -112,8 +112,8 @@ describe('ChoicePickerComponent', () => {
       onCancel,
     });
     const upgradePreferenceOutput = upgradePreference.render(120).map(strip);
-    expect(upgradePreferenceOutput).toContain('  ❯ On ← current');
-    expect(upgradePreferenceOutput).toContain('    Install new versions in the background.');
+    expect(upgradePreferenceOutput).toContain('  ? On ? current');
+    expect(upgradePreferenceOutput).toContain('    Install new versions silently in the background.');
   });
 
   it('routes Space into the query for searchable lists instead of selecting', () => {
