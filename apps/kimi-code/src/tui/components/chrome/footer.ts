@@ -3,7 +3,7 @@
  *
  * Layout:
  *   Line 1: [yolo] [plan] <model> <cwd>  <git-badge>  <shortcut hints>
- *   Line 2: context: XX.X% (tokens/max)
+ *   Line 2: <telemetry> | <transient hint>                    context: XX.X% (tokens/max)
  */
 
 import type { Component } from '@moonshot-ai/pi-tui';
@@ -12,6 +12,7 @@ import chalk from 'chalk';
 import { effectiveModelAlias } from '@moonshot-ai/kimi-code-sdk';
 
 import { ALL_TIPS, type ToolbarTip } from '#/tui/constant/tips';
+import { FOOTER_LOW_BALANCE_CNY } from '#/tui/constant/footer-telemetry';
 import { isRainbowDancing, renderDanceFooterModel } from '#/tui/easter-eggs/dance';
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
@@ -23,6 +24,12 @@ import {
   type GitStatus,
   type GitStatusCache,
 } from '#/utils/git/git-status';
+import {
+  buildTelemetrySegments,
+  EMPTY_FOOTER_TELEMETRY,
+  joinTelemetrySegments,
+  type FooterTelemetry,
+} from '#/utils/usage/footer-telemetry';
 import { safeUsageRatio } from '#/utils/usage/usage-format';
 
 const MAX_CWD_SEGMENTS = 3;
@@ -172,6 +179,48 @@ function formatContextStatus(usage: number, tokens?: number, maxTokens?: number)
   return `context: ${pct}`;
 }
 
+function formatTelemetryLine(telemetry: FooterTelemetry, maxWidth: number): string {
+  if (maxWidth <= 0) return '';
+  const segments = buildTelemetrySegments(telemetry);
+  if (segments.length === 0) return '';
+  const plain = joinTelemetrySegments(segments, maxWidth);
+  if (plain.length === 0) return '';
+
+  const colors = currentTheme.palette;
+  let styled = plain;
+
+  if (telemetry.billingEnabled && telemetry.estimatedCostCny > 0) {
+    const costMatch = plain.match(/约 ¥[\d.]+(?:\(高峰\))?/);
+    if (costMatch !== null) {
+      styled = styled.replace(
+        costMatch[0],
+        chalk.hex(colors.text)(costMatch[0]),
+      );
+    }
+  }
+
+  if (plain.includes('高峰')) {
+    styled = styled.replace('高峰', chalk.hex(colors.warning)('高峰'));
+    styled = styled.replace('(高峰)', chalk.hex(colors.warning)('(高峰)'));
+  }
+
+  if (telemetry.billingEnabled && telemetry.balanceCny !== null) {
+    if (!telemetry.balanceAvailable) {
+      styled = styled.replace('余额不足', chalk.hex(colors.error)('余额不足'));
+    } else {
+      const balanceNum = Number.parseFloat(telemetry.balanceCny);
+      if (Number.isFinite(balanceNum) && balanceNum < FOOTER_LOW_BALANCE_CNY) {
+        const balanceLabel = `余额 ¥${telemetry.balanceCny}`;
+        styled = styled.replace(balanceLabel, chalk.hex(colors.warning)(balanceLabel));
+      }
+    }
+  }
+
+  return styled;
+}
+
+export type { FooterTelemetry };
+
 export function formatFooterGitBadge(status: GitStatus, colors: ColorPalette): string {
   const base = chalk.hex(colors.textDim)(formatGitBadgeBase(status));
   if (status.pullRequest === null) return base;
@@ -200,6 +249,7 @@ export class FooterComponent implements Component {
    */
   private backgroundBashTaskCount = 0;
   private backgroundAgentCount = 0;
+  private telemetry: FooterTelemetry = EMPTY_FOOTER_TELEMETRY;
 
   constructor(state: AppState, onRefresh: () => void = () => {}) {
     this.state = state;
@@ -242,6 +292,14 @@ export class FooterComponent implements Component {
   setBackgroundCounts(counts: { bashTasks: number; agentTasks: number }): void {
     this.backgroundBashTaskCount = Math.max(0, counts.bashTasks);
     this.backgroundAgentCount = Math.max(0, counts.agentTasks);
+  }
+
+  setTelemetry(telemetry: FooterTelemetry): void {
+    this.telemetry = telemetry;
+  }
+
+  getTelemetry(): FooterTelemetry {
+    return this.telemetry;
   }
 
   invalidate(): void {}
@@ -332,30 +390,47 @@ export class FooterComponent implements Component {
       line1 = truncateToWidth(leftLine, width, '…');
     }
 
-    // ── Line 2: transient hint (bottom-left) + context (right) ──
+    // ── Line 2: transient hint + telemetry (left) + context (right) ──
     const contextText = formatContextStatus(
       state.contextUsage,
       state.contextTokens,
       state.maxContextTokens,
     );
+    const contextStyled = chalk.hex(colors.text)(contextText);
     const contextWidth = visibleWidth(contextText);
-    let line2: string;
+
+    let hintPlain = '';
+    let hintStyled = '';
     if (this.transientHint) {
-      const maxHintWidth = Math.max(0, width - contextWidth - 1);
-      const shownHint =
+      const maxHintWidth = Math.max(0, width - contextWidth - 2);
+      hintPlain =
         visibleWidth(this.transientHint) <= maxHintWidth
           ? this.transientHint
           : truncateToWidth(this.transientHint, maxHintWidth, '…');
-      const hintWidth = visibleWidth(shownHint);
-      const pad = Math.max(0, width - hintWidth - contextWidth);
-      line2 =
-        chalk.hex(colors.warning).bold(shownHint) +
-        ' '.repeat(pad) +
-        chalk.hex(colors.text)(contextText);
-    } else {
-      const leftPad = Math.max(0, width - contextWidth);
-      line2 = ' '.repeat(leftPad) + chalk.hex(colors.text)(contextText);
+      hintStyled = chalk.hex(colors.warning).bold(hintPlain);
     }
+    const hintWidth = visibleWidth(hintPlain);
+
+    const gapAfterHint = hintPlain.length > 0 ? 1 : 0;
+    const telemetryBudget = Math.max(
+      0,
+      width - contextWidth - hintWidth - gapAfterHint - (hintWidth > 0 ? 1 : 0),
+    );
+    const telemetryStyled = formatTelemetryLine(this.telemetry, telemetryBudget);
+    const telemetryPlain = stripAnsi(telemetryStyled);
+    const telemetryWidth = visibleWidth(telemetryPlain);
+
+    let line2 = '';
+    if (hintStyled.length > 0) {
+      line2 += hintStyled;
+      if (telemetryWidth > 0) line2 += ' ';
+    }
+    if (telemetryStyled.length > 0) {
+      line2 += telemetryStyled;
+    }
+    const line2Width = hintWidth + (hintWidth > 0 && telemetryWidth > 0 ? 1 : 0) + telemetryWidth;
+    const pad = Math.max(0, width - line2Width - contextWidth);
+    line2 += ' '.repeat(pad) + contextStyled;
 
     return [truncateToWidth(line1, width), truncateToWidth(line2, width)];
   }
@@ -410,4 +485,8 @@ function goalSnapshotKey(goal: AppState['goal']): string | null {
     String(goal.budget.turnBudget),
     String(goal.budget.wallClockBudgetMs),
   ].join('\u0000');
+}
+
+function stripAnsi(text: string): string {
+  return text.replaceAll(/\u001B\[[0-9;]*m/g, '');
 }

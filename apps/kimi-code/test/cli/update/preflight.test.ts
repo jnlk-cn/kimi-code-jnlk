@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   resolveUpdateDeviceId: vi.fn(),
   appendRolloutDecisionLog: vi.fn(),
   spawn: vi.fn(),
+  verifyInstalledVersion: vi.fn(),
 }));
 
 vi.mock('../../../src/cli/update/cache', () => ({
@@ -104,6 +105,18 @@ vi.mock('node:child_process', async () => {
   return {
     ...actual,
     spawn: mocks.spawn,
+  };
+});
+
+vi.mock('../../../src/cli/update/verify', () => ({
+  verifyInstalledVersion: mocks.verifyInstalledVersion,
+}));
+
+vi.mock('../../../src/cli/version', async () => {
+  const actual = await vi.importActual<typeof import('#/cli/version')>('#/cli/version');
+  return {
+    ...actual,
+    getHostPackageRoot: vi.fn(() => '/mock/package/root'),
   };
 });
 
@@ -226,19 +239,27 @@ async function flushBackgroundInstall(): Promise<void> {
 }
 
 describe('runUpdatePreflight', () => {
+  const originalPlatform = process.platform;
+
   beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
     mocks.readUpdateInstallState.mockResolvedValue(emptyUpdateInstallState());
     mocks.writeUpdateInstallState.mockResolvedValue(undefined);
     mocks.loadTuiConfig.mockResolvedValue(tuiConfig());
     mocks.resolveUpdateDeviceId.mockReturnValue('test-device');
     mocks.appendRolloutDecisionLog.mockResolvedValue(undefined);
+    mocks.verifyInstalledVersion.mockResolvedValue(true);
     mocks.tryAcquireUpdateInstallLock.mockResolvedValue({
       filePath: '/tmp/kimi-update-install.lock',
       release: vi.fn().mockResolvedValue(undefined),
     });
   });
 
-  afterEach(() => { vi.clearAllMocks(); vi.unstubAllEnvs(); });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
 
   it('skips all update work when KIMI_CODE_NO_AUTO_UPDATE is set', async () => {
     vi.stubEnv('KIMI_CODE_NO_AUTO_UPDATE', '1');
@@ -512,30 +533,38 @@ describe('runUpdatePreflight', () => {
     }
   });
 
-  it('native on win32: prints manual powershell command, does not spawn', async () => {
+  it('native on win32: prompts and spawns powershell when automatic updates are disabled', async () => {
+    disableAutoInstall();
     mocks.readUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
     mocks.refreshUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
     mocks.detectInstallSource.mockResolvedValue('native');
+    mocks.promptForInstallChoice.mockResolvedValue('install');
+    mockSpawnExit(0);
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'win32' });
     try {
-      const { stdout, options } = captureOutput();
-      await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('continue');
-      expect(stdout.join('')).toContain('irm https://code.kimi.com/kimi-code/install.ps1 | iex');
-      expect(promptForInstallChoice).not.toHaveBeenCalled();
-      expect(mocks.spawn).not.toHaveBeenCalled();
+      const { options } = captureOutput();
+      await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('exit');
+      const call = mocks.spawn.mock.calls[0];
+      expect(call?.[0]).toBe('powershell.exe');
+      expect(call?.[1]).toEqual(expect.arrayContaining(['-ExecutionPolicy', 'Bypass']));
+      expect(call?.[2]).toEqual({ stdio: 'inherit' });
     } finally {
       Object.defineProperty(process, 'platform', { value: originalPlatform });
     }
   });
 
-  it('unsupported: prints fallback npm command', async () => {
+  it('unsupported: prints multi-package-manager manual guidance', async () => {
     mocks.readUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
     mocks.refreshUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
     mocks.detectInstallSource.mockResolvedValue('unsupported');
     const { stdout, options } = captureOutput();
     await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('continue');
-    expect(stdout.join('')).toContain('npm install -g @moonshot-ai/kimi-code@0.5.0');
+    const output = stdout.join('');
+    expect(output).toContain('Could not detect install source');
+    expect(output).toContain('npm install -g @moonshot-ai/kimi-code@0.5.0');
+    expect(output).toContain('pnpm add -g @moonshot-ai/kimi-code@0.5.0');
+    expect(output).toContain('Package location: /mock/package/root');
     expect(mocks.spawn).not.toHaveBeenCalled();
   });
 
@@ -560,7 +589,21 @@ describe('runUpdatePreflight', () => {
     const { stdout, stderr, options } = captureOutput();
     await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('continue');
     expect(stderr.join('')).toContain('warning: failed to install');
-    // A failed install must never print the "Updated …" success line.
+    expect(stderr.join('')).toContain('Detected source: npm-global');
+    expect(stdout.join('')).not.toContain('Updated @moonshot-ai/kimi-code');
+  });
+
+  it('warns and continues when verification fails after a zero exit', async () => {
+    disableAutoInstall();
+    mocks.readUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
+    mocks.refreshUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
+    mocks.detectInstallSource.mockResolvedValue('npm-global');
+    mocks.promptForInstallChoice.mockResolvedValue('install');
+    mocks.verifyInstalledVersion.mockResolvedValue(false);
+    mockSpawnExit(0);
+    const { stdout, stderr, options } = captureOutput();
+    await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('continue');
+    expect(stderr.join('')).toContain('install command exited successfully');
     expect(stdout.join('')).not.toContain('Updated @moonshot-ai/kimi-code');
   });
 

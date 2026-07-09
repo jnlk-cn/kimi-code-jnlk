@@ -234,6 +234,19 @@ export function extractUsage(usage: unknown): TokenUsage | null {
   const promptTokens = typeof u['prompt_tokens'] === 'number' ? u['prompt_tokens'] : 0;
   const completionTokens = typeof u['completion_tokens'] === 'number' ? u['completion_tokens'] : 0;
 
+  const cacheHitTokens =
+    typeof u['prompt_cache_hit_tokens'] === 'number' ? u['prompt_cache_hit_tokens'] : undefined;
+  const cacheMissTokens =
+    typeof u['prompt_cache_miss_tokens'] === 'number' ? u['prompt_cache_miss_tokens'] : undefined;
+  if (cacheHitTokens !== undefined || cacheMissTokens !== undefined) {
+    return {
+      inputOther: cacheMissTokens ?? 0,
+      output: completionTokens,
+      inputCacheRead: cacheHitTokens ?? 0,
+      inputCacheCreation: 0,
+    };
+  }
+
   let cached = 0;
   // Moonshot proprietary: top-level cached_tokens
   if (typeof u['cached_tokens'] === 'number') {

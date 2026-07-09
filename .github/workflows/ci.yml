@@ -81,6 +81,22 @@ jobs:
       # timeout causes flaky failures. Give it more headroom.
       - run: pnpm run test -- --testTimeout=30000
 
+  test-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test -- --testTimeout=30000
+
   lint:
     runs-on: ubuntu-latest
 

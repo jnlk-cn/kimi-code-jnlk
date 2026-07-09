@@ -286,7 +286,9 @@ Immediately check for the latest version and display an update prompt; exits aft
 kimi upgrade
 ```
 
-For global npm, pnpm, yarn, bun, and macOS / Linux native installations, `kimi upgrade` shows update options; selecting `Install update now` runs the corresponding foreground install command. When the current installation method cannot be upgraded automatically (e.g., Windows native installation), the manual update command is printed instead.
+For global npm, pnpm, yarn, bun, and native installations (including Windows), `kimi upgrade` shows update options; selecting `Install update now` runs the corresponding foreground install command for your detected install source. When the current installation method cannot be upgraded automatically (for example Homebrew), the manual update command is printed instead.
+
+On startup, if a newer version is available and `[upgrade].auto_install` is `false` in `tui.toml`, Kimi Code shows the same one-click install prompt instead of installing silently in the background.
 
 ### `kimi vis`
 

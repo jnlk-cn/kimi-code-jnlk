@@ -76,6 +76,7 @@ import type { BtwPanelController } from './btw-panel';
 import type { StreamingUIController } from './streaming-ui';
 import type { TasksBrowserController } from './tasks-browser';
 import { SubAgentEventHandler } from './subagent-event-handler';
+import type { FooterTelemetryController } from './footer-telemetry-controller';
 import type {
   AppState,
   LivePaneState,
@@ -115,6 +116,7 @@ export interface SessionEventHost {
   shiftQueuedMessage(): QueuedMessage | undefined;
   readonly btwPanelController: BtwPanelController;
   readonly tasksBrowserController: TasksBrowserController;
+  readonly footerTelemetryController: FooterTelemetryController;
 }
 
 export class SessionEventHandler {
@@ -366,6 +368,7 @@ export class SessionEventHandler {
 
   private handleStepCompleted(event: TurnStepCompletedEvent): void {
     this.host.streamingUI.flushNow();
+    this.host.footerTelemetryController.onStepCompleted(event);
     this.maybeShowDebugTiming(event);
 
     if (event.providerFinishReason === 'filtered') {
@@ -609,6 +612,7 @@ export class SessionEventHandler {
     }
     if (event.model !== undefined) patch.model = event.model;
     if (Object.keys(patch).length > 0) this.host.setAppState(patch);
+    this.host.footerTelemetryController.onStatusUpdate(event);
     if (event.swarmMode === false) {
       this.host.state.swarmModeEntry = undefined;
       if (shouldRenderSwarmEnded) {

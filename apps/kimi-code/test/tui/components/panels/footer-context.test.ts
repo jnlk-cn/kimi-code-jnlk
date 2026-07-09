@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { FooterComponent, formatFooterGitBadge, buildWeightedTips } from '#/tui/components/chrome/footer';
 import { darkColors } from '#/tui/theme/colors';
 import type { AppState } from '#/tui/types';
+import type { FooterTelemetry } from '#/utils/usage/footer-telemetry';
 
 const ANSI_SGR = /\u001B\[[0-9;]*m/g;
 function strip(text: string): string {
@@ -110,6 +111,32 @@ describe('FooterComponent — context NaN resilience', () => {
     const [, line2] = footer.render(120);
     expect(strip(line2 ?? '')).toContain('Press Ctrl-C again to exit');
     expect(strip(line2 ?? '')).toContain('context: 0.0%');
+  });
+
+  it('renders telemetry on line 2 without breaking context alignment', () => {
+    const footer = new FooterComponent(
+      baseState({ contextUsage: 0.123, contextTokens: 1230, maxContextTokens: 10_000 }),
+    );
+    const telemetry: FooterTelemetry = {
+      billingEnabled: true,
+      sessionInput: 42_000,
+      sessionOutput: 8_000,
+      sessionCacheHit: 26_000,
+      sessionCacheMiss: 16_000,
+      estimatedCostCny: 0.18,
+      lastTurnCachePct: 62,
+      balanceCny: '12.38',
+      balanceGrantedCny: null,
+      balanceAvailable: true,
+      balanceFetchedAtMs: Date.now(),
+    };
+    footer.setTelemetry(telemetry);
+
+    const [, line2] = footer.render(160);
+    const plain = strip(line2 ?? '');
+    expect(plain).toContain('缓存');
+    expect(plain).toContain('context: 12.3%');
+    expect(plain).toMatch(/context: 12\.3% \(1\.2k\/10\.0k\)$/);
   });
 
   it('highlights the pull request badge separately from git status text', () => {

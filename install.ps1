@@ -6,12 +6,12 @@
   irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 
 .EXAMPLE
-  $env:KIMI_VERSION = 'v0.24.0-jnlk'
+  $env:KIMI_VERSION = 'v0.24.1-jnlk'
   irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 
 .NOTES
   Optional env:
-    KIMI_VERSION         GitHub Release tag (e.g. v0.24.0-jnlk); if unset, fetch latest release
+    KIMI_VERSION         GitHub Release tag (e.g. v0.24.1-jnlk); if unset, fetch latest release
     KIMI_INSTALL_DIR     Installation directory, default %USERPROFILE%\.kimi-code
     KIMI_NO_MODIFY_PATH  Skip PATH modification when set to a non-empty value
 #>

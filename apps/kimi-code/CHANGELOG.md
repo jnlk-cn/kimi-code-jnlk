@@ -1,5 +1,13 @@
 # @moonshot-ai/kimi-code
 
+## 0.24.1
+
+### Patch Changes
+
+- Improve one-click CLI updates when `[upgrade].auto_install` is off: the install prompt now runs the same command it displays, verifies the installed version afterward, supports Windows native installs, and shows clearer manual guidance when the install source cannot be detected. Set `auto_install = false` in `tui.toml` or `/settings` to use the prompt instead of silent background updates.
+
+  Show DeepSeek session usage and estimated cost in the footer when using the official DeepSeek API, including cache hit rate, step cost, and account balance when available.
+
 ## 0.24.0
 
 ### Minor Changes

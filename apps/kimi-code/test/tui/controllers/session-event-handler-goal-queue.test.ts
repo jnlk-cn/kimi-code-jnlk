@@ -94,6 +94,13 @@ function makeHost(options: { createGoalRejects?: boolean } = {}) {
     sendQueuedMessage: vi.fn(),
     shiftQueuedMessage: vi.fn(),
     btwPanelController: { routeEvent: vi.fn(() => false) },
+    footerTelemetryController: {
+      onStepCompleted: vi.fn(),
+      onStatusUpdate: vi.fn(),
+      reset: vi.fn(),
+      syncProviderContext: vi.fn(),
+      dispose: vi.fn(),
+    },
     tasksBrowserController: {},
   };
   host.setAppState.mockImplementation((patch: Record<string, unknown>) => {

@@ -61,7 +61,7 @@ $KIMI_CODE_HOME  (default: ~/.kimi-code)
 Each top-level file under the data root serves a specific purpose; most are managed automatically by the CLI:
 
 - **`config.toml`**: the main runtime configuration file, storing user-level settings such as providers, models, and loop control. See [Configuration files](./config-files.md).
-- **`tui.toml`**: terminal UI client preferences, including `[upgrade].auto_install` (auto-update, on by default). You can disable it in `/settings` or by manually setting `auto_install = false`.
+- **`tui.toml`**: terminal UI client preferences, including `[upgrade].auto_install` (background auto-update, on by default). Set to `false` in `/settings` or manually to get a startup update prompt with one-click install instead.
 - **`AGENTS.md`**: global Kimi-specific agent instructions. This file moves with `KIMI_CODE_HOME`; generic cross-tool instructions can still live under `~/.agents/AGENTS.md`.
 - **`mcp.json`**: user-level MCP server declarations, merged with the project-local `.kimi-code/mcp.json` on startup. See [MCP](../customization/mcp.md).
 - **`skills/`**: Kimi-specific user-level Skills. This directory moves with `KIMI_CODE_HOME`; generic cross-tool Skills can still live under `~/.agents/skills/`. See [Agent Skills](../customization/skills.md).

@@ -6,6 +6,23 @@ outline: 2
 
 本页记录 Kimi Code CLI 每个版本的变更内容。
 
+## 0.24.1（2026-07-09）
+
+### 优化
+
+- 改进 `[upgrade].auto_install` 关闭时的一键 CLI 更新：安装提示现在会执行其显示的同一命令，安装后校验版本，支持 Windows 原生安装，并在无法检测安装来源时给出更清晰的手动指引。在 `tui.toml` 或 `/settings` 中设置 `auto_install = false` 即可使用提示模式，而非静默后台更新。
+- 使用 DeepSeek 官方 API 时，在 footer 显示会话用量与预估费用，包括缓存命中率、单步费用，以及可用时的账户余额。
+
+## 0.24.0（2026-07-09）
+
+### 新功能
+
+- DeepSeek V4 Pro 与 Flash 可在官方 `openai` provider（`api.deepseek.com`）上正常工作，包括 Thinking 开关、`max` effort，以及工具调用轮次中的 reasoning 往返。
+
+### 修复
+
+- 稳定 Windows 上的 agent-core 测试，并重新启用 Windows CI job。
+
 ## 0.23.2（2026-07-08）
 
 ### 新功能

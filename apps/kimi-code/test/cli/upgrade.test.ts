@@ -4,6 +4,18 @@ import { handleUpgrade } from '#/cli/sub/upgrade';
 import type { InstallPromptChoiceValue } from '#/cli/update/prompt';
 import type { InstallSource, UpdateCache } from '#/cli/update/types';
 
+vi.mock('../../src/cli/update/verify', () => ({
+  verifyInstalledVersion: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('../../src/cli/version', async () => {
+  const actual = await vi.importActual<typeof import('#/cli/version')>('#/cli/version');
+  return {
+    ...actual,
+    getHostPackageRoot: vi.fn(() => '/mock/package/root'),
+  };
+});
+
 function cacheWith(
   version: string | null,
   manifest: UpdateCache['manifest'] = null,
@@ -105,6 +117,7 @@ describe('handleUpgrade', () => {
       targetVersion: '0.5.0',
       source: 'npm-global',
     }));
+    expect(stdout.join('')).toContain('Installing @moonshot-ai/kimi-code@0.5.0');
     expect(stdout.join('')).toContain('Updated @moonshot-ai/kimi-code to 0.5.0');
     expect(stderr.join('')).toBe('');
   });
@@ -154,7 +167,10 @@ describe('handleUpgrade', () => {
       target_version: '0.5.0',
       source: 'unsupported',
     }));
-    expect(stdout.join('')).toContain('To update manually, run: npm install -g @moonshot-ai/kimi-code@0.5.0');
+    const output = stdout.join('');
+    expect(output).toContain('Could not detect install source');
+    expect(output).toContain('npm install -g @moonshot-ai/kimi-code@0.5.0');
+    expect(output).toContain('Package location: /mock/package/root');
   });
 
   it('prints the manual update command without prompting when not interactive', async () => {
@@ -169,7 +185,7 @@ describe('handleUpgrade', () => {
       target_version: '0.5.0',
       source: 'npm-global',
     }));
-    expect(stdout.join('')).toContain('To update manually, run: npm install -g @moonshot-ai/kimi-code@0.5.0');
+    expect(stdout.join('')).toContain('To update manually, run:\nnpm install -g @moonshot-ai/kimi-code@0.5.0');
   });
 
   it('returns a failing exit code when the foreground install fails', async () => {
@@ -182,9 +198,8 @@ describe('handleUpgrade', () => {
 
     await expect(handleUpgrade('0.4.0', { ...deps, ...writable })).resolves.toBe(1);
 
-    expect(stderr.join('')).toContain(
-      'warning: failed to install @moonshot-ai/kimi-code@0.5.0: npm exited with code 1',
-    );
+    expect(stderr.join('')).toContain('warning: failed to install');
+    expect(stderr.join('')).toContain('Detected source: npm-global');
     expect(deps.track).toHaveBeenCalledWith('upgrade_command_failed', expect.objectContaining({
       target_version: '0.5.0',
       source: 'npm-global',
@@ -230,6 +245,7 @@ describe('handleUpgrade', () => {
     await expect(handleUpgrade('0.4.0', { ...deps, ...writable })).resolves.toBe(0);
 
     expect(deps.installUpdate).toHaveBeenCalledWith('npm-global', '0.5.0', 'darwin');
+    expect(stdout.join('')).toContain('Installing @moonshot-ai/kimi-code@0.5.0');
     expect(stdout.join('')).toContain('Updated @moonshot-ai/kimi-code to 0.5.0');
   });
 });

@@ -1612,6 +1612,22 @@ describe('extractUsage', () => {
     });
   });
 
+  it('extracts usage with DeepSeek prompt_cache_hit/miss tokens', () => {
+    const usage = extractUsage({
+      prompt_tokens: 10_000,
+      completion_tokens: 500,
+      total_tokens: 10_500,
+      prompt_cache_hit_tokens: 9_000,
+      prompt_cache_miss_tokens: 1_000,
+    });
+    expect(usage).toEqual({
+      inputOther: 1_000,
+      output: 500,
+      inputCacheRead: 9_000,
+      inputCacheCreation: 0,
+    });
+  });
+
   it('returns null for null/undefined', () => {
     const undef: unknown = undefined;
     expect(extractUsage(null)).toBeNull();

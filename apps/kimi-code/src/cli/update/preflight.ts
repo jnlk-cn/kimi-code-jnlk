@@ -3,10 +3,7 @@ import { spawn } from 'node:child_process';
 import { log, type Logger } from '@moonshot-ai/kimi-code-sdk';
 import type { TelemetryProperties } from '@moonshot-ai/kimi-telemetry';
 
-import {
-  NATIVE_INSTALL_COMMAND_UNIX,
-  NATIVE_INSTALL_COMMAND_WIN,
-} from '#/constant/app';
+import { getHostPackageRoot } from '#/cli/version';
 import { loadTuiConfig } from '#/tui/config';
 
 import { readUpdateCache } from './cache';
@@ -28,6 +25,11 @@ import {
   rolloutDelayForBucket,
   type PassiveUpdateDecision,
 } from './rollout';
+import {
+  buildInstallInvocation,
+  type SpawnCommand,
+  usesShellForSpawn,
+} from './invocation';
 import { detectInstallSource } from './source';
 import {
   NPM_PACKAGE_NAME,
@@ -38,6 +40,7 @@ import {
   type UpdatePreflightResult,
   type UpdateTarget,
 } from './types';
+import { verifyInstalledVersion } from './verify';
 
 export type { UpdatePreflightResult } from './types';
 
@@ -55,58 +58,29 @@ const USER_VISIBLE_UPDATE_REFRESH_TIMEOUT_MS = 1_000;
 
 type UpdateLogger = Pick<Logger, 'info' | 'warn'>;
 
-function withCmdSuffix(base: string, platform: NodeJS.Platform): string {
-  return platform === 'win32' ? `${base}.cmd` : base;
-}
-
-function bunCommand(platform: NodeJS.Platform): string {
-  return platform === 'win32' ? 'bun.exe' : 'bun';
-}
-
 export function installCommandFor(
   source: InstallSource,
   version: string,
   platform: NodeJS.Platform,
 ): string {
-  switch (source) {
-    case 'npm-global':
-      return `npm install -g ${NPM_PACKAGE_NAME}@${version}`;
-    case 'pnpm-global':
-      return `pnpm add -g ${NPM_PACKAGE_NAME}@${version}`;
-    case 'yarn-global':
-      return `yarn global add ${NPM_PACKAGE_NAME}@${version}`;
-    case 'bun-global':
-      return `bun add -g ${NPM_PACKAGE_NAME}@${version}`;
-    case 'homebrew':
-      return 'brew upgrade kimi-code';
-    case 'native':
-      return platform === 'win32' ? NATIVE_INSTALL_COMMAND_WIN : NATIVE_INSTALL_COMMAND_UNIX;
-    case 'unsupported':
-      return `npm install -g ${NPM_PACKAGE_NAME}@${version}`;
-  }
+  return buildInstallInvocation(source, version, platform).displayCommand;
 }
 
-export function canAutoInstall(source: InstallSource, platform: NodeJS.Platform): boolean {
+export function canAutoInstall(source: InstallSource, _platform: NodeJS.Platform): boolean {
   switch (source) {
     case 'npm-global':
     case 'pnpm-global':
     case 'yarn-global':
     case 'bun-global':
+    case 'native':
       return true;
     case 'homebrew':
       // Homebrew upgrade may mutate other dependents and the formula can lag
       // behind the CDN release — prompt the user to run `brew upgrade` manually.
       return false;
-    case 'native':
-      return platform !== 'win32';
     case 'unsupported':
       return false;
   }
-}
-
-interface SpawnCommand {
-  readonly cmd: string;
-  readonly args: readonly string[];
 }
 
 export function spawnForSource(
@@ -114,27 +88,11 @@ export function spawnForSource(
   version: string,
   platform: NodeJS.Platform,
 ): SpawnCommand {
-  switch (source) {
-    case 'npm-global':
-      return { cmd: withCmdSuffix('npm', platform), args: ['install', '-g', `${NPM_PACKAGE_NAME}@${version}`] };
-    case 'pnpm-global':
-      return { cmd: withCmdSuffix('pnpm', platform), args: ['add', '-g', `${NPM_PACKAGE_NAME}@${version}`] };
-    case 'yarn-global':
-      return { cmd: withCmdSuffix('yarn', platform), args: ['global', 'add', `${NPM_PACKAGE_NAME}@${version}`] };
-    case 'bun-global':
-      return { cmd: bunCommand(platform), args: ['add', '-g', `${NPM_PACKAGE_NAME}@${version}`] };
-    case 'homebrew':
-      return { cmd: 'brew', args: ['upgrade', 'kimi-code'] };
-    case 'native':
-      // `curl … | bash` reports only the trailing bash's exit status, so a
-      // failed download (curl can't connect → empty stdin → bash exits 0)
-      // would look like a successful update. `pipefail` makes the pipeline
-      // surface curl's non-zero status so installUpdate() rejects and we warn
-      // instead of printing "Updated …".
-      return { cmd: 'bash', args: ['-c', `set -o pipefail; ${NATIVE_INSTALL_COMMAND_UNIX}`] };
-    case 'unsupported':
-      throw new Error('unsupported install source cannot be auto-installed');
+  const invocation = buildInstallInvocation(source, version, platform);
+  if (source === 'unsupported') {
+    throw new Error('unsupported install source cannot be auto-installed');
   }
+  return invocation.spawn;
 }
 
 function formatErrorMessage(error: unknown): string {
@@ -146,6 +104,7 @@ export function renderManualUpdateMessage(
   target: UpdateTarget,
   source: InstallSource,
   installCommand: string,
+  packageRoot?: string,
 ): string {
   let sourceDesc: string;
   switch (source) {
@@ -159,22 +118,67 @@ export function renderManualUpdateMessage(
       sourceDesc = 'homebrew';
       break;
     case 'native':
-      sourceDesc = 'native (windows). Auto-update is not supported on this platform.';
+      sourceDesc = 'native';
       break;
     case 'unsupported':
       sourceDesc = 'unsupported package manager or layout.';
       break;
   }
-  return (
-    `A newer version of ${NPM_PACKAGE_NAME} is available ` +
-    `(${currentVersion} -> ${target.version}).\n` +
-    `Detected install source: ${sourceDesc}\n` +
-    `To update manually, run: ${installCommand}\n`
-  );
+  const lines = [
+    `A newer version of ${NPM_PACKAGE_NAME} is available (${currentVersion} -> ${target.version}).`,
+    `Detected install source: ${sourceDesc}`,
+  ];
+  if (packageRoot !== undefined) {
+    lines.push(`Package location: ${packageRoot}`);
+  }
+  lines.push(`To update manually, run:\n${installCommand}`);
+  return `${lines.join('\n')}\n`;
+}
+
+export function renderInstallingMessage(version: string): string {
+  return `Installing ${NPM_PACKAGE_NAME}@${version}…\n`;
 }
 
 export function renderInstallSuccessMessage(target: UpdateTarget): string {
   return `Updated ${NPM_PACKAGE_NAME} to ${target.version}. Restart the CLI to use the new version.\n`;
+}
+
+export function renderInstallFailureMessage(
+  source: InstallSource,
+  displayCommand: string,
+  error: unknown,
+): string {
+  const message = formatErrorMessage(error);
+  const lines = [
+    `warning: failed to install ${NPM_PACKAGE_NAME}.`,
+    `Detected source: ${source}`,
+    `Attempted: ${displayCommand}`,
+    `Error: ${message}`,
+  ];
+  if (/EACCES|permission denied|EPERM/i.test(message)) {
+    lines.push('Hint: global installs may require elevated permissions or a user-writable npm prefix.');
+  }
+  if (/ExecutionPolicy/i.test(message)) {
+    lines.push(
+      'Hint: try Set-ExecutionPolicy -Scope CurrentUser RemoteSigned in PowerShell, then retry.',
+    );
+  }
+  if (/ENOTFOUND|ETIMEDOUT|ECONNREFUSED|network/i.test(message)) {
+    lines.push('Hint: check your network connection or proxy settings, then retry.');
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+export function renderInstallVerificationFailureMessage(
+  source: InstallSource,
+  expectedVersion: string,
+  displayCommand: string,
+): string {
+  return (
+    `warning: install command exited successfully but ${NPM_PACKAGE_NAME}@${expectedVersion} ` +
+    `was not detected for source ${source}.\n` +
+    `Run manually: ${displayCommand}\n`
+  );
 }
 
 function renderBackgroundInstallSuccessNotice(version: string): string {
@@ -488,13 +492,9 @@ export async function installUpdate(
 ): Promise<void> {
   const { cmd, args } = spawnForSource(source, version, platform);
   await new Promise<void>((resolve, reject) => {
-    // Windows package managers (npm/pnpm/yarn) are .cmd shims. Since the
-    // CVE-2024-27980 fix, Node throws EINVAL when spawning a .cmd/.bat without
-    // a shell, so run through the shell on win32. The version is a validated
-    // semver and the package name is a constant, so args are shell-safe.
     const child = spawn(cmd, [...args], {
       stdio: 'inherit',
-      shell: platform === 'win32' ? true : undefined,
+      shell: usesShellForSpawn(source, platform) ? true : undefined,
     });
     child.once('error', reject);
     child.once('exit', (code, signal) => {
@@ -606,14 +606,20 @@ async function startBackgroundInstall(
     const child = spawn(cmd, [...args], {
       detached: true,
       stdio: 'ignore',
-      shell: platform === 'win32' ? true : undefined,
-      // On Windows a detached child gets its own console window; with shell:true
-      // that window would flash during a passive background update. Hide it so
-      // the silent updater stays silent.
+      shell: usesShellForSpawn(source, platform) ? true : undefined,
       windowsHide: platform === 'win32' ? true : undefined,
     });
     child.once('error', () => { finish(false); });
-    child.once('exit', (code) => { finish(code === 0); });
+    child.once('exit', (code) => {
+      void (async () => {
+        if (code !== 0) {
+          finish(false);
+          return;
+        }
+        const verified = await verifyInstalledVersion(source, target.version, { platform });
+        finish(verified);
+      })();
+    });
     child.unref();
   } finally {
     await lock.release().catch(() => {});
@@ -777,11 +783,18 @@ export async function runUpdatePreflight(
     trackUpdatePrompted(options.track, currentVersion, userVisibleTarget, source, decision, userVisibleRollout);
 
     if (decision === 'manual-command') {
+      let packageRoot: string | undefined;
+      try {
+        packageRoot = getHostPackageRoot();
+      } catch {
+        packageRoot = undefined;
+      }
       stdout.write(renderManualUpdateMessage(
         currentVersion,
         userVisibleTarget,
         source,
         installCommand,
+        packageRoot,
       ));
       return 'continue';
     }
@@ -789,15 +802,22 @@ export async function runUpdatePreflight(
     const choice = await promptInstall(currentVersion, userVisibleTarget, source, installCommand);
     if (choice === 'skip') return 'continue';
 
+    stdout.write(renderInstallingMessage(userVisibleTarget.version));
     try {
       await installUpdate(source, userVisibleTarget.version, platform);
+      const verified = await verifyInstalledVersion(source, userVisibleTarget.version, { platform });
+      if (!verified) {
+        stderr.write(renderInstallVerificationFailureMessage(
+          source,
+          userVisibleTarget.version,
+          installCommand,
+        ));
+        return 'continue';
+      }
       stdout.write(renderInstallSuccessMessage(userVisibleTarget));
       return 'exit';
     } catch (error) {
-      stderr.write(
-        `warning: failed to install ${NPM_PACKAGE_NAME}@${userVisibleTarget.version}: ` +
-          `${formatErrorMessage(error)}\n`,
-      );
+      stderr.write(renderInstallFailureMessage(source, installCommand, error));
       return 'continue';
     }
   } catch {

@@ -4,12 +4,12 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | KIMI_VERSION=v0.24.0-jnlk bash
-#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash -s -- --version v0.24.0-jnlk
+#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | KIMI_VERSION=v0.24.1-jnlk bash
+#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash -s -- --version v0.24.1-jnlk
 #   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | sudo env KIMI_INSTALL_DIR=/usr/local bash
 #
 # Optional env:
-#   KIMI_VERSION         Release tag (e.g. v0.24.0-jnlk); if unset, fetch latest GitHub Release
+#   KIMI_VERSION         Release tag (e.g. v0.24.1-jnlk); if unset, fetch latest GitHub Release
 #   KIMI_INSTALL_DIR     Installation directory, default $HOME/.kimi-code
 #   KIMI_NO_MODIFY_PATH  Skip PATH modification when set to a non-empty value
 #
@@ -49,12 +49,12 @@ _usage() {
   cat <<'EOF'
 Usage:
   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
-  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | KIMI_VERSION=v0.24.0-jnlk bash
-  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash -s -- --version v0.24.0-jnlk
+  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | KIMI_VERSION=v0.24.1-jnlk bash
+  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash -s -- --version v0.24.1-jnlk
   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | sudo env KIMI_INSTALL_DIR=/usr/local bash
 
 Options:
-  --version TAG        Install a specific GitHub Release tag (e.g. v0.24.0-jnlk)
+  --version TAG        Install a specific GitHub Release tag (e.g. v0.24.1-jnlk)
   -h, --help           Show this help
 
 Environment:

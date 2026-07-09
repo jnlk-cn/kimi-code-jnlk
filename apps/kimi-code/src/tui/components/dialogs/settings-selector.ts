@@ -38,7 +38,7 @@ const SETTINGS_OPTIONS: readonly ChoiceOption[] = [
   {
     value: 'upgrade',
     label: 'Automatic updates',
-    description: 'Turn automatic CLI updates on or off.',
+    description: 'Background silent updates, or prompt with one-click install.',
   },
   {
     value: 'usage',

@@ -286,7 +286,9 @@ kimi migrate
 kimi upgrade
 ```
 
-对全局 npm、pnpm、yarn、bun 以及 macOS / Linux native 安装，`kimi upgrade` 会展示更新选项；选择 `Install update now` 后运行对应的前台安装命令。当前安装方式无法自动升级时（如 Windows native 安装），改为打印手动更新命令。
+对全局 npm、pnpm、yarn、bun 以及 native 安装（含 Windows），`kimi upgrade` 会展示更新选项；选择 `Install update now` 后，会按检测到的安装来源运行对应的前台安装命令。当前安装方式无法自动升级时（例如 Homebrew），改为打印手动更新命令。
+
+启动时若有新版本且 `tui.toml` 中 `[upgrade].auto_install` 为 `false`，Kimi Code 会展示相同的一键安装提示，而不是在后台静默安装。
 
 ### `kimi vis`
 

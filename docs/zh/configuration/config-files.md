@@ -279,7 +279,7 @@ MCP server 的声明配置写在 `~/.kimi-code/mcp.json` 或项目内 `.kimi-cod
 | `[editor].command` | `string` | `""` | 编写长输入用的外部编辑器命令；留空则回退到 `$VISUAL` / `$EDITOR` |
 | `[notifications].enabled` | `boolean` | `true` | 是否发送桌面通知 |
 | `[notifications].notification_condition` | `string` | `unfocused` | 何时通知：`unfocused`（仅终端失去焦点时）或 `always`（总是） |
-| `[upgrade].auto_install` | `boolean` | `true` | 是否自动安装新版本 |
+| `[upgrade].auto_install` | `boolean` | `true` | 为 `true` 时在后台静默安装新版本；为 `false` 时启动时展示带一键安装的更新提示。 |
 
 ```toml
 # ~/.kimi-code/tui.toml

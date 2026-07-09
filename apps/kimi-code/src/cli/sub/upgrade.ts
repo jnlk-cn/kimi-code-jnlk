@@ -8,9 +8,14 @@ import {
   canAutoInstall,
   installCommandFor,
   installUpdate as installUpdateForeground,
+  renderInstallFailureMessage,
+  renderInstallingMessage,
   renderInstallSuccessMessage,
+  renderInstallVerificationFailureMessage,
   renderManualUpdateMessage,
 } from '#/cli/update/preflight';
+import { verifyInstalledVersion } from '#/cli/update/verify';
+import { getHostPackageRoot } from '#/cli/version';
 import {
   promptForInstallChoice,
   type InstallPromptChoiceValue,
@@ -97,7 +102,19 @@ export async function handleUpgrade(
       targetVersion: target.version,
       source,
     });
-    deps.stdout.write(renderManualUpdateMessage(currentVersion, target, source, installCommand));
+    let packageRoot: string | undefined;
+    try {
+      packageRoot = getHostPackageRoot();
+    } catch {
+      packageRoot = undefined;
+    }
+    deps.stdout.write(renderManualUpdateMessage(
+      currentVersion,
+      target,
+      source,
+      installCommand,
+      packageRoot,
+    ));
     return 0;
   }
 
@@ -137,7 +154,13 @@ export async function handleUpgrade(
       target_version: target.version,
       source,
     });
+    deps.stdout.write(renderInstallingMessage(target.version));
     await deps.installUpdate(source, target.version, deps.platform);
+    const verified = await verifyInstalledVersion(source, target.version, { platform: deps.platform });
+    if (!verified) {
+      deps.stderr.write(renderInstallVerificationFailureMessage(source, target.version, installCommand));
+      return 1;
+    }
     trackUpgradeEvent(deps.track, 'upgrade_command_succeeded', {
       current_version: currentVersion,
       target_version: target.version,
@@ -164,10 +187,7 @@ export async function handleUpgrade(
       source,
       error,
     });
-    deps.stderr.write(
-      `warning: failed to install ${NPM_PACKAGE_NAME}@${target.version}: ` +
-        `${formatErrorMessage(error)}\n`,
-    );
+    deps.stderr.write(renderInstallFailureMessage(source, installCommand, error));
     return 1;
   }
 }

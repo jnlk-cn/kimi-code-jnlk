@@ -4,12 +4,12 @@ const UPDATE_PREFERENCE_OPTIONS: readonly ChoiceOption[] = [
   {
     value: 'on',
     label: 'On',
-    description: 'Install new versions in the background.',
+    description: 'Install new versions silently in the background.',
   },
   {
     value: 'off',
     label: 'Off',
-    description: 'Show the install prompt instead.',
+    description: 'Show an update prompt with one-click install.',
   },
 ];
 

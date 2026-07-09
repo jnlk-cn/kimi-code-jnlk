@@ -101,6 +101,7 @@ import { AuthFlowController } from './controllers/auth-flow';
 import { BtwPanelController } from './controllers/btw-panel';
 import { ClipboardImageHintController } from './controllers/clipboard-image-hint';
 import { EditorKeyboardController } from './controllers/editor-keyboard';
+import { FooterTelemetryController } from './controllers/footer-telemetry-controller';
 import { SessionEventHandler } from './controllers/session-event-handler';
 import { SessionReplayRenderer } from './controllers/session-replay';
 import { StreamingUIController } from './controllers/streaming-ui';
@@ -284,6 +285,7 @@ export class KimiTUI {
   readonly streamingUI: StreamingUIController;
   readonly authFlow: AuthFlowController;
   readonly btwPanelController: BtwPanelController;
+  readonly footerTelemetryController: FooterTelemetryController;
   readonly sessionEventHandler: SessionEventHandler;
   readonly sessionReplay: SessionReplayRenderer;
   readonly tasksBrowserController: TasksBrowserController;
@@ -357,6 +359,11 @@ export class KimiTUI {
     this.streamingUI = new StreamingUIController(this);
     this.authFlow = new AuthFlowController(this);
     this.btwPanelController = new BtwPanelController(this);
+    this.footerTelemetryController = new FooterTelemetryController(
+      () => this.state.footer,
+      () => this.state.appState,
+      () => this.state.ui.requestRender(),
+    );
     this.sessionEventHandler = new SessionEventHandler(this);
     this.sessionReplay = new SessionReplayRenderer(this);
     this.tasksBrowserController = new TasksBrowserController(this);
@@ -782,6 +789,7 @@ export class KimiTUI {
     this.streamingUI.resetToolUi();
     this.disposeTranscriptChildren();
     this.editorKeyboard.dispose();
+    this.footerTelemetryController.dispose();
     this.state.footer.dispose();
     for (const dispose of this.reverseRpcDisposers) {
       dispose();
@@ -1458,6 +1466,7 @@ export class KimiTUI {
       goal: goalResult.goal,
     });
     this.syncAdditionalDirs(session);
+    this.footerTelemetryController.syncProviderContext();
   }
 
   // Apply --auto/--yolo/--plan startup flags to a resumed session. The resumed
@@ -1574,6 +1583,7 @@ export class KimiTUI {
     this.sessionEventHandler.resetRuntimeState();
     this.tasksBrowserController.close();
     this.btwPanelController.clear();
+    this.footerTelemetryController.reset();
     this.state.footer.setBackgroundCounts({ bashTasks: 0, agentTasks: 0 });
     this.streamingUI.setTodoList([]);
     this.streamingUI.setTurnId(undefined);

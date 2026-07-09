@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to create (e.g. v0.24.0-jnlk)'
+        description: 'Release tag to create (e.g. v0.24.1-jnlk)'
         required: true
         type: string
 
@@ -15,8 +15,12 @@ concurrency: fork-release-${{ github.ref }}
 
 jobs:
   validate:
-    name: Build and test
-    runs-on: ubuntu-latest
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v6

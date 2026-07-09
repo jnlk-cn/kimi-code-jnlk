@@ -20,7 +20,7 @@ Kimi Code CLI is an AI coding agent that runs in your terminal — it can read a
 
 ## What this fork changes
 
-This fork layers community patches on upstream **0.23.2** (current release **0.24.0**). If you use the official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), the differences below may not be included yet.
+This fork layers community patches on upstream **0.23.2** (current release **0.24.1**). If you use the official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), the differences below may not be included yet.
 
 ### DeepSeek V4 official API
 
@@ -30,17 +30,23 @@ Upstream support for DeepSeek V4 (`deepseek-v4-pro`, `deepseek-v4-flash`) agains
 - **Catalog and config**: parses `reasoning_options` from the model catalog, surfaces `support_efforts` / `default_effort`, and avoids incorrectly clamping Thinking to `off` when tool-bound think history is present.
 - **Docs**: the in-repo [provider configuration](docs/en/configuration/providers.md#openai) includes a `config.toml` example for `api.deepseek.com` (the upstream docs site may not be synced yet).
 
-### Windows development and testing
+### Windows and macOS development and testing
 
 - Fixes `agent-core` test failures on Windows (path assertions, cross-platform hook blocking, large-image compression timeouts).
 - Re-enables the `test-windows` CI job for more reliable Windows development and contributions.
+- Adds a `test-macos` CI job and macOS validation in the fork release workflow.
+
+### CLI updates and DeepSeek footer telemetry (0.24.1)
+
+- **One-click updates**: when `[upgrade].auto_install` is off, the install prompt runs the displayed command, verifies the installed version, supports Windows native installs, and shows clearer manual guidance when the install source cannot be detected.
+- **Footer telemetry**: when using the official DeepSeek API, the footer shows session token usage, estimated cost (CNY), cache hit rate, and account balance when available.
 
 ### Distribution
 
 - Ships through this repo's [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and one-line install scripts (`install.sh` / `install.ps1`).
 - Does **not** use the official `code.kimi.com` CDN or the npm package `@moonshot-ai/kimi-code`.
 
-See [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md) (0.24.0 entry) for the full list. If you only need official Kimi models and the upstream release channel, stick with the upstream project.
+See [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md) (0.24.1 entry) for the full list. If you only need official Kimi models and the upstream release channel, stick with the upstream project.
 
 ## Install
 
@@ -64,14 +70,14 @@ irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | 
 
 > On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch — Kimi Code CLI uses Git Bash as its shell environment. If Git Bash is in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
 
-Pin a specific release (replace the tag with one from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases), e.g. `v0.24.0-jnlk`):
+Pin a specific release (replace the tag with one from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases), e.g. `v0.24.1-jnlk`):
 
 ```sh
-KIMI_VERSION=v0.24.0-jnlk curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
+KIMI_VERSION=v0.24.1-jnlk curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
 ```
 
 ```powershell
-$env:KIMI_VERSION = 'v0.24.0-jnlk'
+$env:KIMI_VERSION = 'v0.24.1-jnlk'
 irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 ```
 
@@ -97,7 +103,7 @@ Download the archive for your platform from [GitHub Releases](https://github.com
 Example on macOS (Apple Silicon):
 
 ```sh
-VERSION=v0.24.0-jnlk
+VERSION=v0.24.1-jnlk
 curl -fsSL -o kimi.zip \
   "https://github.com/jnlk-cn/kimi-code-jnlk/releases/download/${VERSION}/kimi-code-darwin-arm64.zip"
 unzip kimi.zip

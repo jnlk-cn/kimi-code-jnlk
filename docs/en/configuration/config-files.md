@@ -279,7 +279,7 @@ Alongside `config.toml`, the CLI keeps terminal-UI and client preferences in a c
 | `[editor].command` | `string` | `""` | External editor command for composing long input; empty falls back to `$VISUAL` / `$EDITOR` |
 | `[notifications].enabled` | `boolean` | `true` | Whether desktop notifications are sent |
 | `[notifications].notification_condition` | `string` | `unfocused` | When to notify: `unfocused` (only when the terminal is not focused) or `always` |
-| `[upgrade].auto_install` | `boolean` | `true` | Whether new versions are installed automatically |
+| `[upgrade].auto_install` | `boolean` | `true` | When `true`, install new versions silently in the background. When `false`, show an update prompt with one-click install on startup. |
 
 ```toml
 # ~/.kimi-code/tui.toml
