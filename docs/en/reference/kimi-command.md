@@ -363,13 +363,13 @@ kimi provider list --json | jq '.providers | keys'
 
 #### `kimi provider catalog list [providerId]`
 
-Browse the public [models.dev](https://models.dev/) model catalog without modifying any configuration. Without an argument, lists all providers along with their protocol type and model count; with a `providerId`, lists all models under that provider along with their context window and capabilities.
+Browse the jnlk verified provider catalog (curated allowlist) without modifying any configuration. Without an argument, lists all providers along with their protocol type and model count; with a `providerId`, lists all models under that provider along with their context window and capabilities.
 
 | Parameter / Option | Description |
 | --- | --- |
 | `[providerId]` | Optional — the provider ID to inspect |
 | `--filter <substring>` | Case-insensitive substring filter on ID or name |
-| `--url <url>` | Override the catalog URL; defaults to `https://models.dev/api.json` |
+| `--url <url>` | Override the catalog URL; defaults to `https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json` |
 | `--json` | Output matching entries as JSON |
 
 ```sh
@@ -387,7 +387,7 @@ Import a known provider directly from the catalog by ID. The protocol type, base
 | `<providerId>` | Provider ID in the catalog, e.g., `anthropic`, `openai` |
 | `--api-key <key>` | Provider API key. Falls back to `KIMI_REGISTRY_API_KEY` if not provided; required |
 | `--default-model <modelId>` | Optional — set `default_model` to `<providerId>/<modelId>` after import |
-| `--url <url>` | Override the catalog URL; defaults to `https://models.dev/api.json` |
+| `--url <url>` | Override the catalog URL; defaults to `https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json` |
 
 ```sh
 kimi provider catalog list anthropic          # Browse available models first

@@ -6,6 +6,7 @@ import {
   catalogModelToAlias,
   catalogProviderModels,
   CatalogFetchError,
+  DEFAULT_CATALOG_URL,
   fetchCatalog,
   type CatalogModel,
 } from '../src/catalog';
@@ -30,6 +31,14 @@ const model: CatalogModel = {
     max_context_tokens: 200000,
   },
 };
+
+describe('DEFAULT_CATALOG_URL', () => {
+  it('points at the jnlk GitHub mirror', () => {
+    expect(DEFAULT_CATALOG_URL).toBe(
+      'https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json',
+    );
+  });
+});
 
 describe('fetchCatalog', () => {
   it('fetches and returns the catalog map', async () => {

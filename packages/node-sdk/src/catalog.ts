@@ -14,7 +14,16 @@ import {
 export { catalogBaseUrl, catalogProviderModels, inferWireType };
 export type { Catalog, CatalogModel, CatalogProviderEntry };
 
-export const DEFAULT_CATALOG_URL = 'https://models.dev/api.json';
+/**
+ * Default catalog for `/provider` "Known third-party provider" and
+ * `kimi provider catalog …`. This fork serves a curated allowlist of
+ * verified-compatible providers/models from GitHub (see
+ * `apps/kimi-code/scripts/catalog-allowlist.json`), not the full models.dev
+ * catalog. Override with `--url` (CLI) or pass another URL to `fetchCatalog`.
+ */
+export const DEFAULT_CATALOG_URL =
+  'https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json';
+
 
 export class CatalogFetchError extends Error {
   readonly status: number;

@@ -1,0 +1,14 @@
+{
+  "$schema_comment": "jnlk-maintained catalog allowlist. Only providers/models listed here are published to catalog/api.json. Add an entry after wire + TUI verification against the official API.",
+  "providers": {
+    "deepseek": {
+      "note": "Official api.deepseek.com — verified in this fork for DeepSeek V4 thinking + tool calls.",
+      "api": "https://api.deepseek.com",
+      "type": "openai",
+      "models": [
+        "deepseek-v4-pro",
+        "deepseek-v4-flash"
+      ]
+    }
+  }
+}

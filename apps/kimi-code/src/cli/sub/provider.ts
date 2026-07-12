@@ -205,8 +205,9 @@ export async function handleProviderList(
 
 /**
  * Fetches the models.dev-style public catalog and lists providers, or — when
- * `providerId` is given — drills into one provider and lists its models. This
- * mirrors the discovery half of the TUI "Known third-party provider" flow.
+ * `providerId` is given — drills into one provider and lists its models. Default
+ * URL is this fork's GitHub mirror. Mirrors the discovery half of the TUI
+ * "Known third-party provider" flow.
  */
 export async function handleCatalogList(
   deps: ProviderDeps,
@@ -284,9 +285,10 @@ export async function handleCatalogList(
 }
 
 /**
- * Imports a known provider from the models.dev catalog by id. Unlike
- * `provider add` (which expects a custom api.json), this command relies on
- * the catalog's normalized metadata to fill in context limits and capabilities.
+ * Imports a known provider from the default catalog (GitHub models.dev mirror)
+ * by id. Unlike `provider add` (which expects a custom api.json), this command
+ * relies on the catalog's normalized metadata to fill in context limits and
+ * capabilities.
  */
 export async function handleCatalogAdd(
   deps: ProviderDeps,
@@ -452,7 +454,9 @@ export function registerProviderCommand(parent: Command, deps?: Partial<Provider
 
   const catalog = provider
     .command('catalog')
-    .description('Discover and import providers from the public models.dev catalog.');
+    .description(
+      'Discover and import providers from the jnlk verified catalog (curated allowlist).',
+    );
 
   catalog
     .command('list [providerId]')

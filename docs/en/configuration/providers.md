@@ -31,7 +31,7 @@ The manager displays providers as a list of entries grouped by source. Navigatio
 
 Two paths when adding:
 
-- **Known third-party provider**: fetches the model catalog from [models.dev](https://models.dev/), select a provider → enter an API key → select a default model
+- **Known third-party provider**: fetches the model catalog from this fork's verified allowlist ([GitHub `catalog/api.json`](https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json), see `catalog-allowlist.json`; currently DeepSeek V4), select a provider → enter an API key → select a default model. Pass `--url https://models.dev/api.json` for the full upstream catalog
 - **Custom registry (api.json)**: paste a custom registry URL and Bearer token; the CLI automatically creates the `providers` / `models` entries. On later startup, providers from the same registry URL are refreshed together, so upstream provider additions, removals, and model metadata changes are synced.
 
 ::: warning
@@ -86,7 +86,7 @@ Third-party reasoning models (DeepSeek, Qwen, One API, etc.) work out of the box
 DeepSeek V4 (`deepseek-v4-pro`, `deepseek-v4-flash`) uses an OpenAI-compatible Chat Completions surface with request-level thinking mode. Kimi Code sends `thinking.type` (`enabled` / `disabled`) together with `reasoning_effort`, preserves `reasoning_content` across tool-call turns, and maps the `max` effort to DeepSeek's wire value. Use `/provider` to add DeepSeek from the catalog, or configure manually for the **official API** at `api.deepseek.com`.
 
 ::: warning Note
-`/provider` catalog entries may point at third-party gateways rather than `api.deepseek.com`. For the official DeepSeek API, use the manual configuration below. With `type = "openai"`, credentials are read from `config.toml` (`api_key` or `[providers.*.env]` `OPENAI_API_KEY`); shell `DEEPSEEK_API_KEY` is not used.
+The default `/provider` catalog only includes this fork's verified official DeepSeek API (`api.deepseek.com`). If you pass `--url` to the full models.dev catalog or another registry, entries may point at third-party gateways. For the official DeepSeek API, keep `base_url` as `api.deepseek.com`. With `type = "openai"`, credentials are read from `config.toml` (`api_key` or `[providers.*.env]` `OPENAI_API_KEY`); shell `DEEPSEEK_API_KEY` is not used.
 :::
 
 ```toml

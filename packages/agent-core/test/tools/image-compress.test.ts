@@ -407,7 +407,7 @@ describe('compressImageForModel — webp', () => {
   it(
     'keeps alpha when re-encoding a translucent WebP',
     async () => {
-      const translucent = new Jimp({ width: 2600, height: 1300, color: 0x33_66_cc_80 });
+      const translucent = new Jimp({ width: 3900, height: 1950, color: 0x33_66_cc_80 });
       const webp = await encodeWebp(translucent);
       const result = await compressImageForModel(webp, 'image/webp');
       expect(result.changed).toBe(true);

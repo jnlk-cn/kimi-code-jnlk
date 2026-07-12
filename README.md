@@ -41,6 +41,18 @@ Upstream support for DeepSeek V4 (`deepseek-v4-pro`, `deepseek-v4-flash`) agains
 - **One-click updates**: when `[upgrade].auto_install` is off, the install prompt runs the displayed command, verifies the installed version, supports Windows native installs, and shows clearer manual guidance when the install source cannot be detected.
 - **Footer telemetry**: when using the official DeepSeek API, the footer shows session token usage, estimated cost (CNY), cache hit rate, and account balance when available.
 
+### Provider catalog (verified subset)
+
+- `/provider` "Known third-party provider" and `kimi provider catalog` fetch from this repo's [catalog/api.json](https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json) by default — a **curated allowlist** of providers/models verified against their official APIs in this fork (currently DeepSeek V4 on `api.deepseek.com`), not the full [models.dev](https://models.dev/) catalog.
+- Allowlist source: [`apps/kimi-code/scripts/catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json). Add a provider only after wire + TUI verification.
+- Full upstream catalog: `kimi provider catalog list --url https://models.dev/api.json`.
+- Maintainers can refresh the curated mirror (needs models.dev access; a local proxy works):
+
+```sh
+export https_proxy=http://127.0.0.1:6789 http_proxy=http://127.0.0.1:6789 all_proxy=socks5://127.0.0.1:6789
+pnpm -C apps/kimi-code run catalog:mirror
+```
+
 ### Distribution
 
 - Ships through this repo's [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and one-line install scripts (`install.sh` / `install.ps1`).

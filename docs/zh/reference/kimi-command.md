@@ -363,13 +363,13 @@ kimi provider list --json | jq '.providers | keys'
 
 #### `kimi provider catalog list [providerId]`
 
-在不修改任何配置的情况下浏览公开的 [models.dev](https://models.dev/) 模型目录。不传参数时列出所有供应商及协议类型和模型数量；传 `providerId` 时列出该供应商下所有模型的上下文窗口和能力。
+在不修改任何配置的情况下浏览本 fork 维护的已验证供应商目录（白名单）。不传参数时列出所有供应商及协议类型和模型数量；传 `providerId` 时列出该供应商下所有模型的上下文窗口和能力。
 
 | 参数 / 选项 | 说明 |
 | --- | --- |
 | `[providerId]` | 可选，要查看的供应商 id |
 | `--filter <substring>` | 按 id 或 name 大小写不敏感子串过滤 |
-| `--url <url>` | 覆盖 catalog 地址，默认 `https://models.dev/api.json` |
+| `--url <url>` | 覆盖 catalog 地址，默认 `https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json` |
 | `--json` | 以 JSON 形式输出匹配片段 |
 
 ```sh
@@ -387,7 +387,7 @@ kimi provider catalog list anthropic
 | `<providerId>` | catalog 中的供应商 id，如 `anthropic`、`openai` |
 | `--api-key <key>` | 供应商 API key。未传时回退到 `KIMI_REGISTRY_API_KEY`，必填 |
 | `--default-model <modelId>` | 可选，导入后把 `default_model` 设为 `<providerId>/<modelId>` |
-| `--url <url>` | 覆盖 catalog 地址，默认 `https://models.dev/api.json` |
+| `--url <url>` | 覆盖 catalog 地址，默认 `https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json` |
 
 ```sh
 kimi provider catalog list anthropic          # 先看可选的模型
