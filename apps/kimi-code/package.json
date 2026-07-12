@@ -27,7 +27,6 @@
   },
   "files": [
     "dist",
-    "dist-web",
     "native",
     "scripts/postinstall.mjs",
     "scripts/postinstall",
@@ -36,8 +35,6 @@
   "type": "module",
   "imports": {
     "#/tui/theme": "./src/tui/theme/index.ts",
-    "#/cli/sub/server": "./src/cli/sub/server/index.ts",
-    "#/cli/sub/server/*": "./src/cli/sub/server/*.ts",
     "#/*": [
       "./src/*.ts",
       "./src/*/index.ts",
@@ -49,7 +46,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "pnpm -C ../kimi-web run build && tsdown && node scripts/copy-native-assets.mjs && node scripts/copy-web-assets.mjs",
+    "build": "tsdown && node scripts/copy-native-assets.mjs",
     "prebuild": "node scripts/build-vis-asset.mjs",
     "catalog:update": "node scripts/update-catalog.mjs --out dist/built-in-catalog.json",
     "catalog:mirror": "node --use-env-proxy scripts/update-catalog.mjs --mirror",
@@ -64,8 +61,6 @@
     "test:native:smoke": "node scripts/native/smoke.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:cli-only": "tsx --import ../../build/register-raw-text-loader.mjs ./src/main.ts",
-    "dev:server": "tsx --tsconfig ./tsconfig.dev.json --import ../../build/register-raw-text-loader.mjs ./src/main.ts server run --foreground",
-    "dev:server:restart": "node scripts/dev-server-restart.mjs",
     "dev:plugin-marketplace": "node scripts/dev-plugin-marketplace-server.mjs",
     "build:plugin-marketplace": "node scripts/build-plugin-marketplace-cdn.mjs",
     "dev:prod": "node dist/main.mjs",
@@ -85,10 +80,8 @@
     "@moonshot-ai/kimi-code-oauth": "workspace:^",
     "@moonshot-ai/kimi-code-sdk": "workspace:^",
     "@moonshot-ai/kimi-telemetry": "workspace:^",
-    "@moonshot-ai/kimi-web": "workspace:^",
     "@moonshot-ai/migration-legacy": "workspace:^",
     "@moonshot-ai/pi-tui": "workspace:^",
-    "@moonshot-ai/server": "workspace:^",
     "@moonshot-ai/vis-server": "workspace:^",
     "@moonshot-ai/vis-web": "workspace:*",
     "@types/semver": "^7.7.0",

@@ -7,10 +7,10 @@
 >
 > This repository (**kimi-code-jnlk**) is a community fork of [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), maintained independently under the [MIT License](LICENSE). It is **not** affiliated with, endorsed by, or supported by Moonshot AI.
 >
-> - **Upstream**: use the official project for the default release channel, docs site, and marketplace plugins.
-> - **This fork**: community patches on top of upstream; see [What this fork changes](#what-this-fork-changes) below. Install from this repo only if you intend to use this fork's builds.
-> - **Support**: report issues in [jnlk-cn/kimi-code-jnlk](https://github.com/jnlk-cn/kimi-code-jnlk/issues); for upstream behavior, refer to MoonshotAI/kimi-code.
-> - **License**: retain the original MIT copyright notice in `LICENSE`; see also [UPSTREAM.md](UPSTREAM.md).
+> - **Upstream**: official release channel, docs site, and marketplace plugins.
+> - **This fork**: community builds with extra provider/CI patches; see [What this fork changes](#what-this-fork-changes). Install from here only if you want those builds.
+> - **Support**: [jnlk-cn/kimi-code-jnlk issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues). For upstream behavior, use MoonshotAI/kimi-code.
+> - **License**: keep the MIT notice in `LICENSE`; see [UPSTREAM.md](UPSTREAM.md).
 
 ![Demo of using Kimi Code](./docs/media/intro.gif)
 
@@ -20,69 +20,37 @@ Kimi Code CLI is an AI coding agent that runs in your terminal — it can read a
 
 ## What this fork changes
 
-This fork layers community patches on upstream **0.23.2** (current release **0.24.1**). If you use the official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), the differences below may not be included yet.
+Current release: **0.24.1** (`v0.24.1-jnlk`). The fork regularly syncs from upstream and layers community patches on top. Compared with official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code):
 
-### DeepSeek V4 official API
+- **DeepSeek V4 on the official API** (`api.deepseek.com`): thinking toggles, `max` effort, and `reasoning_content` round-trips across tool-call turns work through the `openai` provider. Example `config.toml`: [providers.md](docs/en/configuration/providers.md#openai).
+- **Verified provider catalog**: `/provider` and `kimi provider catalog` default to this repo’s [catalog/api.json](https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json) — an allowlist of providers verified against their official APIs (currently DeepSeek V4), not the full [models.dev](https://models.dev/) catalog. Allowlist: [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json). Full catalog: `kimi provider catalog list --url https://models.dev/api.json`.
+- **DeepSeek footer telemetry**: session token usage, estimated cost (CNY), cache hit rate, and balance when available.
+- **Windows / macOS CI**: Windows agent-core test fixes, re-enabled `test-windows`, plus `test-macos` in the fork release workflow.
+- **Distribution**: [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and `install.sh` / `install.ps1` only — not `code.kimi.com` or npm `@moonshot-ai/kimi-code`.
 
-Upstream support for DeepSeek V4 (`deepseek-v4-pro`, `deepseek-v4-flash`) against the **official API** (`api.deepseek.com`) is still incomplete. This fork focuses on:
-
-- **Wire compatibility**: via the `openai` provider, correctly sends `thinking.type` and `reasoning_effort`, round-trips `reasoning_content` across tool-call turns, and maps the UI `max` effort tier to DeepSeek's wire values.
-- **Catalog and config**: parses `reasoning_options` from the model catalog, surfaces `support_efforts` / `default_effort`, and avoids incorrectly clamping Thinking to `off` when tool-bound think history is present.
-- **Docs**: the in-repo [provider configuration](docs/en/configuration/providers.md#openai) includes a `config.toml` example for `api.deepseek.com` (the upstream docs site may not be synced yet).
-
-### Windows and macOS development and testing
-
-- Fixes `agent-core` test failures on Windows (path assertions, cross-platform hook blocking, large-image compression timeouts).
-- Re-enables the `test-windows` CI job for more reliable Windows development and contributions.
-- Adds a `test-macos` CI job and macOS validation in the fork release workflow.
-
-### CLI updates and DeepSeek footer telemetry (0.24.1)
-
-- **One-click updates**: when `[upgrade].auto_install` is off, the install prompt runs the displayed command, verifies the installed version, supports Windows native installs, and shows clearer manual guidance when the install source cannot be detected.
-- **Footer telemetry**: when using the official DeepSeek API, the footer shows session token usage, estimated cost (CNY), cache hit rate, and account balance when available.
-
-### Provider catalog (verified subset)
-
-- `/provider` "Known third-party provider" and `kimi provider catalog` fetch from this repo's [catalog/api.json](https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json) by default — a **curated allowlist** of providers/models verified against their official APIs in this fork (currently DeepSeek V4 on `api.deepseek.com`), not the full [models.dev](https://models.dev/) catalog.
-- Allowlist source: [`apps/kimi-code/scripts/catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json). Add a provider only after wire + TUI verification.
-- Full upstream catalog: `kimi provider catalog list --url https://models.dev/api.json`.
-- Maintainers can refresh the curated mirror (needs models.dev access; a local proxy works):
-
-```sh
-export https_proxy=http://127.0.0.1:6789 http_proxy=http://127.0.0.1:6789 all_proxy=socks5://127.0.0.1:6789
-pnpm -C apps/kimi-code run catalog:mirror
-```
-
-### Distribution
-
-- Ships through this repo's [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and one-line install scripts (`install.sh` / `install.ps1`).
-- Does **not** use the official `code.kimi.com` CDN or the npm package `@moonshot-ai/kimi-code`.
-
-See [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md) (0.24.1 entry) for the full list. If you only need official Kimi models and the upstream release channel, stick with the upstream project.
+Full notes: [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md). If you only need official Kimi models and the upstream channel, use the upstream project.
 
 ## Install
 
-This fork is **not** distributed through the official `code.kimi.com` install scripts or the npm package `@moonshot-ai/kimi-code`. Use one of the methods below.
+This fork is **not** distributed through `code.kimi.com` or `@moonshot-ai/kimi-code`.
 
 ### Install script (recommended)
 
-The script fetches the latest [GitHub Release](https://github.com/jnlk-cn/kimi-code-jnlk/releases/latest), verifies the checksum, and installs `kimi` to `~/.kimi-code/bin` (or `%USERPROFILE%\.kimi-code\bin` on Windows), then updates your `PATH`. **No Node.js required.**
-
-- **macOS / Linux**:
+Fetches the latest [GitHub Release](https://github.com/jnlk-cn/kimi-code-jnlk/releases/latest), verifies the checksum, and installs `kimi` to `~/.kimi-code/bin` (or `%USERPROFILE%\.kimi-code\bin` on Windows). **No Node.js required.**
 
 ```sh
+# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
 ```
 
-- **Windows (PowerShell)**:
-
 ```powershell
+# Windows (PowerShell)
 irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 ```
 
-> On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch — Kimi Code CLI uses Git Bash as its shell environment. If Git Bash is in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
+> On Windows, install [Git for Windows](https://gitforwindows.org/) first — Kimi Code CLI uses Git Bash as its shell. For a custom Git Bash location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
 
-Pin a specific release (replace the tag with one from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases), e.g. `v0.24.1-jnlk`):
+Pin a release tag from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases):
 
 ```sh
 KIMI_VERSION=v0.24.1-jnlk curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
@@ -93,17 +61,13 @@ $env:KIMI_VERSION = 'v0.24.1-jnlk'
 irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 ```
 
-Open a new terminal and verify:
-
-```sh
-kimi --version
-```
+Open a new terminal and run `kimi --version`. Later upgrades: `kimi upgrade`.
 
 ### Manual download
 
-Download the archive for your platform from [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases/latest) (`kimi-code-<os>-<arch>.zip`), extract it, and put the `kimi` binary on your `PATH`.
+Download `kimi-code-<os>-<arch>.zip` from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases/latest), extract it, and put `kimi` on your `PATH`.
 
-| Platform | Archive name |
+| Platform | Archive |
 |---|---|
 | macOS (Apple Silicon) | `kimi-code-darwin-arm64.zip` |
 | macOS (Intel) | `kimi-code-darwin-x64.zip` |
@@ -112,22 +76,18 @@ Download the archive for your platform from [GitHub Releases](https://github.com
 | Windows (x64) | `kimi-code-win32-x64.zip` |
 | Windows (arm64) | `kimi-code-win32-arm64.zip` |
 
-Example on macOS (Apple Silicon):
-
 ```sh
 VERSION=v0.24.1-jnlk
 curl -fsSL -o kimi.zip \
   "https://github.com/jnlk-cn/kimi-code-jnlk/releases/download/${VERSION}/kimi-code-darwin-arm64.zip"
 unzip kimi.zip
-install -m 755 kimi "$HOME/.local/bin/kimi"   # or another directory on your PATH
+install -m 755 kimi "$HOME/.local/bin/kimi"
 kimi --version
 ```
 
-Pick the archive name from the table above for your OS and CPU.
-
 ### Build from source
 
-Requirements: Node.js ≥ 24.15.0, pnpm 10.33.0.
+Requires Node.js ≥ 24.15.0 and pnpm 10.33.0.
 
 ```sh
 git clone https://github.com/jnlk-cn/kimi-code-jnlk.git
@@ -137,58 +97,47 @@ pnpm run build
 node apps/kimi-code/dist/main.mjs --version
 ```
 
-To run in dev mode without a full native bundle:
-
-```sh
-pnpm dev:cli
-```
-
-To expose the built CLI as `kimi` on your PATH (optional):
-
-```sh
-pnpm -C apps/kimi-code link --global
-kimi --version
-```
+Dev mode without a full native bundle: `pnpm dev:cli`. Optional global link: `pnpm -C apps/kimi-code link --global`.
 
 ### Official upstream install
 
-If you want the **official** Moonshot AI release channel (not this fork), use the upstream project instead:
-
-- Install scripts: [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code)
-- Docs: [Getting Started](https://moonshotai.github.io/kimi-code/en/guides/getting-started)
+For the **official** Moonshot AI channel (not this fork): [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) · [Getting Started](https://moonshotai.github.io/kimi-code/en/guides/getting-started).
 
 ## Quick Start
-
-Open a project and start the interactive UI:
 
 ```sh
 cd your-project
 kimi
 ```
 
-On first launch, run `/login` inside Kimi Code CLI and choose either Kimi Code OAuth or a Moonshot AI Open Platform API key. After login, try your first task:
+On first launch, pick an API source:
+
+- **Kimi**: run `/login` and choose Kimi Code OAuth or a Kimi Platform API key.
+- **DeepSeek V4 (this fork)**: run `/provider`, pick DeepSeek from the verified catalog, enter your official API key, then `/model` to select `deepseek-v4-pro` or `deepseek-v4-flash`. Manual config: [providers.md](docs/en/configuration/providers.md#openai).
+
+Then try:
 
 ```
 Take a look at this project and explain its main directories.
 ```
 
+Non-interactive one-shot: `kimi -p "..."`. Resume the last session: `kimi -c`.
+
 ## Key Features
 
-- **Single-binary distribution.** Install with one command: no Node.js setup, PATH gymnastics, or global module conflicts.
-- **Blazing-fast startup.** The TUI is ready in milliseconds, so starting a session never feels heavy.
-- **Purpose-built TUI.** A carefully tuned interface, optimized end to end for long, focused agent sessions.
-- **Video input.** Drop a screen recording or demo clip into the chat and let the agent watch what is hard to describe in words — turn a reference clip into a LUT, a long video into a short, a screen recording into working code, and more.
-- **AI-native MCP configuration.** Add, edit, and authenticate Model Context Protocol servers conversationally with `/mcp-config`, without hand-editing JSON.
-- **Rich plugin ecosystem.** Install skills, MCP servers, and data sources from the marketplace or any GitHub repo, with each install's trust level surfaced up front.
-- **Subagents for focused, parallel work.** Dispatch built-in `coder`, `explore`, and `plan` subagents in isolated contexts while keeping the main conversation clean.
-- **Lifecycle hooks.** Run local commands at key points to gate risky tool calls, audit decisions, trigger desktop notifications, or connect to your own automation.
-- **Editor & IDE integration (ACP).** Drive a Kimi Code CLI session straight from Zed, JetBrains, or any [Agent Client Protocol](https://agentclientprotocol.com/) client with `kimi acp`.
+- **Single-binary distribution.** One-command install; no Node.js setup or global module conflicts.
+- **Blazing-fast startup.** The TUI is ready in milliseconds.
+- **Purpose-built TUI.** Tuned for long, focused agent sessions.
+- **Video input.** Drop a screen recording or demo clip into the chat and let the agent watch what is hard to describe in words.
+- **AI-native MCP configuration.** Add, edit, and authenticate MCP servers with `/mcp-config`.
+- **Rich plugin ecosystem.** Skills, MCP servers, and data sources from the marketplace or any GitHub repo.
+- **Subagents for focused, parallel work.** Built-in `coder`, `explore`, and `plan` subagents in isolated contexts.
+- **Lifecycle hooks.** Gate risky tool calls, audit decisions, or trigger local automation.
+- **Editor & IDE integration (ACP).** Drive a session from Zed, JetBrains, or any [Agent Client Protocol](https://agentclientprotocol.com/) client with `kimi acp`.
 
 ## Use it in your editor (ACP)
 
-Kimi Code CLI speaks the [Agent Client Protocol](https://agentclientprotocol.com/), so ACP-compatible editors and IDEs (Zed, JetBrains, …) can drive a session over stdio. Log in once, then point your editor at the `kimi acp` subcommand — no extra login needed.
-
-For Zed, add this to `~/.config/zed/settings.json`:
+Log in once, then point your editor at `kimi acp`. For Zed, add to `~/.config/zed/settings.json`:
 
 ```json
 {
@@ -203,11 +152,12 @@ For Zed, add this to `~/.config/zed/settings.json`:
 }
 ```
 
-Then open a new conversation in Zed's Agent panel. See [Using in IDEs](https://moonshotai.github.io/kimi-code/en/guides/ides) for JetBrains setup and troubleshooting, and the [`kimi acp` reference](https://moonshotai.github.io/kimi-code/en/reference/kimi-acp) for the full capability matrix.
+See [Using in IDEs](https://moonshotai.github.io/kimi-code/en/guides/ides) and the [`kimi acp` reference](https://moonshotai.github.io/kimi-code/en/reference/kimi-acp).
 
 ## Docs
 
 - [Getting Started](https://moonshotai.github.io/kimi-code/en/guides/getting-started)
+- [Providers (in-repo, includes DeepSeek)](docs/en/configuration/providers.md)
 - [Interaction and approvals](https://moonshotai.github.io/kimi-code/en/guides/interaction)
 - [Sessions](https://moonshotai.github.io/kimi-code/en/guides/sessions)
 - [Using in IDEs (ACP)](https://moonshotai.github.io/kimi-code/en/guides/ides)
@@ -225,24 +175,31 @@ pnpm install
 ```
 
 ```sh
-pnpm dev:cli    # run the CLI in dev mode
-pnpm test       # run tests
-pnpm typecheck  # TypeScript check
-pnpm lint       # oxlint
-pnpm build      # build all packages
+pnpm dev:cli      # CLI / TUI (apps/kimi-code)
+pnpm vis          # session / replay visual debugger (apps/vis)
+pnpm test         # tests
+pnpm typecheck    # TypeScript
+pnpm lint         # oxlint
+pnpm build        # all packages
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide. Upstream contribution policy lives at [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/CONTRIBUTING.md).
+To refresh the curated catalog mirror (maintainers; needs models.dev access):
+
+```sh
+pnpm -C apps/kimi-code run catalog:mirror
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Upstream policy: [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/CONTRIBUTING.md).
 
 ## Community
 
 - [Issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues) (this fork)
 - [Upstream issues](https://github.com/MoonshotAI/kimi-code/issues)
-- For security vulnerabilities, see [SECURITY.md](SECURITY.md).
+- Security: [SECURITY.md](SECURITY.md)
 
 ## Acknowledgements
 
-Our TUI is built on top of [`pi-tui`](https://github.com/earendil-works/pi-mono/tree/main/packages/tui). We thank the authors of `pi-tui` for their valuable work.
+Our TUI is built on [`pi-tui`](https://github.com/earendil-works/pi-mono/tree/main/packages/tui). Thanks to the authors of `pi-tui`.
 
 ## License
 

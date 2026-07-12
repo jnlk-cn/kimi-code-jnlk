@@ -310,9 +310,6 @@ export class KimiTUI {
 
   public onExit?: (exitCode?: number) => Promise<void>;
 
-  /** URL opened in the browser just before exit (e.g. by `/web`); printed by onExit. */
-  public exitOpenUrl: string | undefined;
-
   track(event: string, properties?: Parameters<KimiHarness['track']>[1]): void {
     this.harness.track(event, properties);
   }
@@ -1358,10 +1355,6 @@ export class KimiTUI {
 
   hasSessionContent(): boolean {
     return this.state.transcriptEntries.length > 0;
-  }
-
-  setExitOpenUrl(url: string): void {
-    this.exitOpenUrl = url;
   }
 
   async getStartupMcpMs(): Promise<number> {
