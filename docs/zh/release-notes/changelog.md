@@ -23,6 +23,44 @@ outline: 2
 
 - 稳定 Windows 上的 agent-core 测试，并重新启用 Windows CI job。
 
+## 0.23.5（2026-07-10）
+
+### 优化
+
+- 优化 provider 429、过载等瞬时错误的重试可靠性，遵循服务端 Retry-After 等待时间，并在 `-p --output-format stream-json` 输出中展示重试事件。
+
+### 修复
+
+- 修复 AVIF、BMP、TIFF、ICO 等不支持的图片格式导致会话中断的问题，覆盖远程图片 URL、工具误标格式等所有入口。已卡住的会话会自动丢弃问题图片并重试，单张异常图片不再导致后续请求全部失败。
+- web: 修复 “Turn finished” 桌面通知与完成提示音每轮触发两次的问题。
+- web: 修复内部的图片压缩说明被当作用户消息文本显示的问题。
+
+## 0.23.4（2026-07-10）
+
+### 新功能
+
+- web: 新增工具需要审批时的通知，并提升通知的可靠性。
+
+### 优化
+
+- web: 优化聊天界面，采用 Inter 字体、本地化标签与更紧凑的输入框和菜单样式。
+- web: 优化会话侧边栏的布局、配色、图标与字体。
+- `/usage` 和 `/status` 命令现显示 Extra Usage（加油包）余额。
+- `/plugins` 面板的 Official 标签页新增 Kimi WebBridge 入口，可在浏览器中打开 WebBridge 安装页。
+
+### 修复
+
+- 控制图片较多会话的请求体积：超大体量的模型读取与粘贴图片（含 WebP）会自动压缩、缩小；HEIC/HEIF 图片会给出对应平台的转换命令，而非污染会话；HTTP 413 请求过大现可自动恢复——请求和 `/compact` 会用文本标记替换旧媒体后重试。相关限制可通过 `config.toml` 的 `[image]`（或 `KIMI_IMAGE_*` 环境变量）配置，且每个 core 独立保存设置，重新加载某客户端的配置不再影响其他客户端的图片压缩。
+- 修复原工作目录已不存在的会话无法恢复的问题。
+- 修复 prompt 模式目标未运行至完成的问题，并在发送 prompt 前校验并提示无效的目标命令。
+- web: 修复新对话发送首条消息时偶发的 “another turn is active” 错误，并在发送过程中显示启动状态。
+
+## 0.23.3（2026-07-08）
+
+### 修复
+
+- 修复当前账户无法使用某模型时错误显示“OAuth 登录已过期”的问题。
+
 ## 0.23.2（2026-07-08）
 
 ### 新功能
@@ -148,6 +186,7 @@ outline: 2
 - TUI 新增一项偏好设置：当 bracketed paste 不可用时，避免快速多行粘贴被逐行提交。可在 `tui.toml` 中设置 `disable_paste_burst = true` 关闭该行为。
 - 优化子 Agent 卡片，使其保持固定高度，并在紧凑的双行活动窗口内显示实时状态 spinner。
 - `kimi -p` 运行时，若启用了 `background.keep_alive_on_exit`，退出前会等待后台子 Agent 完成。设置 `keep_alive_on_exit = true` 可让并发的后台子 Agent 执行完毕。
+- `kimi -p` 新增 `background.print_background_mode`（`exit`/`drain`/`steer`）：`steer` 模式下，后台任务（含 `Bash(run_in_background=true)`）完成时会像后台子 Agent 一样，以合成 user 消息 steer 主 Agent 进入新 turn，使其能依据后台结果继续工作；上限由 `print_wait_ceiling_s` 与新增的 `print_max_turns` 控制。
 
 ### 重构
 
