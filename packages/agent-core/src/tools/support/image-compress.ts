@@ -142,12 +142,12 @@ const JPEG_QUALITY_STEPS = [80, 60, 40, 20] as const;
 
 /**
  * Longest-edge step-downs tried when the budget cannot be met at the fitted
- * size. With the built-in 2000px ceiling the first step is a no-op; it
- * matters when a larger ceiling is configured (config/env/option). The
- * sub-1000px tail exists for small (read-scale) budgets: JPEG bytes shrink
- * roughly linearly with pixel count, so stepping down to 256px lets even
- * entropy-upper-bound content (noise, photos) land within any budget of a
- * few tens of KB instead of stalling at the q20@1000px floor.
+ * size. The first step matters whenever the active ceiling is above 2000px
+ * (built-in/config/env/option). The sub-1000px tail exists for small
+ * (read-scale) budgets: JPEG bytes shrink roughly linearly with pixel count,
+ * so stepping down to 256px lets even entropy-upper-bound content (noise,
+ * photos) land within any budget of a few tens of KB instead of stalling at
+ * the q20@1000px floor.
  */
 const FALLBACK_EDGES_PX = [2000, 1000, 768, 512, 384, 256] as const;
 

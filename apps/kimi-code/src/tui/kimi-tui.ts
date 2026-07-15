@@ -12,6 +12,10 @@ import type {
   PromptPart,
   Session,
 } from '@moonshot-ai/kimi-code-sdk';
+import {
+  deriveInteractionMode,
+  interactionModeToToggles,
+} from '@moonshot-ai/kimi-code-sdk';
 import type { MigrationPlan } from '@moonshot-ai/migration-legacy';
 import {
   deleteAllKittyImages,
@@ -207,9 +211,12 @@ function createInitialAppState(input: KimiTUIStartupInput): AppState {
     additionalDirs: [...(input.additionalDirs ?? [])],
     sessionId: '',
     permissionMode: startupPermission,
+    interactionMode: input.cliOptions.plan ? 'plan' : 'agent',
     planMode: input.cliOptions.plan,
     inputMode: 'prompt',
     swarmMode: false,
+    askMode: false,
+    debugMode: false,
     thinkingEffort: 'off',
     contextUsage: 0,
     contextTokens: 0,
@@ -918,8 +925,8 @@ export class KimiTUI {
   // Input Dispatch
   // =========================================================================
 
-  handlePlanToggle(next: boolean): void {
-    void slashCommands.handlePlanCommand(this, next ? 'on' : 'off');
+  handleInteractionModeCycle(): void {
+    void slashCommands.cycleInteractionMode(this);
   }
 
   handleInputModeChange(mode: 'prompt' | 'bash'): void {
@@ -1375,7 +1382,14 @@ export class KimiTUI {
       !sameStringArrays(this.state.appState.additionalDirs, patch.additionalDirs ?? []);
     const busyChanged = 'streamingPhase' in patch || 'isCompacting' in patch;
     Object.assign(this.state.appState, patch);
-    if ('planMode' in patch) this.updateEditorBorderHighlight();
+    if (
+      'planMode' in patch ||
+      'interactionMode' in patch ||
+      'askMode' in patch ||
+      'debugMode' in patch
+    ) {
+      this.updateEditorBorderHighlight();
+    }
     this.state.footer.setState(this.state.appState);
     this.updateActivityPane();
     if (busyChanged) {
@@ -1445,13 +1459,24 @@ export class KimiTUI {
 
   async syncRuntimeState(session: Session = this.requireSession()): Promise<void> {
     const [status, goalResult] = await Promise.all([session.getStatus(), session.getGoal()]);
+    const interactionMode = deriveInteractionMode({
+      planMode: status.planMode,
+      swarmMode: status.swarmMode,
+      askMode: status.askMode,
+      debugMode: status.debugMode,
+      interactionMode: status.interactionMode,
+    });
+    const toggles = interactionModeToToggles(interactionMode);
     this.setAppState({
       sessionId: session.id,
       model: status.model ?? '',
       thinkingEffort: status.thinkingEffort,
       permissionMode: status.permission,
-      planMode: status.planMode,
-      swarmMode: status.swarmMode ?? false,
+      interactionMode,
+      planMode: status.planMode || toggles.plan,
+      swarmMode: (status.swarmMode ?? false) || toggles.swarm,
+      askMode: status.askMode ?? toggles.ask,
+      debugMode: status.debugMode ?? toggles.debug,
       contextTokens: status.contextTokens,
       maxContextTokens: status.maxContextTokens,
       contextUsage: status.contextUsage,
@@ -1475,8 +1500,8 @@ export class KimiTUI {
     }
     if (startup.plan) {
       const status = await session.getStatus();
-      if (!status.planMode) {
-        await session.setPlanMode(true);
+      if (!status.planMode && status.interactionMode !== 'plan') {
+        await session.setInteractionMode('plan');
       }
     }
   }
@@ -1492,7 +1517,7 @@ export class KimiTUI {
       this.setAppState({ permissionMode: 'yolo' });
     }
     if (startup.plan) {
-      this.setAppState({ planMode: true });
+      this.setAppState({ planMode: true, interactionMode: 'plan' });
     }
   }
 
@@ -2489,9 +2514,15 @@ export class KimiTUI {
   updateEditorBorderHighlight(text?: string): void {
     const trimmed = (text ?? this.state.editor.getText()).trimStart();
     const isBash = this.state.appState.inputMode === 'bash';
-    const highlighted = this.state.appState.planMode || isBash || trimmed.startsWith('/');
+    const mode = this.state.appState.interactionMode;
+    const modeHighlighted =
+      mode === 'plan' ||
+      mode === 'ask' ||
+      mode === 'debug' ||
+      this.state.appState.planMode;
+    const highlighted = modeHighlighted || isBash || trimmed.startsWith('/');
     this.state.editor.borderHighlighted = highlighted;
-    // Shell mode gets its own hue; plan-mode and slash context stay primary.
+    // Shell mode gets its own hue; plan/ask/debug and slash context stay primary.
     const borderToken = isBash ? 'shellMode' : highlighted ? 'primary' : 'border';
     this.state.editor.borderColor = (s: string) => currentTheme.fg(borderToken, s);
     this.state.ui.requestRender();

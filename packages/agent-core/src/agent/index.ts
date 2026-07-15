@@ -37,6 +37,9 @@ import { ContextMemory } from './context';
 import { GoalMode } from './goal';
 import { HookEngine } from '../session/hooks';
 import { InjectionManager } from './injection/manager';
+import { AskMode } from './ask';
+import { DebugMode } from './debug';
+import { InteractionModeManager } from './interaction-mode';
 import { PermissionManager, type PermissionManagerOptions } from './permission';
 import { PlanMode } from './plan';
 import {
@@ -62,6 +65,7 @@ import type { Kaos } from '@moonshot-ai/kaos';
 import type { ToolServices } from '../tools/support/services';
 
 export type { AgentRecord, AgentRecordPersistence } from './records';
+export type { InteractionMode } from './interaction-mode';
 export type { SwarmModeTrigger } from './swarm';
 export type { BuiltinTool, ToolInfo, ToolSource, UserToolRegistration } from './tool';
 export * from './goal';
@@ -142,6 +146,9 @@ export class Agent {
   readonly permission: PermissionManager;
   readonly planMode: PlanMode;
   readonly swarmMode: SwarmMode;
+  readonly askMode: AskMode;
+  readonly debugMode: DebugMode;
+  readonly interaction: InteractionModeManager;
   readonly usage: UsageRecorder;
   readonly skills: SkillManager | null;
   readonly tools: ToolManager;
@@ -212,6 +219,9 @@ export class Agent {
     this.permission = new PermissionManager(this, options.permission);
     this.planMode = new PlanMode(this);
     this.swarmMode = new SwarmMode(this);
+    this.askMode = new AskMode(this);
+    this.debugMode = new DebugMode(this);
+    this.interaction = new InteractionModeManager(this);
     this.usage = new UsageRecorder(this);
     this.skills = options.skills ? new SkillManager(this, options.skills) : null;
     this.tools = new ToolManager(this);
@@ -448,6 +458,7 @@ export class Agent {
         return this.config.modelAlias ?? '';
       },
       enterPlan: async () => {
+        await this.interaction.prepareForLegacyPlan();
         await this.planMode.enter();
       },
       cancelPlan: (payload) => {
@@ -455,6 +466,7 @@ export class Agent {
       },
       clearPlan: () => this.planMode.clear(),
       enterSwarm: (payload) => {
+        this.interaction.prepareForLegacySwarm();
         this.swarmMode.enter(payload.trigger);
       },
       exitSwarm: () => {
@@ -462,6 +474,18 @@ export class Agent {
       },
       getSwarmMode: () => {
         return this.swarmMode.isActive;
+      },
+      setInteractionMode: async (payload) => {
+        await this.interaction.setMode(payload.mode);
+      },
+      getInteractionMode: () => {
+        return this.interaction.getMode();
+      },
+      getAskMode: () => {
+        return this.askMode.isActive;
+      },
+      getDebugMode: () => {
+        return this.debugMode.isActive;
       },
       beginCompaction: (payload) => {
         this.fullCompaction.begin({ source: 'manual', instruction: payload.instruction });
@@ -570,6 +594,9 @@ export class Agent {
       contextUsage,
       planMode: this.planMode.isActive,
       swarmMode: this.swarmMode.isActive,
+      askMode: this.askMode.isActive,
+      debugMode: this.debugMode.isActive,
+      interactionMode: this.interaction.getMode(),
       permission: this.permission.mode,
       usage,
     });

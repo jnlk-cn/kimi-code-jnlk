@@ -650,6 +650,34 @@ describe('kimi provider catalog list', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('https://example.test/catalog.json', expect.any(Object));
   });
+
+  it('falls back to the repo-local catalog when the default URL returns 404', async () => {
+    mockRegistryFetch({ error: 'not found' }, 404);
+    const { harness } = makeHarness({ providers: {} } as KimiConfig);
+    const { deps, stdout, stderr, exitCodes } = makeDeps(harness);
+
+    await tryRun(() => handleCatalogList(deps, undefined, { json: false }));
+
+    expect(exitCodes).toEqual([]);
+    expect(stderr.join('')).toMatch(/using local catalog/i);
+    expect(stdout.join('')).toContain('deepseek');
+  });
+
+  it('exits 1 when a custom --url returns 404 and no fallback applies', async () => {
+    mockRegistryFetch({ error: 'not found' }, 404);
+    const { harness } = makeHarness({ providers: {} } as KimiConfig);
+    const { deps, stderr, exitCodes } = makeDeps(harness);
+
+    await tryRun(() =>
+      handleCatalogList(deps, undefined, {
+        json: false,
+        url: 'https://example.test/missing-catalog.json',
+      }),
+    );
+
+    expect(exitCodes).toEqual([1]);
+    expect(stderr.join('')).toMatch(/HTTP 404/);
+  });
 });
 
 describe('kimi provider catalog add', () => {

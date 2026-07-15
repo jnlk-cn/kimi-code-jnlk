@@ -154,6 +154,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
       model: 'k2',
       thinkingEffort: 'off',
       permission: 'manual',
+      interactionMode: 'agent',
       planMode: false,
       contextTokens: 0,
       maxContextTokens: 100,
@@ -167,6 +168,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     setPermission: vi.fn(async () => {}),
     setPlanMode: vi.fn(async () => {}),
     setSwarmMode: vi.fn(async () => {}),
+    setInteractionMode: vi.fn(async () => {}),
     onEvent: vi.fn(() => vi.fn()),
     listMcpServers: vi.fn(async () => []),
     listSkills: vi.fn(async () => []),
@@ -178,6 +180,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
             model: 'k2',
             thinkingEffort: 'off',
             permission: 'manual',
+            interactionMode: 'agent',
             planMode: false,
             contextTokens: 0,
             maxContextTokens: 100,
@@ -914,6 +917,7 @@ command = "vim"
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'manual',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 0,
         maxContextTokens: 100,
@@ -975,10 +979,30 @@ command = "vim"
     driver.state.editor.onShiftTab?.();
 
     await vi.waitFor(() => {
-      expect(session.setPlanMode).toHaveBeenCalledWith(true);
+      expect(session.setInteractionMode).toHaveBeenCalledWith('plan');
     });
-    expect(harness.track).toHaveBeenCalledWith('shortcut_plan_toggle', { enabled: true });
-    expect(harness.track).toHaveBeenCalledWith('shortcut_mode_switch', { to_mode: 'plan' });
+    expect(driver.state.appState.interactionMode).toBe('plan');
+    expect(harness.track).toHaveBeenCalledWith('shortcut_mode_switch', {
+      from_mode: 'agent',
+      to_mode: 'plan',
+    });
+    expect(harness.track).toHaveBeenCalledWith('mode_switch', {
+      from_mode: 'agent',
+      to_mode: 'plan',
+    });
+  });
+
+  it('cycles Shift-Tab through interaction modes', async () => {
+    const { driver, session } = await makeDriver();
+
+    for (const expected of ['plan', 'debug', 'multitask', 'ask', 'agent'] as const) {
+      session.setInteractionMode.mockClear();
+      driver.state.editor.onShiftTab?.();
+      await vi.waitFor(() => {
+        expect(session.setInteractionMode).toHaveBeenCalledWith(expected);
+      });
+      expect(driver.state.appState.interactionMode).toBe(expected);
+    }
   });
 
   it('routes /yolo through session permission state without app-layer telemetry duplication', async () => {
@@ -2814,7 +2838,7 @@ command = "vim"
     driver.handleUserInput('/swarm Ship feature X');
 
     await vi.waitFor(() => {
-      expect(session.setSwarmMode).toHaveBeenCalledWith(true, 'task');
+      expect(session.setInteractionMode).toHaveBeenCalledWith('multitask');
     });
     await vi.waitFor(() => {
       expect(countOccurrences(stripSgr(renderTranscript(driver)), 'Swarm activated')).toBe(1);
@@ -3565,6 +3589,7 @@ command = "vim"
         model: 'k2',
         thinkingEffort: 'high',
         permission: 'auto',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 25,
         maxContextTokens: 100,

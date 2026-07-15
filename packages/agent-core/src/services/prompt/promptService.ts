@@ -793,6 +793,10 @@ export class PromptService
         if (event.model !== undefined) shadow.model = event.model;
         if (event.permission !== undefined) shadow.permissionMode = event.permission;
         if (event.planMode !== undefined) shadow.planMode = event.planMode;
+        if (event.swarmMode !== undefined) shadow.swarmMode = event.swarmMode;
+        if (event.askMode !== undefined) shadow.askMode = event.askMode;
+        if (event.debugMode !== undefined) shadow.debugMode = event.debugMode;
+        if (event.interactionMode !== undefined) shadow.interactionMode = event.interactionMode;
       }
       // status events are also published normally; fall through to allow
       // other event-type handlers below — but there's no overlap today.

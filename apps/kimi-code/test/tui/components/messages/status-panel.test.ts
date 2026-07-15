@@ -32,6 +32,7 @@ describe('status panel report lines', () => {
         model: 'k2',
         thinkingEffort: 'high',
         permission: 'auto',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 3000,
         maxContextTokens: 12000,

@@ -21,10 +21,12 @@ import type {
   KimiConfigPatch,
   KimiHostIdentity,
   ListSessionsOptions,
+  ListWorkspaceSkillsInput,
   RenameSessionInput,
   ResumeSessionInput,
   ReloadSessionInput,
   SessionSummary,
+  SkillSummary,
   TelemetryClient,
   TelemetryContextPatch,
   TelemetryProperties,
@@ -105,7 +107,8 @@ export class KimiHarness {
   }
 
   async createSession(options: CreateSessionOptions): Promise<Session> {
-    const { planMode, kaos, persistenceKaos, sessionStartedProperties, ...coreOptions } = options;
+    const { planMode, interactionMode, kaos, persistenceKaos, sessionStartedProperties, ...coreOptions } =
+      options;
     const summary =
       kaos === undefined && persistenceKaos === undefined
         ? await this.rpc.createSession(coreOptions)
@@ -120,8 +123,10 @@ export class KimiHarness {
       },
     });
     this.activeSessions.set(session.id, session);
-    if (planMode === true) {
-      await session.setPlanMode(true);
+    const initialMode =
+      interactionMode ?? (planMode === true ? 'plan' : undefined);
+    if (initialMode !== undefined) {
+      await session.setInteractionMode(initialMode);
     }
     this.trackSessionStarted(summary.id, false, sessionStartedProperties);
     this.trackSessionEvent(session.id, 'session_new');
@@ -218,6 +223,16 @@ export class KimiHarness {
     await this.activeSessions.get(id)?.close();
   }
 
+  async archiveSession(id: string): Promise<void> {
+    const normalized = normalizeSessionId(id);
+    const active = this.activeSessions.get(normalized);
+    if (active !== undefined) {
+      await active.close();
+    }
+    await this.rpc.archiveSession({ sessionId: normalized });
+    this.trackSessionEvent(normalized, 'session_archive');
+  }
+
   async renameSession(input: RenameSessionInput): Promise<void> {
     await this.rpc.renameSession(input);
     this.activeSessions.get(input.id)?.emitMetaUpdated({ title: input.title });
@@ -234,6 +249,12 @@ export class KimiHarness {
 
   async listSessions(options: ListSessionsOptions = {}): Promise<readonly SessionSummary[]> {
     return this.rpc.listSessions(options);
+  }
+
+  async listWorkspaceSkills(
+    input: ListWorkspaceSkillsInput,
+  ): Promise<readonly SkillSummary[]> {
+    return this.rpc.listWorkspaceSkills(input);
   }
 
   async getConfig(options: GetConfigOptions = {}): Promise<KimiConfig> {

@@ -1,6 +1,7 @@
 import type {
   GoalChange,
   GoalSnapshot,
+  InteractionMode,
   ModelAlias,
   PermissionMode,
   ProviderConfig,
@@ -30,10 +31,13 @@ export interface AppState {
   additionalDirs: readonly string[];
   sessionId: string;
   permissionMode: PermissionMode;
+  interactionMode: InteractionMode;
   planMode: boolean;
   /** 'bash' when the editor is in `!` shell-command mode. */
   inputMode: 'prompt' | 'bash';
   swarmMode: boolean;
+  askMode?: boolean;
+  debugMode?: boolean;
   /** Live thinking effort of the active session (e.g. 'off', 'on', 'high');
    * mirrors the runtime. The single source of truth for the thinking state in
    * the TUI. */

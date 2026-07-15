@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Kimi VS Code Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/apps/kimi-vscode"],
+      "outFiles": ["${workspaceFolder}/apps/kimi-vscode/dist/**/*.js"],
+      "preLaunchTask": "kimi-vscode: build"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import type {
   ResumedAgentState,
   ToolCall,
 } from '@moonshot-ai/kimi-code-sdk';
+import { deriveInteractionMode, interactionModeToToggles } from '@moonshot-ai/kimi-code-sdk';
 
 import type {
   AppState,
@@ -59,13 +60,20 @@ export function appStateFromResumeAgent(agent: ResumedAgentState): Partial<AppSt
   const maxContextTokens = agent.config.modelCapabilities?.max_context_tokens ?? 0;
   const contextTokens = agent.context.tokenCount;
   const contextUsage = maxContextTokens > 0 ? contextTokens / maxContextTokens : 0;
+  const planMode = agent.plan !== null;
+  const swarmMode = agent.swarmMode ?? false;
+  const interactionMode = deriveInteractionMode({ planMode, swarmMode });
+  const toggles = interactionModeToToggles(interactionMode);
   return {
     model: agent.config.modelAlias ?? agent.config.provider?.model ?? '',
     contextTokens,
     maxContextTokens,
     contextUsage,
-    planMode: agent.plan !== null,
-    swarmMode: agent.swarmMode ?? false,
+    interactionMode,
+    planMode,
+    swarmMode,
+    askMode: toggles.ask,
+    debugMode: toggles.debug,
     permissionMode: agent.permission.mode,
   };
 }

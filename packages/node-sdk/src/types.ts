@@ -1,5 +1,6 @@
 import type {
   ExportSessionManifest,
+  McpServerConfig,
   ResumeSessionResult,
   ShellEnvironment,
   TelemetryClient,
@@ -17,6 +18,7 @@ export type JsonObject = { readonly [key: string]: JsonValue };
 export type Unsubscribe = () => void;
 
 export type {
+  AgentContextData,
   AgentReplayRecord,
   AgentBackgroundTaskInfo,
   BackgroundConfig,
@@ -40,6 +42,7 @@ export type {
   KimiConfig,
   KimiConfigPatch,
   LoopControl,
+  McpServerConfig,
   McpServerInfo,
   McpStartupMetrics,
   ModelAlias,
@@ -72,6 +75,8 @@ export type { ContentPart, Role, ThinkingEffort, ToolCall } from '@moonshot-ai/k
 
 export type PermissionMode = 'yolo' | 'manual' | 'auto';
 
+export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask';
+
 export interface CreateGoalInput {
   readonly objective: string;
   readonly replace?: boolean;
@@ -101,10 +106,12 @@ export interface CreateSessionOptions {
   readonly thinking?: string | undefined;
   readonly permission?: PermissionMode | undefined;
   readonly planMode?: boolean;
+  readonly interactionMode?: InteractionMode;
   readonly metadata?: JsonObject | undefined;
   readonly kaos?: Kaos | undefined;
   readonly persistenceKaos?: Kaos | undefined;
   readonly additionalDirs?: readonly string[];
+  readonly mcpServers?: Readonly<Record<string, McpServerConfig>>;
   readonly sessionStartedProperties?: TelemetryProperties;
   /**
    * Print-mode (`kimi -p`) only: when the main agent ends a turn while
@@ -126,6 +133,7 @@ export interface ResumeSessionInput {
   readonly kaos?: Kaos | undefined;
   readonly persistenceKaos?: Kaos | undefined;
   readonly additionalDirs?: readonly string[];
+  readonly mcpServers?: Readonly<Record<string, McpServerConfig>>;
   readonly sessionStartedProperties?: TelemetryProperties;
 }
 
@@ -148,6 +156,7 @@ export interface ForkSessionInput {
   readonly forkId?: string;
   readonly title?: string;
   readonly metadata?: JsonObject;
+  readonly workDir?: string;
 }
 
 export interface ExportSessionInput {
@@ -171,6 +180,11 @@ export interface ExportSessionResult {
 export interface ListSessionsOptions {
   readonly workDir?: string;
   readonly sessionId?: string;
+  readonly includeArchive?: boolean;
+}
+
+export interface ListWorkspaceSkillsInput {
+  readonly workDir: string;
 }
 
 export interface GetConfigOptions {
@@ -212,6 +226,9 @@ export interface SessionStatus {
   readonly permission: PermissionMode;
   readonly planMode: boolean;
   readonly swarmMode?: boolean | undefined;
+  readonly askMode?: boolean | undefined;
+  readonly debugMode?: boolean | undefined;
+  readonly interactionMode?: InteractionMode | undefined;
   readonly contextTokens: number;
   readonly maxContextTokens: number;
   readonly contextUsage: number;

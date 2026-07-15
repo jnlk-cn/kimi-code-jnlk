@@ -22,6 +22,7 @@ export {
   showSettingsSelector,
 } from './config';
 export { handleSwarmCommand } from './swarm';
+export { applyInteractionMode, handleModeCommand, showModePicker } from './mode';
 export { handleFeedbackCommand, showMcpServers, showStatusReport, showUsage } from './info';
 export { handlePluginsCommand } from './plugins';
 export { handleReloadCommand, handleReloadTuiCommand } from './reload';

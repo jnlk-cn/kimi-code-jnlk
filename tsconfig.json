@@ -40,6 +40,7 @@
     "dist",
     "coverage",
     "packages/kosong/test/type-safety-negative.ts",
+    "apps/kimi-vscode/**",
     "**/*.disabled/**",
     "**/*.disabled"
   ]

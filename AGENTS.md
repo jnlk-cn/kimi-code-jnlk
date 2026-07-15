@@ -15,6 +15,8 @@ This is a TypeScript monorepo built for agent-assisted development. Keep the roo
 ## Project Map
 
 - `apps/kimi-code`: the CLI / TUI application. It consumes core capabilities through `@moonshot-ai/kimi-code-sdk` and must not depend directly on `@moonshot-ai/agent-core`. When writing or modifying its terminal UI, use the `write-tui` skill (`.agents/skills/write-tui/SKILL.md`).
+- `apps/ganymede-code`: Ganymede Code / 伽利略 Code Electron desktop client. Embeds `@moonshot-ai/kimi-code-sdk` in the main process (route A); must not import `@moonshot-ai/agent-core`. Browser UI debugging: `pnpm dev:web:ganymede` (see `apps/ganymede-code/README.md`).
+- `apps/kimi-vscode`: VS Code / Cursor extension. Speaks ACP as a Client and spawns `kimi acp` (route B); must not import `@moonshot-ai/agent-core` or embed the SDK in-process.
 - `apps/vis`, `apps/vis/server`, `apps/vis/web`: visual debugging tools for sessions and replays.
 - `packages/agent-core`: the unified agent engine, including Agent, Session, profile, skills, tools, plan, permission, background, records, the in-process DI service layer (`src/services/`), and other core capabilities.
 - `packages/node-sdk`: the public TypeScript SDK and harness.

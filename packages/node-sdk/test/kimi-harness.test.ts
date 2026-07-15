@@ -61,7 +61,7 @@ read_byte_budget = 65536
     const harness = createKimiHarness({ identity: TEST_IDENTITY, homeDir });
     try {
       expect(harness.imageLimits).toBeInstanceOf(ImageLimits);
-      expect(harness.imageLimits?.maxEdgePx()).toBe(2000);
+      expect(harness.imageLimits?.maxEdgePx()).toBe(3000);
       expect(harness.imageLimits?.readByteBudget()).toBe(256 * 1024);
     } finally {
       await harness.close();

@@ -4,6 +4,7 @@ import type { CompactionResult } from '#/agent/compaction';
 import type { AgentConfigData, AgentConfigUpdateData } from '#/agent/config';
 import type { AgentContextData, ContextMessage } from '#/agent/context';
 import type { GoalChange, GoalSnapshot } from '#/agent/goal';
+import type { InteractionMode } from '#/agent/interaction-mode';
 import type {
   PermissionApprovalResultRecord,
   PermissionData,
@@ -38,6 +39,9 @@ export interface ResumedAgentState {
   readonly permission: PermissionData;
   readonly plan: PlanData;
   readonly swarmMode?: boolean | undefined;
+  readonly askMode?: boolean | undefined;
+  readonly debugMode?: boolean | undefined;
+  readonly interactionMode?: InteractionMode | undefined;
   readonly usage: UsageStatus;
   readonly tools: readonly ToolInfo[];
   readonly toolStore?: Readonly<Record<string, unknown>>;

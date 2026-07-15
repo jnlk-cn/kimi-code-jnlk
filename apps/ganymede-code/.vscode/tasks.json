@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ganymede-code: dev:web",
+      "type": "shell",
+      "command": "pnpm run dev:web",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/ganymede-code"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "ganymede-web",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "\\[ganymede\\] starting web-dev",
+          "endsPattern": "Web UI →|ready in|Local:"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "ganymede-code: open web ui",
+      "dependsOn": ["ganymede-code: dev:web"],
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": "echo Open Simple Browser at http://localhost:5173",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent"
+      }
+    }
+  ]
+}

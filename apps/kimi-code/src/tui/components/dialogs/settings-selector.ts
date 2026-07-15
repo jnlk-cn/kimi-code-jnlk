@@ -2,6 +2,7 @@ import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
 export type SettingsSelection =
   | 'model'
+  | 'mode'
   | 'theme'
   | 'editor'
   | 'permission'
@@ -14,6 +15,11 @@ const SETTINGS_OPTIONS: readonly ChoiceOption[] = [
     value: 'model',
     label: 'Model',
     description: 'Switch the active model and thinking mode.',
+  },
+  {
+    value: 'mode',
+    label: 'Interaction mode',
+    description: 'Choose agent, plan, debug, multitask, or ask.',
   },
   {
     value: 'permission',
@@ -50,6 +56,7 @@ const SETTINGS_OPTIONS: readonly ChoiceOption[] = [
 function isSettingsSelection(value: string): value is SettingsSelection {
   return (
     value === 'model' ||
+    value === 'mode' ||
     value === 'theme' ||
     value === 'editor' ||
     value === 'permission' ||

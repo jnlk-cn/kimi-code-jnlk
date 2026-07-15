@@ -20,15 +20,18 @@ Kimi Code CLI is an AI coding agent that runs in your terminal — it can read a
 
 ## What this fork changes
 
-Current release: **0.24.1** (`v0.24.1-jnlk`). The fork regularly syncs from upstream and layers community patches on top. Compared with official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code):
+Current release: **0.25.0** (`v0.25.0-jnlk`). The fork regularly syncs from upstream and layers community patches on top. Compared with official [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code):
 
+- **Interaction modes**: Agent, Plan, Debug, Multitask, and Ask with mutually exclusive switching (`/mode` or Shift-Tab). See [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md).
+- **Ganymede Code desktop**: Electron workspace with projects, sessions, terminal, browser, and catalog-backed models (`pnpm dev:desktop`). See [apps/ganymede-code/CHANGELOG.md](apps/ganymede-code/CHANGELOG.md).
+- **VS Code / Cursor extension (route B)**: ACP Chat sidebar over `kimi acp` (`pnpm build:vscode`). See [apps/kimi-vscode/CHANGELOG.md](apps/kimi-vscode/CHANGELOG.md).
 - **DeepSeek V4 on the official API** (`api.deepseek.com`): thinking toggles, `max` effort, and `reasoning_content` round-trips across tool-call turns work through the `openai` provider. Example `config.toml`: [providers.md](docs/en/configuration/providers.md#openai).
 - **Verified provider catalog**: `/provider` and `kimi provider catalog` default to this repo’s [catalog/api.json](https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json) — an allowlist of providers verified against their official APIs (currently DeepSeek V4), not the full [models.dev](https://models.dev/) catalog. Allowlist: [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json). Full catalog: `kimi provider catalog list --url https://models.dev/api.json`.
 - **DeepSeek footer telemetry**: session token usage, estimated cost (CNY), cache hit rate, and balance when available.
 - **Windows / macOS CI**: Windows agent-core test fixes, re-enabled `test-windows`, plus `test-macos` in the fork release workflow.
 - **Distribution**: [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and `install.sh` / `install.ps1` only — not `code.kimi.com` or npm `@moonshot-ai/kimi-code`.
 
-Full notes: [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md). If you only need official Kimi models and the upstream channel, use the upstream project.
+Full CLI notes: [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md). If you only need official Kimi models and the upstream channel, use the upstream project.
 
 ## Install
 
@@ -53,11 +56,11 @@ irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | 
 Pin a release tag from [Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases):
 
 ```sh
-KIMI_VERSION=v0.24.1-jnlk curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
+KIMI_VERSION=v0.25.0-jnlk curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
 ```
 
 ```powershell
-$env:KIMI_VERSION = 'v0.24.1-jnlk'
+$env:KIMI_VERSION = 'v0.25.0-jnlk'
 irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
 ```
 
@@ -77,7 +80,7 @@ Download `kimi-code-<os>-<arch>.zip` from [Releases](https://github.com/jnlk-cn/
 | Windows (arm64) | `kimi-code-win32-arm64.zip` |
 
 ```sh
-VERSION=v0.24.1-jnlk
+VERSION=v0.25.0-jnlk
 curl -fsSL -o kimi.zip \
   "https://github.com/jnlk-cn/kimi-code-jnlk/releases/download/${VERSION}/kimi-code-darwin-arm64.zip"
 unzip kimi.zip
@@ -175,8 +178,13 @@ pnpm install
 ```
 
 ```sh
-pnpm dev:cli      # CLI / TUI (apps/kimi-code)
-pnpm vis          # session / replay visual debugger (apps/vis)
+pnpm dev:cli          # CLI / TUI (apps/kimi-code)
+pnpm dev:desktop      # Ganymede Code desktop (SDK in-process, apps/ganymede-code)
+pnpm dev:web:ganymede # Ganymede Code web-dev (browser UI + headless Electron; Cursor Simple Browser)
+pnpm package:ganymede # Build an internal macOS DMG/ZIP
+pnpm build:vscode     # VS Code extension build (ACP / kimi acp, apps/kimi-vscode)
+pnpm dev:vscode       # VS Code extension watch build
+pnpm vis              # session / replay visual debugger (apps/vis)
 pnpm test         # tests
 pnpm typecheck    # TypeScript
 pnpm lint         # oxlint

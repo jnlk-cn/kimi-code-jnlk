@@ -11,6 +11,7 @@ function fakeInitialAppState(): AppState {
     additionalDirs: [],
     sessionId: 'sess-1',
     permissionMode: 'manual',
+    interactionMode: 'agent',
     planMode: false,
     inputMode: 'prompt',
     swarmMode: false,

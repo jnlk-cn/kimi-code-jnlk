@@ -11,7 +11,7 @@ import {
   type ProviderType,
 } from '@moonshot-ai/kosong';
 
-export { catalogBaseUrl, catalogProviderModels, inferWireType };
+export { catalogBaseUrl, catalogProviderModels, deepSeekV4Efforts, inferWireType };
 export type { Catalog, CatalogModel, CatalogProviderEntry };
 
 /**

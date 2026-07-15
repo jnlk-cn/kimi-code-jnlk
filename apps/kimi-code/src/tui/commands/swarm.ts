@@ -129,14 +129,20 @@ async function setSwarmMode(
   trigger: 'manual' | 'task',
 ): Promise<boolean> {
   try {
-    await host.requireSession().setSwarmMode(enabled, trigger);
+    await host.requireSession().setInteractionMode(enabled ? 'multitask' : 'agent');
   } catch (error) {
     host.showError(
       `Failed to ${enabled ? 'enable' : 'disable'} swarm mode: ${formatErrorMessage(error)}`,
     );
     return false;
   }
-  host.setAppState({ swarmMode: enabled });
+  host.setAppState({
+    interactionMode: enabled ? 'multitask' : 'agent',
+    swarmMode: enabled,
+    planMode: false,
+    askMode: false,
+    debugMode: false,
+  });
   host.state.swarmModeEntry = enabled ? trigger : undefined;
   return true;
 }

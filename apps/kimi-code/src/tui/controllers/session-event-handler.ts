@@ -30,6 +30,7 @@ import type {
   TurnStepStartedEvent,
   WarningEvent,
 } from '@moonshot-ai/kimi-code-sdk';
+import { deriveInteractionMode, interactionModeToToggles } from '@moonshot-ai/kimi-code-sdk';
 
 import { MoonLoader } from '../components/chrome/moon-loader';
 import { buildGoalMarker } from '../components/messages/goal-markers';
@@ -397,7 +398,11 @@ export class SessionEventHandler {
   }
 
   private maybeShowDebugTiming(event: TurnStepCompletedEvent): void {
-    if (process.env['KIMI_CODE_DEBUG'] !== '1') return;
+    const debugEnabled =
+      process.env['KIMI_CODE_DEBUG'] === '1' ||
+      this.host.state.appState.debugMode === true ||
+      this.host.state.appState.interactionMode === 'debug';
+    if (!debugEnabled) return;
     const text = formatStepDebugTiming(event);
     if (text === undefined) return;
     this.host.appendTranscriptEntry({
@@ -607,13 +612,36 @@ export class SessionEventHandler {
     if (event.maxContextTokens !== undefined) patch.maxContextTokens = event.maxContextTokens;
     if (event.planMode !== undefined) patch.planMode = event.planMode;
     if (event.swarmMode !== undefined) patch.swarmMode = event.swarmMode;
+    if (event.askMode !== undefined) patch.askMode = event.askMode;
+    if (event.debugMode !== undefined) patch.debugMode = event.debugMode;
+    if (
+      event.interactionMode !== undefined ||
+      event.planMode !== undefined ||
+      event.swarmMode !== undefined ||
+      event.askMode !== undefined ||
+      event.debugMode !== undefined
+    ) {
+      const interactionMode = deriveInteractionMode({
+        planMode: event.planMode ?? this.host.state.appState.planMode,
+        swarmMode: event.swarmMode ?? this.host.state.appState.swarmMode,
+        askMode: event.askMode ?? this.host.state.appState.askMode,
+        debugMode: event.debugMode ?? this.host.state.appState.debugMode,
+        interactionMode: event.interactionMode,
+      });
+      patch.interactionMode = interactionMode;
+      const toggles = interactionModeToToggles(interactionMode);
+      if (event.planMode === undefined) patch.planMode = toggles.plan;
+      if (event.swarmMode === undefined) patch.swarmMode = toggles.swarm;
+      if (event.askMode === undefined) patch.askMode = toggles.ask;
+      if (event.debugMode === undefined) patch.debugMode = toggles.debug;
+    }
     if (event.permission !== undefined) {
       patch.permissionMode = event.permission;
     }
     if (event.model !== undefined) patch.model = event.model;
     if (Object.keys(patch).length > 0) this.host.setAppState(patch);
     this.host.footerTelemetryController.onStatusUpdate(event);
-    if (event.swarmMode === false) {
+    if (event.swarmMode === false || patch.swarmMode === false) {
       this.host.state.swarmModeEntry = undefined;
       if (shouldRenderSwarmEnded) {
         this.renderSwarmModeMarker('ended');

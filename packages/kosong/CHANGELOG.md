@@ -1,5 +1,11 @@
 # @moonshot-ai/kosong
 
+## 0.6.1
+
+### Patch Changes
+
+- 7bd29ab: Rename the dynamic tool loading model capability from `select_tools` to `dynamically_loaded_tools`.
+
 ## 0.6.0
 
 ### Minor Changes

@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Ganymede Code: Web Dev",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/ganymede-code/src/renderer",
+      "preLaunchTask": "ganymede-code: dev:web",
+      "timeout": 120000
+    }
+  ]
+}

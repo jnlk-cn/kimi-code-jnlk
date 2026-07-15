@@ -48,6 +48,7 @@ const appState: AppState = {
   isReplaying: false,
   streamingPhase: 'idle',
   streamingStartTime: 0,
+  interactionMode: 'agent',
   planMode: false,
   inputMode: 'prompt',
   swarmMode: false,

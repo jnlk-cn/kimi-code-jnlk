@@ -97,6 +97,7 @@ import type {
   RunShellCommandPayload,
   ReconnectMcpServerPayload,
   RegisterToolPayload,
+  SetInteractionModePayload,
   ReloadSessionPayload,
   ReloadPluginsResult,
   RemoveKimiProviderPayload,
@@ -514,6 +515,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
       targetId: id,
       title: input.title,
       metadata: input.metadata,
+      workDir: input.workDir,
     });
     return this.resumeSession({ sessionId: id });
   }
@@ -676,6 +678,22 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
 
   getSwarmMode({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
     return this.sessionApi(sessionId).getSwarmMode(payload);
+  }
+
+  setInteractionMode({ sessionId, ...payload }: SessionAgentPayload<SetInteractionModePayload>) {
+    return this.sessionApi(sessionId).setInteractionMode(payload);
+  }
+
+  getInteractionMode({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
+    return this.sessionApi(sessionId).getInteractionMode(payload);
+  }
+
+  getAskMode({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
+    return this.sessionApi(sessionId).getAskMode(payload);
+  }
+
+  getDebugMode({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
+    return this.sessionApi(sessionId).getDebugMode(payload);
   }
 
   beginCompaction({ sessionId, ...payload }: SessionAgentPayload<BeginCompactionPayload>) {
@@ -1253,6 +1271,9 @@ async function resumeSessionResult(
     const permission = await api.getPermission({ agentId });
     const plan = await api.getPlan({ agentId });
     const swarmMode = await api.getSwarmMode({ agentId });
+    const askMode = await api.getAskMode({ agentId });
+    const debugMode = await api.getDebugMode({ agentId });
+    const interactionMode = await api.getInteractionMode({ agentId });
     const usage = await api.getUsage({ agentId });
     agents[agentId] = {
       type: agent.type,
@@ -1262,6 +1283,9 @@ async function resumeSessionResult(
       permission,
       plan,
       swarmMode,
+      askMode,
+      debugMode,
+      interactionMode,
       usage,
       tools: await api.getTools({ agentId }),
       toolStore: agent.tools.storeData(),

@@ -59,6 +59,62 @@ describe('Session plan, compact, usage, and resume APIs', () => {
     }
   });
 
+  it('switches interaction modes mutually exclusively via setInteractionMode', async () => {
+    const homeDir = await makeTempDir(tempDirs, 'kimi-sdk-mode-home-');
+    const workDir = await makeTempDir(tempDirs, 'kimi-sdk-mode-work-');
+    await writeTestConfig(homeDir);
+    const harness = createKimiHarness({ homeDir, identity: TEST_IDENTITY });
+
+    try {
+      const session = await harness.createSession({
+        id: 'ses_interaction_mode',
+        workDir,
+        interactionMode: 'ask',
+      });
+
+      await expect(session.getStatus()).resolves.toMatchObject({
+        interactionMode: 'ask',
+        askMode: true,
+        planMode: false,
+        debugMode: false,
+      });
+
+      const debugOn = waitForSessionEvent(
+        session,
+        (event) =>
+          event.type === 'agent.status.updated' &&
+          event.interactionMode === 'debug' &&
+          event.debugMode === true,
+      );
+      await session.setInteractionMode('debug');
+      await expect(debugOn).resolves.toMatchObject({
+        type: 'agent.status.updated',
+        interactionMode: 'debug',
+        debugMode: true,
+        askMode: false,
+      });
+
+      await session.setInteractionMode('plan');
+      await expect(session.getStatus()).resolves.toMatchObject({
+        interactionMode: 'plan',
+        planMode: true,
+        debugMode: false,
+        askMode: false,
+      });
+
+      await session.setInteractionMode('agent');
+      await expect(session.getStatus()).resolves.toMatchObject({
+        interactionMode: 'agent',
+        planMode: false,
+        askMode: false,
+        debugMode: false,
+        swarmMode: false,
+      });
+    } finally {
+      await harness.close();
+    }
+  });
+
   it('prepares the plans directory without creating plan files on repeated toggles', async () => {
     const homeDir = await makeTempDir(tempDirs, 'kimi-sdk-plan-toggle-home-');
     const workDir = await makeTempDir(tempDirs, 'kimi-sdk-plan-toggle-work-');

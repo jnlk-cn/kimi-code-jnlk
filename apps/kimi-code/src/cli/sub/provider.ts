@@ -26,7 +26,6 @@ import {
   CatalogFetchError,
   createKimiHarness,
   DEFAULT_CATALOG_URL,
-  fetchCatalog,
   inferWireType,
   type Catalog,
   type CatalogProviderEntry,
@@ -36,6 +35,7 @@ import {
 import type { Command } from 'commander';
 
 import { createKimiCodeHostIdentity } from '#/cli/version';
+import { loadKnownProviderCatalog } from '#/utils/known-provider-catalog';
 
 interface WritableLike {
   write(chunk: string): boolean;
@@ -400,7 +400,13 @@ export async function handleCatalogAdd(
 
 async function loadCatalogOrExit(deps: ProviderDeps, url: string): Promise<Catalog> {
   try {
-    return await fetchCatalog(url);
+    const result = await loadKnownProviderCatalog(url);
+    if (result.source !== 'remote') {
+      deps.stderr.write(
+        `Remote catalog fetch failed; using ${result.source} catalog (${result.sourceLabel}).\n`,
+      );
+    }
+    return result.catalog;
   } catch (error) {
     const suffix = error instanceof CatalogFetchError ? ` (HTTP ${String(error.status)})` : '';
     deps.stderr.write(`Failed to fetch catalog from ${url}${suffix}: ${errorMessage(error)}\n`);

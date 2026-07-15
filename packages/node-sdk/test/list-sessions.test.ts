@@ -403,4 +403,26 @@ describe('KimiHarness.listSessions', () => {
       await harness.close();
     }
   });
+
+  it('archives sessions and includes them only when requested', async () => {
+    const homeDir = await makeTempDir();
+    const workDir = await makeTempDir();
+    const harness = createKimiHarness({
+      identity: TEST_IDENTITY,
+      homeDir,
+    });
+
+    try {
+      const session = await harness.createSession({ id: 'ses_archived_from_sdk', workDir });
+      await harness.archiveSession(session.id);
+
+      await expect(harness.listSessions({ workDir })).resolves.toEqual([]);
+      const archived = await harness.listSessions({ workDir, includeArchive: true });
+      expect(archived).toEqual([
+        expect.objectContaining({ id: session.id, archived: true }),
+      ]);
+    } finally {
+      await harness.close();
+    }
+  });
 });

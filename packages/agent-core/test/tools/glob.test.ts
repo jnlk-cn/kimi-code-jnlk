@@ -723,7 +723,10 @@ describe('GlobTool integration (real ripgrep)', () => {
 
       const result = await executeTool(tool, context({ pattern: '*.ts', path: externalDir }));
 
-      expectPathEqual(result.output, extFile);
+      expect(typeof result.output).toBe('string');
+      if (typeof result.output === 'string') {
+        expectPathEqual(result.output, extFile);
+      }
     } finally {
       await fs.rm(externalDir, { recursive: true, force: true });
     }

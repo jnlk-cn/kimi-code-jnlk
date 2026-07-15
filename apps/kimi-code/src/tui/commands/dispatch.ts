@@ -52,7 +52,9 @@ import {
   handleTitleCommand,
 } from './session';
 import { handleSwarmCommand } from './swarm';
+import { applyInteractionMode, handleModeCommand } from './mode';
 import { handleUndoCommand } from './undo';
+import { nextInteractionMode } from '../utils/interaction-mode-ui';
 
 // ---------------------------------------------------------------------------
 // Re-exports — keep existing consumers working
@@ -76,6 +78,7 @@ export {
   showSettingsSelector,
 } from './config';
 export { handleSwarmCommand } from './swarm';
+export { applyInteractionMode, handleModeCommand, showModePicker } from './mode';
 export { handleFeedbackCommand, showMcpServers, showStatusReport, showUsage } from './info';
 export { handlePluginsCommand } from './plugins';
 export { handleReloadCommand, handleReloadTuiCommand } from './reload';
@@ -88,6 +91,11 @@ export {
   handleTitleCommand,
 } from './session';
 export { handleUndoCommand } from './undo';
+
+export async function cycleInteractionMode(host: SlashCommandHost): Promise<void> {
+  const next = nextInteractionMode(host.state.appState.interactionMode);
+  await applyInteractionMode(host, next);
+}
 
 // ---------------------------------------------------------------------------
 // Host interface
@@ -299,6 +307,9 @@ async function handleBuiltInSlashCommand(
       return;
     case 'permission':
       showPermissionPicker(host);
+      return;
+    case 'mode':
+      await handleModeCommand(host, args);
       return;
     case 'settings':
       showSettingsSelector(host);

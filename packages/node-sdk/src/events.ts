@@ -3,6 +3,7 @@ import type {
   ApprovalResponse,
   QuestionRequest,
   QuestionResult,
+  ToolCallResponse,
 } from '@moonshot-ai/agent-core';
 
 // Event union plus shared fields/payloads used across event families.
@@ -112,3 +113,22 @@ export type MaybePromise<T> = T | Promise<T>;
 export type ApprovalHandler = (request: ApprovalRequest) => MaybePromise<ApprovalResponse>;
 
 export type QuestionHandler = (request: QuestionRequest) => MaybePromise<QuestionResult>;
+
+export interface HostToolDefinition {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: Record<string, unknown>;
+}
+
+export interface HostToolContext {
+  readonly sessionId: string;
+  readonly agentId: string;
+  readonly turnId?: number;
+  readonly toolCallId: string;
+  readonly toolName: string;
+}
+
+export type HostToolHandler = (
+  args: unknown,
+  context: HostToolContext,
+) => MaybePromise<ToolCallResponse>;

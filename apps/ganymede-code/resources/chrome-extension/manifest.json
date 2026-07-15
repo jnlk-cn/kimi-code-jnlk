@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Ganymede Code Browser Bridge",
+  "version": "0.1.0",
+  "description": "Lets Ganymede Code operate explicitly approved Chrome tabs.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0VoTpvzi+I1JhaL9YKBQwAtMyTrVH52UG9tVWItcYpgPtowYYNtF84PUoqeeEH8hxR5Evf7FWS/Foeagd6q3EEKQolTt/ai2RBLmotvL8faXzmafPmyS4ov7YNAbbbgcLB23vKJ6RjYJi3HVsPFbogKIJC45CN8HeP8mH2tQZsPPyrjb20moKrI4PnV8aGK5K/jx83bzchvYpdbKPhmiN1eTbgAxOq9kgnuBVdma78BzwLGVhVbb2rZTjyO38c11Qz1Ryns6Py+AfXWANsL9xqeMqmMcHV8aZ0mfuz6BZGU9VHA8/LnXI58rVQXNY4HBIOoRrjpW33MMfWcUexCVfwIDAQAB",
+  "permissions": [
+    "activeTab",
+    "debugger",
+    "nativeMessaging",
+    "scripting",
+    "tabGroups",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Connect Ganymede Code"
+  }
+}

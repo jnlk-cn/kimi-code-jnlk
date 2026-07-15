@@ -147,14 +147,14 @@ describe('clipboard image paste compression', () => {
     if (att?.kind !== 'image') throw new Error('expected image attachment');
 
     // Stored metadata reflects the compressed size.
-    expect(Math.max(att.width, att.height)).toBeLessThanOrEqual(2000);
-    expect(att.placeholder).toContain('2000×1000');
+    expect(Math.max(att.width, att.height)).toBeLessThanOrEqual(3000);
+    expect(att.placeholder).toContain('3000×1500');
 
     // The stored bytes decode to the compressed dimensions — the thumbnail and
     // the submitted image both read from these bytes, so they cannot diverge.
     const dims = parseImageMeta(att.bytes);
     expect(dims).not.toBeNull();
-    expect(Math.max(dims!.width, dims!.height)).toBeLessThanOrEqual(2000);
+    expect(Math.max(dims!.width, dims!.height)).toBeLessThanOrEqual(3000);
   });
 
   it('honors the harness [image] max_edge_px when pasting', async () => {
@@ -168,7 +168,7 @@ describe('clipboard image paste compression', () => {
 
     const att = store.get(1);
     if (att?.kind !== 'image') throw new Error('expected image attachment');
-    // The harness [image] config — not the built-in 2000px — drives ingestion.
+    // The harness [image] config — not the built-in 3000px — drives ingestion.
     expect(Math.max(att.width, att.height)).toBe(800);
     expect(att.placeholder).toContain('800×400');
     const dims = parseImageMeta(att.bytes);

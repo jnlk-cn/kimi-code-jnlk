@@ -149,7 +149,7 @@ read_byte_budget = 32768
   it('reloading [image] takes effect on the core instance immediately', async () => {
     const home = await makeHome(VALID_TOML);
     const core = makeCore(home);
-    expect(core.imageLimits.maxEdgePx()).toBe(2000);
+    expect(core.imageLimits.maxEdgePx()).toBe(3000);
 
     await writeFile(
       path.join(home, 'config.toml'),
@@ -167,7 +167,7 @@ read_byte_budget = 131072
     // Removing the section clears back to built-ins.
     await writeFile(path.join(home, 'config.toml'), VALID_TOML, 'utf-8');
     await core.getKimiConfig({ reload: true });
-    expect(core.imageLimits.maxEdgePx()).toBe(2000);
+    expect(core.imageLimits.maxEdgePx()).toBe(3000);
     expect(core.imageLimits.readByteBudget()).toBe(256 * 1024);
   });
 });

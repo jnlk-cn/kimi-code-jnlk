@@ -344,6 +344,9 @@ export interface AgentStateSnapshot {
   permissionMode?: string;
   planMode?: boolean;
   swarmMode?: boolean;
+  askMode?: boolean;
+  debugMode?: boolean;
+  interactionMode?: string;
 }
 
 /**

@@ -26,6 +26,14 @@ const SWARM_ARG_COMPLETIONS: readonly ArgCompletionSpec[] = [
   { value: 'off', description: 'Turn swarm mode off' },
 ];
 
+const MODE_ARG_COMPLETIONS: readonly ArgCompletionSpec[] = [
+  { value: 'agent', description: 'Default coding assistant' },
+  { value: 'plan', description: 'Plan before editing' },
+  { value: 'debug', description: 'Troubleshooting with step timing' },
+  { value: 'multitask', description: 'Coordinated multitask / swarm' },
+  { value: 'ask', description: 'Read-only Q&A' },
+];
+
 const ADD_DIR_ARG_COMPLETIONS: readonly ArgCompletionSpec[] = [
   { value: 'list', description: 'Show configured additional workspace directories' },
 ];
@@ -47,6 +55,11 @@ export function goalArgumentCompletions(argumentPrefix: string): AutocompleteIte
 /** Argument autocompletion for the `/swarm` command (subcommands). */
 export function swarmArgumentCompletions(argumentPrefix: string): AutocompleteItem[] | null {
   return completeLeadingArg(SWARM_ARG_COMPLETIONS, argumentPrefix);
+}
+
+/** Argument autocompletion for the `/mode` command. */
+export function modeArgumentCompletions(argumentPrefix: string): AutocompleteItem[] | null {
+  return completeLeadingArg(MODE_ARG_COMPLETIONS, argumentPrefix);
 }
 
 /** Argument autocompletion for the `/add-dir` command. */
@@ -152,6 +165,15 @@ export const BUILTIN_SLASH_COMMANDS = [
     aliases: [],
     description: 'Select permission mode',
     priority: 100,
+    availability: 'always',
+  },
+  {
+    name: 'mode',
+    aliases: [],
+    description: 'Select interaction mode (agent / plan / debug / multitask / ask)',
+    priority: 100,
+    argumentHint: '[agent|plan|debug|multitask|ask]',
+    completeArgs: modeArgumentCompletions,
     availability: 'always',
   },
   {

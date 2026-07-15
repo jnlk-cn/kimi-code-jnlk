@@ -5,6 +5,11 @@ packages:
   - apps/vis/web
   - docs
 
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - node-pty
+
 catalog:
   zod: 4.3.6
 

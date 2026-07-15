@@ -62,6 +62,13 @@ export interface SSHKaosOptions {
   keyContents?: string[];
   cwd?: string;
   /**
+   * Verify the raw server host key. Connections are rejected by default when
+   * no verifier is supplied; set `acceptUnknownHost` only after an explicit
+   * user trust decision.
+   */
+  hostVerifier?: (key: Buffer) => boolean;
+  acceptUnknownHost?: boolean;
+  /**
    * Pass-through for advanced ssh2 `ConnectConfig` fields such as `algorithms`,
    * `keepaliveInterval`, `readyTimeout`, `debug`, `tryKeyboard`, `agent`, etc.
    *
@@ -427,6 +434,42 @@ function clientExec(client: Client, command: string): Promise<ClientChannel> {
   });
 }
 
+async function probeRemoteEnvironment(
+  client: Client,
+  sftp: SFTPWrapper,
+): Promise<Environment> {
+  const channel = await clientExec(
+    client,
+    "printf '%s\\n' \"$(uname -s 2>/dev/null || printf unknown)\" \"$(uname -m 2>/dev/null || printf unknown)\" \"$(uname -r 2>/dev/null || printf unknown)\"",
+  );
+  const chunks: Buffer[] = [];
+  channel.on('data', (chunk: Buffer | string) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  });
+  await new Promise<void>((resolveProbe, reject) => {
+    channel.once('error', reject);
+    channel.once('close', () => resolveProbe());
+  });
+  const [system = 'unknown', arch = 'unknown', release = 'unknown'] = Buffer.concat(chunks)
+    .toString('utf8')
+    .trim()
+    .split('\n');
+  let shellPath = '/bin/sh';
+  try {
+    const attrs = await sftpStat(sftp, '/bin/bash');
+    if (attrs.isFile()) shellPath = '/bin/bash';
+  } catch {
+    // POSIX sh is the portable fallback for minimal remote environments.
+  }
+  return {
+    osKind: system === 'Darwin' ? 'macOS' : system === 'Linux' ? 'Linux' : system,
+    osArch: arch,
+    osVersion: release,
+    shellName: shellPath.endsWith('bash') ? 'bash' : 'sh',
+    shellPath,
+  };
+}
+
 // ── SSHKaos ────────────────────────────────────────────────────────────
 
 /**
@@ -439,14 +482,11 @@ export class SSHKaos implements Kaos {
   private _sftp: SFTPWrapper;
   private _home: string;
   private _cwd: string;
+  private readonly _osEnv: Environment;
   private readonly _envLayers: readonly Record<string, string>[];
 
-  // Stub: real wiring (probing the remote host via `uname` / `$SHELL` over the
-  // SSH transport) is deferred.
   get osEnv(): Environment {
-    throw new KaosError(
-      'SSHKaos.osEnv is not yet wired — remote environment probing is not implemented.',
-    );
+    return this._osEnv;
   }
 
   private constructor(
@@ -454,21 +494,30 @@ export class SSHKaos implements Kaos {
     sftp: SFTPWrapper,
     home: string,
     cwd: string,
+    osEnv: Environment,
     envLayers: readonly Record<string, string>[] = [],
   ) {
     this._client = client;
     this._sftp = sftp;
     this._home = home;
     this._cwd = cwd;
+    this._osEnv = osEnv;
     this._envLayers = envLayers;
   }
 
   withCwd(cwd: string): SSHKaos {
-    return new SSHKaos(this._client, this._sftp, this._home, cwd, this._envLayers);
+    return new SSHKaos(this._client, this._sftp, this._home, cwd, this._osEnv, this._envLayers);
   }
 
   withEnv(env: Record<string, string>): SSHKaos {
-    return new SSHKaos(this._client, this._sftp, this._home, this._cwd, [...this._envLayers, env]);
+    return new SSHKaos(
+      this._client,
+      this._sftp,
+      this._home,
+      this._cwd,
+      this._osEnv,
+      [...this._envLayers, env],
+    );
   }
 
   private _resolvePath(path: string): string {
@@ -515,8 +564,7 @@ export class SSHKaos implements Kaos {
       }
     }
 
-    // Disable host key verification (like asyncssh known_hosts=None)
-    config.hostVerifier = () => true;
+    config.hostVerifier = options.hostVerifier ?? (() => options.acceptUnknownHost === true);
 
     const client = await connectClient(config);
     try {
@@ -524,6 +572,7 @@ export class SSHKaos implements Kaos {
 
       // Determine home and cwd
       const home = await sftpRealpath(sftp, '.');
+      const osEnv = await probeRemoteEnvironment(client, sftp);
       let cwd: string;
       if (options.cwd === undefined) {
         cwd = home;
@@ -535,7 +584,7 @@ export class SSHKaos implements Kaos {
         }
       }
 
-      return new SSHKaos(client, sftp, home, cwd);
+      return new SSHKaos(client, sftp, home, cwd, osEnv);
     } catch (error) {
       client.end();
       throw error;

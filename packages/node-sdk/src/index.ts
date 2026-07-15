@@ -22,6 +22,7 @@ export {
   catalogModelToAlias,
   catalogProviderModels,
   CatalogFetchError,
+  deepSeekV4Efforts,
   DEFAULT_CATALOG_URL,
   fetchCatalog,
   inferWireType,
@@ -66,6 +67,13 @@ export { effectiveModelAlias, loadRuntimeConfigSafe, resolveConfigPath } from '@
 // Process-wide HTTP proxy bootstrap — installed once at CLI startup so all
 // outbound fetch honors HTTP_PROXY / HTTPS_PROXY / NO_PROXY.
 export { installGlobalProxyDispatcher } from '@moonshot-ai/agent-core';
+
+// Execution-environment factories for hosts that need to run a session against
+// a non-default local or SSH filesystem without importing agent-core.
+export { LocalKaos } from '@moonshot-ai/kaos';
+export type { Environment, Kaos, KaosProcess } from '@moonshot-ai/kaos';
+export { SSHKaos } from '@moonshot-ai/kaos/ssh';
+export type { SSHKaosOptions } from '@moonshot-ai/kaos/ssh';
 
 // Image compression — ingestion sites (e.g. the CLI's clipboard paste, the ACP
 // adapter) shrink oversized images while constructing the content part, before
@@ -122,3 +130,10 @@ export type {
 
 export * from '#/events';
 export type * from '#/types';
+export {
+  INTERACTION_MODES,
+  deriveInteractionMode,
+  interactionModeToToggles,
+  isInteractionMode,
+} from '#/interaction-mode';
+export type { InteractionModeToggles } from '#/interaction-mode';

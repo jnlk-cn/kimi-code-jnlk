@@ -75,6 +75,12 @@ export interface AgentRecordEvents {
   };
   'swarm_mode.exit': {};
 
+  'ask_mode.enter': {};
+  'ask_mode.exit': {};
+
+  'debug_mode.enter': {};
+  'debug_mode.exit': {};
+
   'tools.register_user_tool': UserToolRegistration;
   'tools.unregister_user_tool': {
     name: string;

@@ -11,6 +11,7 @@ export * from './dialogs/experiments-selector';
 export * from './dialogs/help-panel';
 export * from './dialogs/model-selector';
 export * from './dialogs/permission-selector';
+export * from './dialogs/mode-selector';
 export * from './dialogs/question-dialog';
 export * from './dialogs/session-picker';
 export * from './dialogs/settings-selector';

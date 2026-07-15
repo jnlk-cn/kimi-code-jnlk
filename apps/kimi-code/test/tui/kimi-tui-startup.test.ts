@@ -108,6 +108,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
       model: 'k2',
       thinkingEffort: 'off',
       permission: 'manual',
+      interactionMode: 'agent',
       planMode: false,
       contextTokens: 10,
       maxContextTokens: 100,
@@ -119,6 +120,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     setThinking: vi.fn(async () => {}),
     setPermission: vi.fn(async () => {}),
     setPlanMode: vi.fn(async () => {}),
+    setInteractionMode: vi.fn(async () => {}),
     getGoal: vi.fn(async () => ({ goal: null })),
     onEvent: vi.fn(() => () => {}),
     getResumeState: vi.fn(() => null),
@@ -244,6 +246,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'yolo',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 25,
         maxContextTokens: 200,
@@ -269,6 +272,7 @@ describe('KimiTUI startup', () => {
       sessionId: 'ses-1',
       model: 'k2',
       permissionMode: 'yolo',
+      interactionMode: 'plan',
       planMode: true,
       contextTokens: 25,
       maxContextTokens: 200,
@@ -300,6 +304,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission,
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -328,6 +333,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission,
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -357,12 +363,13 @@ describe('KimiTUI startup', () => {
         thinkingEffort: 'off',
         permission: 'manual',
         planMode,
+        interactionMode: planMode ? 'plan' : 'agent',
         contextTokens: 10,
         maxContextTokens: 100,
         contextUsage: 0.1,
       })),
-      setPlanMode: vi.fn(async (enabled: boolean) => {
-        planMode = enabled;
+      setInteractionMode: vi.fn(async (mode: string) => {
+        planMode = mode === 'plan';
       }),
     });
     const harness = makeHarness(session, {
@@ -372,23 +379,25 @@ describe('KimiTUI startup', () => {
 
     await expect(driver.init()).resolves.toBe(true);
 
-    expect(session.setPlanMode).toHaveBeenCalledWith(true);
+    expect(session.setInteractionMode).toHaveBeenCalledWith('plan');
     expect(driver.state.appState.planMode).toBe(true);
+    expect(driver.state.appState.interactionMode).toBe('plan');
   });
 
-  it('skips setPlanMode when the resumed session is already in plan mode', async () => {
+  it('skips setInteractionMode when the resumed session is already in plan mode', async () => {
     const session = makeSession({
       id: 'ses-latest',
       getStatus: vi.fn(async () => ({
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'manual',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 10,
         maxContextTokens: 100,
         contextUsage: 0.1,
       })),
-      setPlanMode: vi.fn(async () => {
+      setInteractionMode: vi.fn(async () => {
         throw new Error('Already in plan mode');
       }),
     });
@@ -399,7 +408,7 @@ describe('KimiTUI startup', () => {
 
     await expect(driver.init()).resolves.toBe(true);
 
-    expect(session.setPlanMode).not.toHaveBeenCalled();
+    expect(session.setInteractionMode).not.toHaveBeenCalled();
     expect(driver.state.appState.planMode).toBe(true);
   });
 
@@ -410,6 +419,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'manual',
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -435,12 +445,13 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'manual',
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
         contextUsage: 0.1,
       })),
-      setPlanMode: vi.fn(async () => {}),
+      setInteractionMode: vi.fn(async () => {}),
     });
     const harness = makeHarness(session, {
       listSessions: vi.fn(async () => [{ id: 'ses-latest' }]),
@@ -449,7 +460,7 @@ describe('KimiTUI startup', () => {
 
     await expect(driver.init()).resolves.toBe(true);
 
-    expect(session.setPlanMode).toHaveBeenCalledWith(true);
+    expect(session.setInteractionMode).toHaveBeenCalledWith('plan');
     expect(driver.state.appState.planMode).toBe(true);
   });
 
@@ -501,6 +512,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission,
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -595,6 +607,7 @@ describe('KimiTUI startup', () => {
         model,
         thinkingEffort: 'off',
         permission: 'manual',
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -634,6 +647,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission,
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -667,19 +681,20 @@ describe('KimiTUI startup', () => {
     expect(driver.state.appState.permissionMode).toBe('auto');
   });
 
-  it('skips setPlanMode after picking a session already in plan mode', async () => {
+  it('skips setInteractionMode after picking a session already in plan mode', async () => {
     const session = makeSession({
       id: 'ses-picked',
       getStatus: vi.fn(async () => ({
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'manual',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 10,
         maxContextTokens: 100,
         contextUsage: 0.1,
       })),
-      setPlanMode: vi.fn(async () => {
+      setInteractionMode: vi.fn(async () => {
         throw new Error('Already in plan mode');
       }),
     });
@@ -703,7 +718,7 @@ describe('KimiTUI startup', () => {
     picker.handleInput('\r');
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(session.setPlanMode).not.toHaveBeenCalled();
+    expect(session.setInteractionMode).not.toHaveBeenCalled();
     expect(driver.state.appState.planMode).toBe(true);
   });
 
@@ -1004,7 +1019,7 @@ describe('KimiTUI startup', () => {
 
     expect(driver.state.appState.sessionId).toBe('ses-2');
     expect(picked.setPermission).not.toHaveBeenCalled();
-    expect(picked.setPlanMode).not.toHaveBeenCalled();
+    expect(picked.setInteractionMode).not.toHaveBeenCalled();
     expect(driver.state.appState.permissionMode).toBe('manual');
     expect(driver.state.appState.planMode).toBe(false);
   });
@@ -1144,6 +1159,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'yolo',
+        interactionMode: 'plan',
         planMode: true,
         contextTokens: 10,
         maxContextTokens: 100,
@@ -1172,6 +1188,7 @@ describe('KimiTUI startup', () => {
       sessionId: '',
       model: '',
       permissionMode: 'yolo',
+      interactionMode: 'plan',
       planMode: true,
     });
 
@@ -1194,6 +1211,7 @@ describe('KimiTUI startup', () => {
       sessionId: 'ses-1',
       model: 'k2',
       permissionMode: 'yolo',
+      interactionMode: 'plan',
       planMode: true,
     });
   });
@@ -1204,6 +1222,7 @@ describe('KimiTUI startup', () => {
         model: 'k2',
         thinkingEffort: 'off',
         permission: 'auto',
+        interactionMode: 'agent',
         planMode: false,
         contextTokens: 10,
         maxContextTokens: 100,

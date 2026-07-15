@@ -385,7 +385,7 @@ describe('compressPromptImageParts', () => {
     await rm(originalsDir, { recursive: true, force: true });
   });
 
-  it('uses the built-in 2000px cap when no max edge is provided', async () => {
+  it('uses the built-in 3000px cap when no max edge is provided', async () => {
     const originalsDir = await mkdtemp(join(tmpdir(), 'acp-originals-'));
     const parts = acpBlocksToPromptParts([imageBlock(await pngBase64(3600, 1800), 'image/png')]);
     const compressed = await compressPromptImageParts(parts, { originalsDir });
@@ -395,8 +395,8 @@ describe('compressPromptImageParts', () => {
     const match = /^data:(image\/[a-z]+);base64,(.+)$/.exec(part.imageUrl.url);
     expect(match).not.toBeNull();
     const decoded = await Jimp.fromBuffer(Buffer.from(match![2]!, 'base64'));
-    expect(decoded.width).toBe(2000);
-    expect(decoded.height).toBe(1000);
+    expect(decoded.width).toBe(3000);
+    expect(decoded.height).toBe(1500);
     await rm(originalsDir, { recursive: true, force: true });
   });
 

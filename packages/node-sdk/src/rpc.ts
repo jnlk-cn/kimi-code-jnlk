@@ -20,7 +20,12 @@ import {
 } from '@moonshot-ai/agent-core';
 import type { Kaos } from '@moonshot-ai/kaos';
 
-import type { ApprovalHandler, QuestionHandler } from '#/events';
+import type {
+  ApprovalHandler,
+  HostToolDefinition,
+  HostToolHandler,
+  QuestionHandler,
+} from '#/events';
 import type {
   AddAdditionalDirInput,
   AddAdditionalDirResult,
@@ -34,9 +39,11 @@ import type {
   GetConfigOptions,
   GoalSnapshot,
   GoalToolResult,
+  InteractionMode,
   KimiConfig,
   KimiConfigPatch,
   ListSessionsOptions,
+  ListWorkspaceSkillsInput,
   McpServerInfo,
   McpStartupMetrics,
   PermissionMode,
@@ -56,6 +63,7 @@ import type {
   PluginCommandDef,
   Unsubscribe,
 } from '#/types';
+import { deriveInteractionMode } from '#/interaction-mode';
 
 const MAIN_AGENT_ID = 'main';
 
@@ -93,6 +101,10 @@ export interface SetSessionPlanModeRpcInput extends SessionIdRpcInput {
   readonly enabled: boolean;
 }
 
+export interface SetSessionInteractionModeRpcInput extends SessionIdRpcInput {
+  readonly mode: InteractionMode;
+}
+
 export type SetSessionSwarmModeRpcInput =
   | (SessionIdRpcInput & { readonly enabled: true; readonly trigger: SwarmModeTrigger })
   | (SessionIdRpcInput & { readonly enabled: false });
@@ -119,6 +131,7 @@ export abstract class SDKRpcClientBase {
   private readonly eventListeners = new Set<(event: Event) => void>();
   private readonly approvalHandlers = new Map<string, ApprovalHandler>();
   private readonly questionHandlers = new Map<string, QuestionHandler>();
+  private readonly toolHandlers = new Map<string, Map<string, HostToolHandler>>();
 
   get interactiveAgentId(): string {
     return this.interactiveAgentScope.getStore() ?? MAIN_AGENT_ID;
@@ -177,6 +190,7 @@ export abstract class SDKRpcClientBase {
       id: input.forkId,
       title: input.title,
       metadata: input.metadata,
+      workDir: input.workDir,
     });
   }
 
@@ -185,9 +199,19 @@ export abstract class SDKRpcClientBase {
     return rpc.closeSession({ sessionId: input.sessionId });
   }
 
+  async archiveSession(input: SessionIdRpcInput): Promise<void> {
+    const rpc = await this.getRpc();
+    return rpc.archiveSession({ sessionId: input.sessionId });
+  }
+
   async listSessions(input: ListSessionsOptions = {}): Promise<readonly SessionSummary[]> {
     const rpc = await this.getRpc();
     return rpc.listSessions(input);
+  }
+
+  async listWorkspaceSkills(input: ListWorkspaceSkillsInput): Promise<readonly SkillSummary[]> {
+    const rpc = await this.getRpc();
+    return rpc.listWorkspaceSkills(input);
   }
 
   async renameSession(input: RenameSessionInput): Promise<void> {
@@ -354,6 +378,15 @@ export abstract class SDKRpcClientBase {
     });
   }
 
+  async setInteractionMode(input: SetSessionInteractionModeRpcInput): Promise<void> {
+    const rpc = await this.getRpc();
+    return rpc.setInteractionMode({
+      sessionId: input.sessionId,
+      agentId: this.interactiveAgentId,
+      mode: input.mode,
+    });
+  }
+
   async setSwarmMode(input: SetSessionSwarmModeRpcInput): Promise<void> {
     if (input.enabled) return this.enterSwarmMode(input);
     return this.exitSwarmMode(input);
@@ -416,6 +449,43 @@ export abstract class SDKRpcClientBase {
     });
   }
 
+  async registerHostTool(
+    sessionId: string,
+    definition: HostToolDefinition,
+    handler: HostToolHandler,
+  ): Promise<void> {
+    let sessionHandlers = this.toolHandlers.get(sessionId);
+    if (sessionHandlers === undefined) {
+      sessionHandlers = new Map();
+      this.toolHandlers.set(sessionId, sessionHandlers);
+    }
+    sessionHandlers.set(definition.name, handler);
+    try {
+      const rpc = await this.getRpc();
+      await rpc.registerTool({
+        sessionId,
+        agentId: this.interactiveAgentId,
+        ...definition,
+      });
+    } catch (error) {
+      sessionHandlers.delete(definition.name);
+      if (sessionHandlers.size === 0) this.toolHandlers.delete(sessionId);
+      throw error;
+    }
+  }
+
+  async unregisterHostTool(sessionId: string, name: string): Promise<void> {
+    const rpc = await this.getRpc();
+    await rpc.unregisterTool({
+      sessionId,
+      agentId: this.interactiveAgentId,
+      name,
+    });
+    const handlers = this.toolHandlers.get(sessionId);
+    handlers?.delete(name);
+    if (handlers?.size === 0) this.toolHandlers.delete(sessionId);
+  }
+
   async undoHistory(input: SessionIdRpcInput & { count: number }): Promise<void> {
     const rpc = await this.getRpc();
     return rpc.undoHistory({
@@ -464,6 +534,18 @@ export abstract class SDKRpcClientBase {
       sessionId: input.sessionId,
       agentId,
     });
+    const askMode = await rpc.getAskMode({
+      sessionId: input.sessionId,
+      agentId,
+    });
+    const debugMode = await rpc.getDebugMode({
+      sessionId: input.sessionId,
+      agentId,
+    });
+    const interactionMode = await rpc.getInteractionMode({
+      sessionId: input.sessionId,
+      agentId,
+    });
     const usage = await rpc.getUsage({
       sessionId: input.sessionId,
       agentId,
@@ -479,6 +561,15 @@ export abstract class SDKRpcClientBase {
       permission: permission.mode,
       planMode: plan !== null,
       swarmMode,
+      askMode,
+      debugMode,
+      interactionMode: deriveInteractionMode({
+        planMode: plan !== null,
+        swarmMode,
+        askMode,
+        debugMode,
+        interactionMode,
+      }),
       contextTokens,
       maxContextTokens,
       contextUsage,
@@ -704,6 +795,7 @@ export abstract class SDKRpcClientBase {
   clearSessionHandlers(sessionId: string): void {
     this.approvalHandlers.delete(sessionId);
     this.questionHandlers.delete(sessionId);
+    this.toolHandlers.delete(sessionId);
   }
 
   async requestApproval(
@@ -752,11 +844,30 @@ export abstract class SDKRpcClientBase {
     }
   }
 
-  async toolCall(request: ToolCallRequest): Promise<ToolCallResponse> {
-    return {
-      output: `SDK custom tool calls are not supported: ${request.toolCallId}`,
-      isError: true,
-    };
+  async toolCall(
+    request: ToolCallRequest & { sessionId: string; agentId: string },
+  ): Promise<ToolCallResponse> {
+    const handler = this.toolHandlers.get(request.sessionId)?.get(request.toolName);
+    if (handler === undefined) {
+      return {
+        output: `No SDK host handler is registered for tool "${request.toolName}".`,
+        isError: true,
+      };
+    }
+    try {
+      return await handler(request.args, {
+        sessionId: request.sessionId,
+        agentId: request.agentId,
+        turnId: request.turnId,
+        toolCallId: request.toolCallId,
+        toolName: request.toolName,
+      });
+    } catch (error) {
+      return {
+        output: errorMessage(error),
+        isError: true,
+      };
+    }
   }
 
 }
@@ -780,7 +891,9 @@ export class ClientAPI implements SDKAPI {
     return this.client.requestQuestion(request);
   }
 
-  toolCall(request: ToolCallRequest): Promise<ToolCallResponse> {
+  toolCall(
+    request: ToolCallRequest & { sessionId: string; agentId: string },
+  ): Promise<ToolCallResponse> {
     return this.client.toolCall(request);
   }
 }

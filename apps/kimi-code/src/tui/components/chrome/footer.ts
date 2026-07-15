@@ -17,6 +17,7 @@ import { isRainbowDancing, renderDanceFooterModel } from '#/tui/easter-eggs/danc
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
 import type { AppState } from '#/tui/types';
+import { interactionModeLabel } from '#/tui/utils/interaction-mode-ui';
 import {
   createGitStatusCache,
   formatGitBadgeBase,
@@ -313,8 +314,23 @@ export class FooterComponent implements Component {
     const modes: string[] = [];
     if (state.permissionMode === 'auto') modes.push(chalk.hex(colors.warning).bold('auto'));
     if (state.permissionMode === 'yolo') modes.push(chalk.hex(colors.warning).bold('yolo'));
-    if (state.planMode) modes.push(chalk.hex(colors.primary).bold('plan'));
-    if (state.swarmMode) modes.push(chalk.hex(colors.accent).bold('swarm'));
+    // Prefer a single interaction-mode badge over separate plan/swarm badges.
+    if (state.interactionMode !== undefined) {
+      const modeColor =
+        state.interactionMode === 'plan'
+          ? colors.primary
+          : state.interactionMode === 'multitask'
+            ? colors.accent
+            : state.interactionMode === 'debug'
+              ? colors.warning
+              : state.interactionMode === 'ask'
+                ? colors.success
+                : colors.textDim;
+      modes.push(chalk.hex(modeColor).bold(interactionModeLabel(state.interactionMode)));
+    } else {
+      if (state.planMode) modes.push(chalk.hex(colors.primary).bold('plan'));
+      if (state.swarmMode) modes.push(chalk.hex(colors.accent).bold('swarm'));
+    }
     if (modes.length > 0) left.push(modes.join(' '));
 
     const goalBadge = formatGoalBadge(state.goal, colors, this.goalWallClockMs(state.goal));

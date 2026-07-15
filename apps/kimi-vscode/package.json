@@ -1,0 +1,81 @@
+{
+  "name": "@moonshot-ai/kimi-vscode",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kimi Code VS Code extension (ACP client over `kimi acp`)",
+  "license": "MIT",
+  "publisher": "moonshot-ai",
+  "type": "module",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.96.0",
+    "node": ">=24.15.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "activationEvents": [
+    "onView:kimi.chatView",
+    "onCommand:kimi.chat.open"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "kimi.chat.open",
+        "title": "Kimi: Open Chat"
+      },
+      {
+        "command": "kimi.chat.restart",
+        "title": "Kimi: Restart ACP Agent"
+      }
+    ],
+    "configuration": {
+      "title": "Kimi",
+      "properties": {
+        "kimi.cliPath": {
+          "type": "string",
+          "default": "kimi",
+          "description": "Path to the kimi CLI binary used to spawn `kimi acp`."
+        },
+        "kimi.workDir": {
+          "type": "string",
+          "default": "",
+          "description": "Working directory for new ACP sessions. Empty = first workspace folder."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kimi",
+          "title": "Kimi",
+          "icon": "media/kimi.svg"
+        }
+      ]
+    },
+    "views": {
+      "kimi": [
+        {
+          "type": "webview",
+          "id": "kimi.chatView",
+          "name": "Chat"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^0.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.96.0",
+    "typescript": "6.0.2"
+  }
+}

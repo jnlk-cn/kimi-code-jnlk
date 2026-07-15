@@ -1,0 +1,30 @@
+appId: com.ganymede.code
+productName: Ganymede Code
+artifactName: Ganymede-Code-${version}-${arch}.${ext}
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+asar: true
+asarUnpack:
+  - "**/node-pty/**"
+extraResources:
+  - from: resources
+    to: resources
+    filter:
+      - "**/*"
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    CFBundleDisplayName: Ganymede Code
+    NSMicrophoneUsageDescription: Ganymede Code 使用麦克风进行本地语音听写。
+    NSSpeechRecognitionUsageDescription: Ganymede Code 使用设备端语音识别转写提示词。
+    NSScreenCaptureUsageDescription: Ganymede Code 仅在你授权后截取屏幕用于 Computer Use。
+dmg:
+  title: Ganymede Code

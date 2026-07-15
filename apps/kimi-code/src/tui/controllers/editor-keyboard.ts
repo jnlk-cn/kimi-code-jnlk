@@ -14,6 +14,7 @@ import {
   NO_ACTIVE_SESSION_MESSAGE,
 } from '../constant/kimi-tui';
 import { formatErrorMessage } from '../utils/event-payload';
+import { nextInteractionMode } from '../utils/interaction-mode-ui';
 import type { ImageAttachmentStore } from '../utils/image-attachment-store';
 import type { PendingExit, QueuedMessage } from '../types';
 import type { TUIState } from '../tui-state';
@@ -45,7 +46,7 @@ export interface EditorKeyboardHost {
   hideSessionPicker(): void;
   openUndoSelector(): void;
   stop(exitCode?: number): Promise<void>;
-  handlePlanToggle(next: boolean): void;
+  handleInteractionModeCycle(): void;
   handleInputModeChange(mode: 'prompt' | 'bash'): void;
   clearQueuedMessages(): void;
   setExternalEditorRunning(running: boolean): void;
@@ -206,10 +207,12 @@ export class EditorKeyboardController {
         host.showError(NO_ACTIVE_SESSION_MESSAGE);
         return;
       }
-      const next = !host.state.appState.planMode;
-      host.track('shortcut_plan_toggle', { enabled: next });
-      host.track('shortcut_mode_switch', { to_mode: next ? 'plan' : 'agent' });
-      host.handlePlanToggle(next);
+      const from = host.state.appState.interactionMode;
+      host.track('shortcut_mode_switch', {
+        from_mode: from,
+        to_mode: nextInteractionMode(from),
+      });
+      host.handleInteractionModeCycle();
     };
 
     editor.onInputModeChange = (mode) => {

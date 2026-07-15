@@ -34,6 +34,7 @@ export interface ForkSessionRecordInput {
   readonly targetId: string;
   readonly title?: string;
   readonly metadata?: JsonObject;
+  readonly workDir?: string;
 }
 
 export type SessionStoreOptions = Record<string, never>;
@@ -83,7 +84,9 @@ export class SessionStore {
       throw new KimiError(ErrorCodes.SESSION_ALREADY_EXISTS, `Session "${input.targetId}" already exists`);
     }
 
-    const targetDir = this.sessionDirFor({ id: input.targetId, workDir: source.workDir });
+    const targetWorkDir =
+      input.workDir === undefined ? source.workDir : normalizeRequiredWorkDir(input.workDir);
+    const targetDir = this.sessionDirFor({ id: input.targetId, workDir: targetWorkDir });
     if (await isDirectory(targetDir)) {
       throw new KimiError(ErrorCodes.SESSION_ALREADY_EXISTS, `Session "${input.targetId}" already exists`);
     }
@@ -96,13 +99,18 @@ export class SessionStore {
         errorOnExist: true,
       });
       await dropForkedSessionFiles(targetDir);
-      const forkedState = await this.writeForkedState(input, source.sessionDir, source.workDir, targetDir);
+      const forkedState = await this.writeForkedState(
+        input,
+        source.sessionDir,
+        targetWorkDir,
+        targetDir,
+      );
       await appendForkedMarkers(forkedState);
-      const summary = await this.summaryFromDir(input.targetId, targetDir, source.workDir);
+      const summary = await this.summaryFromDir(input.targetId, targetDir, targetWorkDir);
       await appendSessionIndexEntry(this.homeDir, {
         sessionId: input.targetId,
         sessionDir: targetDir,
-        workDir: source.workDir,
+        workDir: targetWorkDir,
       });
       return summary;
     } catch (error) {
@@ -368,7 +376,7 @@ export class SessionStore {
   private async writeForkedState(
     input: ForkSessionRecordInput,
     sourceDir: string,
-    sourceWorkDir: string,
+    targetWorkDir: string,
     targetDir: string,
   ): Promise<Record<string, unknown>> {
     const statePath = join(targetDir, 'state.json');
@@ -397,7 +405,7 @@ export class SessionStore {
       ...parsed,
       createdAt: now,
       updatedAt: now,
-      workDir: sourceWorkDir,
+      workDir: targetWorkDir,
       title,
       isCustomTitle: input.title === undefined ? parsed['isCustomTitle'] === true : true,
       forkedFrom: input.sourceId,
@@ -527,7 +535,7 @@ async function readOptionalState(sessionDir: string): Promise<SessionSummaryStat
 
 function normalizeRequiredWorkDir(workDir: string): string {
   if (workDir.trim() === '') {
-    throw new KimiError(ErrorCodes.REQUEST_WORK_DIR_REQUIRED, 'listSessions requires workDir');
+    throw new KimiError(ErrorCodes.REQUEST_WORK_DIR_REQUIRED, 'workDir is required');
   }
   return normalizeWorkDir(workDir);
 }

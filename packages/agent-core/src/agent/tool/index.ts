@@ -234,6 +234,7 @@ export class ToolManager {
               {
                 turnId: Number(context.turnId),
                 toolCallId: context.toolCallId,
+                toolName: name,
                 args,
               },
               { signal: context.signal },

@@ -10,7 +10,6 @@ import {
   catalogProviderModels,
   CatalogFetchError,
   DEFAULT_CATALOG_URL,
-  fetchCatalog,
   inferWireType,
   type Catalog,
   type ThinkingEffort,
@@ -27,6 +26,7 @@ import {
 } from '../components/dialogs/provider-manager';
 import { TabbedModelSelectorComponent } from '../components/dialogs/tabbed-model-selector';
 import { DEFAULT_OAUTH_PROVIDER_NAME } from '../constant/kimi-tui';
+import { loadKnownProviderCatalog } from '../../utils/known-provider-catalog';
 import { formatErrorMessage } from '../utils/event-payload';
 import { thinkingEffortToConfig } from '../utils/thinking-config';
 import {
@@ -160,8 +160,13 @@ async function handleCatalogProviderAdd(host: SlashCommandHost): Promise<void> {
   const spinner = host.showLoginProgressSpinner(`Fetching catalog from ${DEFAULT_CATALOG_URL}`);
   let catalog: Catalog | undefined;
   try {
-    catalog = await fetchCatalog(DEFAULT_CATALOG_URL, controller.signal);
-    spinner.stop({ ok: true, label: 'Catalog loaded.' });
+    const result = await loadKnownProviderCatalog(DEFAULT_CATALOG_URL, controller.signal);
+    catalog = result.catalog;
+    const loadedLabel =
+      result.source === 'remote'
+        ? 'Catalog loaded.'
+        : `Catalog loaded from ${result.sourceLabel}.`;
+    spinner.stop({ ok: true, label: loadedLabel });
   } catch (error) {
     if (controller.signal.aborted) {
       spinner.stop({ ok: false, label: 'Aborted.' });

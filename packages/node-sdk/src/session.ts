@@ -6,7 +6,13 @@ import {
   type SwarmModeTrigger,
 } from '@moonshot-ai/agent-core';
 
-import { type ApprovalHandler, type Event, type QuestionHandler } from '#/events';
+import {
+  type ApprovalHandler,
+  type Event,
+  type HostToolDefinition,
+  type HostToolHandler,
+  type QuestionHandler,
+} from '#/events';
 import type { SDKRpcClientBase } from '#/rpc';
 import type {
   AddAdditionalDirOptions,
@@ -32,6 +38,7 @@ import type {
   SessionSummary,
   SessionUsage,
   SkillSummary,
+  InteractionMode,
   PluginCommandDef,
   ThinkingEffort,
   Unsubscribe,
@@ -100,6 +107,19 @@ export class Session {
   setQuestionHandler(handler: QuestionHandler | undefined): void {
     this.ensureOpen();
     this.rpc.setQuestionHandler(this.id, handler);
+  }
+
+  async registerTool(
+    definition: HostToolDefinition,
+    handler: HostToolHandler,
+  ): Promise<void> {
+    this.ensureOpen();
+    await this.rpc.registerHostTool(this.id, definition, handler);
+  }
+
+  async unregisterTool(name: string): Promise<void> {
+    this.ensureOpen();
+    await this.rpc.unregisterHostTool(this.id, name);
   }
 
   async prompt(input: string | PromptInput): Promise<void> {
@@ -226,6 +246,23 @@ export class Session {
       );
     }
     await this.rpc.setPlanMode({ sessionId: this.id, enabled });
+  }
+
+  async setInteractionMode(mode: InteractionMode): Promise<void> {
+    this.ensureOpen();
+    if (
+      mode !== 'agent' &&
+      mode !== 'plan' &&
+      mode !== 'debug' &&
+      mode !== 'multitask' &&
+      mode !== 'ask'
+    ) {
+      throw new KimiError(
+        ErrorCodes.REQUEST_INVALID,
+        'Session interaction mode must be agent, plan, debug, multitask, or ask',
+      );
+    }
+    await this.rpc.setInteractionMode({ sessionId: this.id, mode });
   }
 
   async setSwarmMode(enabled: boolean, trigger: SwarmModeTrigger): Promise<void> {

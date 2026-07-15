@@ -1,6 +1,7 @@
 import type { Agent } from '../..';
 import type { PermissionPolicy } from '../types';
 import { AgentSwarmExclusiveDenyPermissionPolicy } from './agent-swarm-exclusive-deny';
+import { AskModeGuardDenyPermissionPolicy } from './ask-mode-guard-deny';
 import { AutoModeApprovePermissionPolicy } from './auto-mode-approve';
 import { AutoModeAskUserQuestionDenyPermissionPolicy } from './auto-mode-ask-user-question-deny';
 import { DefaultToolApprovePermissionPolicy } from './default-tool-approve';
@@ -33,6 +34,8 @@ export function createPermissionDecisionPolicies(agent: Agent): PermissionPolicy
     new AgentSwarmExclusiveDenyPermissionPolicy(),
     // auto mode + AskUserQuestion → deny.
     new AutoModeAskUserQuestionDenyPermissionPolicy(agent),
+    // ask mode: deny mutating tools and mutating Bash.
+    new AskModeGuardDenyPermissionPolicy(agent),
     // plan mode: Write/Edit outside the plan file, or TaskStop → deny.
     new PlanModeGuardDenyPermissionPolicy(agent),
     // User-configured deny rule matches → deny.

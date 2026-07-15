@@ -15,6 +15,7 @@ function baseState(overrides: Partial<AppState> = {}): AppState {
     additionalDirs: [],
     sessionId: 'sess_1',
     permissionMode: 'manual',
+    interactionMode: 'agent',
     planMode: false,
     thinkingEffort: 'off',
     contextUsage: 0,

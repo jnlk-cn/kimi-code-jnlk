@@ -1,5 +1,20 @@
 # @moonshot-ai/kimi-code
 
+## 0.25.0
+
+### Minor Changes
+
+- Add five interaction modes — Agent, Plan, Debug, Multitask, and Ask — with mutually exclusive switching. Run `/mode` or press Shift-Tab to cycle modes in the TUI.
+- 2f97917: Keep `kimi -p` runs alive after a turn ends while a goal is still active or a cron task is pending, so goal continuations and cron fires run their turns instead of being cut off when the main turn finishes.
+
+### Patch Changes
+
+- f17a6ec: Treat a dismissed question prompt as the user choosing not to answer, instead of implicitly selecting the recommended option.
+- 7bd29ab: Rename the dynamic tool loading model capability from `select_tools` to `dynamically_loaded_tools`.
+- c6e02da: Add a print-mode background policy that lets `kimi -p` stay alive across background-task completions so the main agent can be steered into follow-up turns. Set `[background].print_background_mode = "steer"` to enable it.
+- bb28bae: Remove the local Kimi server, browser Web UI, and Electron desktop app from this fork. The `kimi server` and `kimi web` commands and the TUI `/web` slash command are no longer available.
+- 19c5aa6: Update the WebBridge install page link opened from the /plugins panel.
+
 ## 0.24.1
 
 ### Patch Changes

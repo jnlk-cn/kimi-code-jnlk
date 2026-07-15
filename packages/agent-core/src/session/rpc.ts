@@ -25,6 +25,7 @@ import type {
   RegisterToolPayload,
   SessionAPI,
   SetActiveToolsPayload,
+  SetInteractionModePayload,
   SetModelPayload,
   SetPermissionPayload,
   SetThinkingPayload,
@@ -184,6 +185,22 @@ export class SessionAPIImpl implements PromisableMethods<SessionAPI> {
 
   async getSwarmMode({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
     return (await this.getAgent(agentId)).getSwarmMode(payload);
+  }
+
+  async setInteractionMode({ agentId, ...payload }: AgentScopedPayload<SetInteractionModePayload>) {
+    return (await this.getAgent(agentId)).setInteractionMode(payload);
+  }
+
+  async getInteractionMode({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
+    return (await this.getAgent(agentId)).getInteractionMode(payload);
+  }
+
+  async getAskMode({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
+    return (await this.getAgent(agentId)).getAskMode(payload);
+  }
+
+  async getDebugMode({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
+    return (await this.getAgent(agentId)).getDebugMode(payload);
   }
 
   async beginCompaction({ agentId, ...payload }: AgentScopedPayload<BeginCompactionPayload>) {

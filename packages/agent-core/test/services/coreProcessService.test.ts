@@ -168,6 +168,7 @@ describe('BridgeClientAPI', () => {
 
     const toolResp = await api.toolCall({
       toolCallId: 'tc-2',
+      toolName: 'ExampleTool',
       args: {},
       sessionId: 'sess-1',
       agentId: 'main',

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Session, type QuestionHandler, type QuestionRequest, type QuestionResult } from '#/index';
-import type { SDKRpcClientBase } from '#/rpc';
+import { SDKRpcClientBase } from '#/rpc';
 
 describe('Session question handler', () => {
   it('registers a question handler and returns handler results', async () => {
@@ -101,6 +101,43 @@ describe('Session question handler', () => {
   });
 });
 
+describe('Session host tool handler', () => {
+  it('registers and routes custom tool calls by session and tool name', async () => {
+    const rpc = new HostToolRpc();
+    const session = new Session({
+      id: 'ses_host_tool',
+      workDir: '/tmp',
+      rpc,
+    });
+    await session.registerTool(
+      {
+        name: 'DesktopBrowser',
+        description: 'Inspect a browser page.',
+        parameters: { type: 'object' },
+      },
+      (args, context) => ({
+        output: JSON.stringify({ args, sessionId: context.sessionId }),
+      }),
+    );
+
+    await expect(
+      rpc.toolCall({
+        sessionId: session.id,
+        agentId: 'main',
+        toolCallId: 'tool_browser',
+        toolName: 'DesktopBrowser',
+        args: { action: 'inspect' },
+      }),
+    ).resolves.toEqual({
+      output: JSON.stringify({
+        args: { action: 'inspect' },
+        sessionId: session.id,
+      }),
+    });
+    expect(rpc.registered).toEqual(['DesktopBrowser']);
+  });
+});
+
 function questionRequest(question: string): QuestionRequest {
   return {
     questions: [
@@ -110,6 +147,18 @@ function questionRequest(question: string): QuestionRequest {
       },
     ],
   };
+}
+
+class HostToolRpc extends SDKRpcClientBase {
+  readonly registered: string[] = [];
+
+  protected async getRpc() {
+    return {
+      registerTool: async (input: { readonly name: string }) => {
+        this.registered.push(input.name);
+      },
+    } as never;
+  }
 }
 
 class FakeSDKRpcClient {

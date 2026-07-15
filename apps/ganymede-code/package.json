@@ -1,0 +1,52 @@
+{
+  "name": "@moonshot-ai/ganymede-code",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Ganymede Code local-first agent desktop workspace",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/main/index.js",
+  "scripts": {
+    "build:deps": "pnpm --filter @moonshot-ai/kimi-code-sdk... build",
+    "build:native": "node scripts/build-native.mjs",
+    "predev": "pnpm run build:deps && pnpm run build:native",
+    "dev": "electron-vite dev",
+    "predev:web": "pnpm run build:deps && pnpm run build:native",
+    "dev:web": "node scripts/dev-web.mjs",
+    "prebuild": "pnpm run build:deps && pnpm run build:native",
+    "build": "electron-vite build",
+    "package": "pnpm run build && electron-builder --mac dmg zip --publish never",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "clean": "rm -rf dist release"
+  },
+  "dependencies": {
+    "@moonshot-ai/kimi-code-sdk": "workspace:^",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "lucide-react": "^1.24.0",
+    "node-pty": "^1.1.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "rrule": "^2.8.1",
+    "sf-symbols-lib": "^2.0.1",
+    "zod": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "vite": "^6.4.2",
+    "vitest": "4.1.4"
+  }
+}

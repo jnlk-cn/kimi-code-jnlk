@@ -87,6 +87,15 @@ async function loadSSHModule(options: CreateHarnessOptions = {}): Promise<{
       });
     }
 
+    exec(_command: string, callback: (err: Error | undefined, channel: EventEmitter) => void): void {
+      const channel = new EventEmitter();
+      callback(undefined, channel);
+      setImmediate(() => {
+        channel.emit('data', Buffer.from('Linux\nx64\n6.1.0\n'));
+        channel.emit('close');
+      });
+    }
+
     sftp(callback: (err?: Error, sftp?: SFTPWrapper) => void): void {
       if (options.sftpError) {
         callback(options.sftpError);

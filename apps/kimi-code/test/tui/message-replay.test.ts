@@ -180,6 +180,7 @@ function makeSession(
       model: 'k2',
       thinkingEffort: 'off',
       permission: 'manual',
+      interactionMode: 'agent',
       planMode: false,
       contextTokens: 0,
       maxContextTokens: 100,

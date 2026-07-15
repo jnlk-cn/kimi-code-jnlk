@@ -343,6 +343,8 @@ export interface McpOAuthAuthorizationUrlUpdateData {
 
 export type TurnEndReason = 'completed' | 'cancelled' | 'failed' | 'filtered';
 
+export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask';
+
 export interface AgentStatusUpdatedEvent {
   readonly type: 'agent.status.updated';
   readonly model?: string;
@@ -351,6 +353,9 @@ export interface AgentStatusUpdatedEvent {
   readonly contextUsage?: number;
   readonly planMode?: boolean;
   readonly swarmMode?: boolean;
+  readonly askMode?: boolean;
+  readonly debugMode?: boolean;
+  readonly interactionMode?: InteractionMode;
   readonly permission?: PermissionMode;
   readonly usage?: UsageStatus;
 }
@@ -1052,6 +1057,14 @@ export const mcpOAuthAuthorizationUrlUpdateDataSchema = z.object({
 
 export const turnEndReasonSchema = z.enum(['completed', 'cancelled', 'failed', 'filtered']) satisfies z.ZodType<TurnEndReason>;
 
+export const interactionModeSchema = z.enum([
+  'agent',
+  'plan',
+  'debug',
+  'multitask',
+  'ask',
+]) satisfies z.ZodType<InteractionMode>;
+
 export const agentStatusUpdatedEventSchema = z.object({
   type: z.literal('agent.status.updated'),
   model: z.string().optional(),
@@ -1060,6 +1073,9 @@ export const agentStatusUpdatedEventSchema = z.object({
   contextUsage: z.number().optional(),
   planMode: z.boolean().optional(),
   swarmMode: z.boolean().optional(),
+  askMode: z.boolean().optional(),
+  debugMode: z.boolean().optional(),
+  interactionMode: interactionModeSchema.optional(),
   permission: permissionModeSchema.optional(),
   usage: usageStatusSchema.optional(),
 }) satisfies z.ZodType<AgentStatusUpdatedEvent>;

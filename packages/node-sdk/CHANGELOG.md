@@ -1,5 +1,17 @@
 # @moonshot-ai/kimi-code-sdk
 
+## 0.14.0
+
+### Minor Changes
+
+- Add desktop host APIs for multi-session management, workspace skill discovery, and host tool registration.
+- Add five interaction modes — Agent, Plan, Debug, Multitask, and Ask — with mutually exclusive switching. Run `/mode` or press Shift-Tab to cycle modes in the TUI.
+
+### Patch Changes
+
+- 7bd29ab: Rename the dynamic tool loading model capability from `select_tools` to `dynamically_loaded_tools`.
+- Add catalog-backed desktop model setup with per-model thinking controls and DeepSeek V4 compatibility. Configure models under Settings → Models & Thinking.
+
 ## 0.13.2
 
 ### Patch Changes

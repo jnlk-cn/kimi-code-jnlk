@@ -27,6 +27,7 @@ import { formatErrorMessage } from '../utils/event-payload';
 import { thinkingEffortToConfig } from '../utils/thinking-config';
 import { showUsage } from './info';
 import { setExperimentalFeatures } from './experimental-flags';
+import { showModePicker } from './mode';
 import type { SlashCommandHost } from './dispatch';
 
 // ---------------------------------------------------------------------------
@@ -73,8 +74,14 @@ export async function handlePlanCommand(host: SlashCommandHost, args: string): P
 
 async function applyPlanMode(host: SlashCommandHost, session: Session, enabled: boolean): Promise<void> {
   try {
-    await session.setPlanMode(enabled);
-    host.setAppState({ planMode: enabled });
+    await session.setInteractionMode(enabled ? 'plan' : 'agent');
+    host.setAppState({
+      interactionMode: enabled ? 'plan' : 'agent',
+      planMode: enabled,
+      swarmMode: false,
+      askMode: false,
+      debugMode: false,
+    });
     if (enabled) {
       const plan = await session.getPlan().catch(() => null);
       host.showNotice(
@@ -713,6 +720,7 @@ function handleSettingsSelection(host: SlashCommandHost, value: SettingsSelectio
   host.restoreEditor();
   switch (value) {
     case 'model': showModelPicker(host); return;
+    case 'mode': showModePicker(host); return;
     case 'permission': showPermissionPicker(host); return;
     case 'theme': showThemePicker(host); return;
     case 'editor': showEditorPicker(host); return;

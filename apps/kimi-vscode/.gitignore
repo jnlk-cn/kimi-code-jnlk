@@ -1,0 +1,4 @@
+# Build output is already ignored by the repo-root `dist/` rule.
+# Keep this file for app-local scratch.
+.tmp/
+*.vsix
