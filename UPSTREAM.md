@@ -12,7 +12,7 @@ The fork is distributed under the same [MIT License](LICENSE) as upstream. The c
 - **This fork**: https://github.com/jnlk-cn/kimi-code-jnlk
 - **Maintainer**: community fork (`jnlk-cn`), not Moonshot AI
 
-Changes in this fork that are not yet accepted upstream are listed in [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md) under this fork's release versions.
+User-facing fork release notes live in [CHANGELOG.md](CHANGELOG.md) at the repository root (synced to `docs/en/release-notes/changelog.md`). Package-level changesets history is in [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md).
 
 ## Installing from this fork
 

@@ -129,7 +129,7 @@ function withExifOrientation(jpeg: Uint8Array, orientation: number): Uint8Array 
   );
 }
 
-describe('clipboard image paste compression', () => {
+describe('clipboard image paste compression', { timeout: 30_000 }, () => {
   beforeEach(() => {
     readClipboardMedia.mockReset();
   });

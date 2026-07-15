@@ -6,6 +6,27 @@ outline: 2
 
 本页记录 Kimi Code CLI 每个版本的变更内容。
 
+## 0.25.0（2026-07-15）
+
+### 新功能
+
+- 新增五种交互模式——Agent、Plan、Debug、Multitask、Ask——互斥切换。在 TUI 中运行 `/mode` 或按 Shift-Tab 循环切换。
+- 当目标仍活跃或 cron 任务待执行时，`kimi -p` 在轮次结束后保持运行，避免 goal 延续与定时任务被提前切断。
+- 设置 `[background].print_background_mode = "steer"`，让 print 模式在后台任务完成后保持运行并接受后续 steer。
+- `/provider` 与 `kimi provider catalog` 默认使用本 fork 的已验证 provider 白名单镜像（当前为 DeepSeek V4），而非完整 models.dev 目录。
+
+### 修复
+
+- 将关闭的问题提示视为用户未作答，而非隐式选择推荐项。
+
+### 优化
+
+- 更新 `/plugins` 面板打开的 WebBridge 安装页链接。
+
+### 其他
+
+- 本 fork 移除 `kimi server`、`kimi web` 命令及 TUI `/web` 斜杠命令。桌面工作台请使用 Ganymede Code，IDE 集成请使用 `kimi acp`。
+
 ## 0.24.1（2026-07-09）
 
 ### 优化

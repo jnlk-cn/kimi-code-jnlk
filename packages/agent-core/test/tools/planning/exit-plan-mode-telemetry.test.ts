@@ -51,6 +51,20 @@ function makeAgent(input: {
         return false;
       },
     },
+    askMode: {
+      get isActive() {
+        return false;
+      },
+      enter: vi.fn(),
+      exit: vi.fn(),
+    },
+    debugMode: {
+      get isActive() {
+        return false;
+      },
+      enter: vi.fn(),
+      exit: vi.fn(),
+    },
     permission: { mode: input.mode },
     type: 'main',
     config: { cwd: '/workspace' },

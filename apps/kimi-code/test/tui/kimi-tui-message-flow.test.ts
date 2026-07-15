@@ -273,6 +273,12 @@ function makeHarness(session = makeSession(), overrides: Record<string, unknown>
           feedbackId: 3,
         }),
       ),
+      createFeedbackUploadUrl: vi.fn(async () => ({
+        kind: 'ok' as const,
+        uploadId: 'upload-1',
+        parts: [{ url: 'https://example.test/upload', headers: {} }],
+      })),
+      completeFeedbackUpload: vi.fn(async () => ({ kind: 'ok' as const })),
     },
     ...overrides,
   };
@@ -552,7 +558,7 @@ command = "vim"
     vi.mocked(promptFeedbackInput).mockImplementation(async () => ({ value: 'useful feedback' }));
     vi.mocked(promptFeedbackAttachment).mockImplementation(async () => 'logs');
     harness.auth.submitFeedback.mockResolvedValueOnce({ kind: 'ok', feedbackId: 3 });
-    harness.listSessions.mockResolvedValueOnce([{ id: 'ses-1', sessionDir: '/tmp/session-a' }] as never);
+    harness.listSessions.mockResolvedValue([{ id: 'ses-1', sessionDir: '/tmp/session-a' }] as never);
 
     const zipPath = await makeExportedSessionZip();
     let resolveExport!: () => void;
@@ -622,7 +628,7 @@ command = "vim"
     vi.mocked(promptFeedbackInput).mockImplementation(async () => ({ value: 'useful feedback' }));
     vi.mocked(promptFeedbackAttachment).mockImplementation(async () => 'logs+codebase');
     harness.auth.submitFeedback.mockResolvedValueOnce({ kind: 'ok', feedbackId: 3 });
-    harness.listSessions.mockResolvedValueOnce([
+    harness.listSessions.mockResolvedValue([
       { id: 'ses-1', sessionDir: '/tmp/session-a' },
     ] as never);
 
@@ -709,7 +715,7 @@ command = "vim"
     vi.mocked(promptFeedbackInput).mockImplementation(async () => ({ value: 'useful feedback' }));
     vi.mocked(promptFeedbackAttachment).mockImplementation(async () => 'logs+codebase');
     harness.auth.submitFeedback.mockResolvedValueOnce({ kind: 'ok', feedbackId: 3 });
-    harness.listSessions.mockResolvedValueOnce([{ id: 'ses-1', sessionDir: '/tmp/session-a' }] as never);
+    harness.listSessions.mockResolvedValue([{ id: 'ses-1', sessionDir: '/tmp/session-a' }] as never);
     const sessionZipPath = await makeExportedSessionZip();
     vi.mocked(scanCodebase).mockRejectedValueOnce(new Error('scan failed'));
     harness.exportSession.mockResolvedValueOnce({
@@ -759,7 +765,7 @@ command = "vim"
     vi.mocked(promptFeedbackInput).mockImplementation(async () => ({ value: 'useful feedback' }));
     vi.mocked(promptFeedbackAttachment).mockImplementation(async () => 'logs+codebase');
     harness.auth.submitFeedback.mockResolvedValueOnce({ kind: 'ok', feedbackId: 3 });
-    harness.listSessions.mockResolvedValueOnce([{ id: 'ses-1', sessionDir: '/tmp/session-a' }] as never);
+    harness.listSessions.mockResolvedValue([{ id: 'ses-1', sessionDir: '/tmp/session-a' }] as never);
     const sessionZipPath = await makeExportedSessionZip();
 
     vi.mocked(scanCodebase).mockResolvedValueOnce({

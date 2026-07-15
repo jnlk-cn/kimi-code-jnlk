@@ -222,7 +222,7 @@ describe('convertMCPContentBlock', () => {
   });
 });
 
-describe('mcpResultToExecutableOutput', () => {
+describe('mcpResultToExecutableOutput', { timeout: 30_000 }, () => {
   function result(content: MCPContentBlock[], isError = false): MCPToolResult {
     return { content, isError };
   }

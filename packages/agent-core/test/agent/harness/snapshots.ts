@@ -221,6 +221,18 @@ function formatText(text: string): string {
   if (isAutoModeExitReminder(text)) {
     return '<auto-mode-exit-reminder>';
   }
+  if (isAskModeEnterReminder(text)) {
+    return '<ask-mode-enter-reminder>';
+  }
+  if (isAskModeExitReminder(text)) {
+    return '<ask-mode-exit-reminder>';
+  }
+  if (isDebugModeEnterReminder(text)) {
+    return '<debug-mode-enter-reminder>';
+  }
+  if (isDebugModeExitReminder(text)) {
+    return '<debug-mode-exit-reminder>';
+  }
   if (isPlanModeReminder(text)) {
     return '<plan-mode-reminder>';
   }
@@ -252,6 +264,10 @@ function normalizeValue(value: unknown, uuidLabels: Map<string, string>): unknow
   if (typeof value === 'string') {
     if (isAutoModeEnterReminder(value)) return '<auto-mode-enter-reminder>';
     if (isAutoModeExitReminder(value)) return '<auto-mode-exit-reminder>';
+    if (isAskModeEnterReminder(value)) return '<ask-mode-enter-reminder>';
+    if (isAskModeExitReminder(value)) return '<ask-mode-exit-reminder>';
+    if (isDebugModeEnterReminder(value)) return '<debug-mode-enter-reminder>';
+    if (isDebugModeExitReminder(value)) return '<debug-mode-exit-reminder>';
     if (isPlanModeReminder(value)) return '<plan-mode-reminder>';
     if (!isUuid(value)) return value;
     let label = uuidLabels.get(value);
@@ -338,4 +354,20 @@ function isAutoModeEnterReminder(value: string): boolean {
 
 function isAutoModeExitReminder(value: string): boolean {
   return value.includes('Auto permission mode is no longer active.');
+}
+
+function isAskModeEnterReminder(value: string): boolean {
+  return value.includes('You are now in ask (Q&A) mode.');
+}
+
+function isAskModeExitReminder(value: string): boolean {
+  return value.includes('Ask mode is no longer active.');
+}
+
+function isDebugModeEnterReminder(value: string): boolean {
+  return value.includes('You are now in debug / troubleshooting mode.');
+}
+
+function isDebugModeExitReminder(value: string): boolean {
+  return value.includes('Debug / troubleshooting mode is no longer active.');
 }

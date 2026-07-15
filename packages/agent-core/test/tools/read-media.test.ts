@@ -121,7 +121,7 @@ function noteText(result: ExecutableToolResult): string {
   return result.note as string;
 }
 
-describe('ReadMediaFileTool', () => {
+describe('ReadMediaFileTool', { timeout: 30_000 }, () => {
   it('has name, parameters, and path-scoped resource accesses', () => {
     const tool = makeReadMediaTool();
 

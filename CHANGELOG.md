@@ -1,10 +1,12 @@
----
-outline: 2
----
-
 # Changelog
 
-This page documents the changes in each Kimi Code CLI release.
+User-facing release notes for the **kimi-code-jnlk** fork. The English docs page at `docs/en/release-notes/changelog.md` is synced from this file via `node docs/scripts/sync-changelog.mjs`.
+
+Product-specific changelogs:
+
+- CLI package: [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md)
+- Ganymede Code desktop: [apps/ganymede-code/CHANGELOG.md](apps/ganymede-code/CHANGELOG.md)
+- VS Code / Cursor extension: [apps/kimi-vscode/CHANGELOG.md](apps/kimi-vscode/CHANGELOG.md)
 
 ## 0.25.0 (2026-07-15)
 

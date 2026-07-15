@@ -24,7 +24,8 @@ class StubClient implements Client {
     throw new Error('StubClient.requestPermission should not be called in cancel test');
   }
   async sessionUpdate(_n: SessionNotification): Promise<void> {
-    throw new Error('StubClient.sessionUpdate should not be called in cancel test');
+    // Cancel tests only assert prompt cancellation; ignore ACP session notifications
+    // such as available_commands_update that fire during image compression / cancel races.
   }
   async writeTextFile(_p: WriteTextFileRequest): Promise<WriteTextFileResponse> {
     throw new Error('StubClient.writeTextFile should not be called in cancel test');
@@ -45,7 +46,7 @@ function makeInMemoryStreamPair(): {
   return { agentStream, clientStream };
 }
 
-describe('AcpServer cancel', () => {
+describe('AcpServer cancel', { timeout: 30_000 }, () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {

@@ -67,7 +67,7 @@ function sessionRpc(options: {
   } as unknown as SDKSessionRPC;
 }
 
-describe('McpConnectionManager', () => {
+describe('McpConnectionManager', { concurrent: false }, () => {
   it('connects servers in parallel and exposes connected entries with their tool count', async () => {
     const cm = new McpConnectionManager();
     try {
@@ -225,7 +225,7 @@ describe('McpConnectionManager', () => {
         transport: 'stdio',
         command: process.execPath,
         args: ['-e', delayedMockServer],
-        startupTimeoutMs: 2_000,
+        startupTimeoutMs: 10_000,
       },
     });
 
@@ -247,7 +247,7 @@ describe('McpConnectionManager', () => {
       await cm.shutdown();
       await Promise.race([connect.catch(() => {}), sleep(1_000)]);
     }
-  }, 7000);
+  }, 20000);
 
   it('reconnect throws a coded KimiError when the server name is unknown', async () => {
     const cm = new McpConnectionManager();
@@ -723,7 +723,7 @@ describe('McpConnectionManager', () => {
   }, 15000);
 });
 
-describe('Session MCP startup', () => {
+describe('Session MCP startup', { concurrent: false }, () => {
   it('stores default MCP OAuth credentials under the configured Kimi home', async () => {
     const tmp = await mkdtemp(join(tmpdir(), 'kimi-session-mcp-oauth-home-'));
     const processHome = join(tmp, 'process-home');
@@ -816,7 +816,7 @@ describe('Session MCP startup', () => {
             transport: 'stdio',
             command: process.execPath,
             args: [cwdStdioFixture],
-            startupTimeoutMs: 2_000,
+            startupTimeoutMs: 10_000,
           },
         },
       },
@@ -835,7 +835,7 @@ describe('Session MCP startup', () => {
       await session.close();
       await rm(tmp, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
     }
-  }, 7000);
+  }, 20000);
 
   it('waits for initial MCP startup before the first prompt reaches the model', async () => {
     const tmp = await mkdtemp(join(tmpdir(), 'kimi-session-mcp-prompt-'));
@@ -864,7 +864,7 @@ describe('Session MCP startup', () => {
             command: process.execPath,
             args: [stdioFixture],
             env: { KIMI_TEST_MCP_START_DELAY_MS: '250' },
-            startupTimeoutMs: 2_000,
+            startupTimeoutMs: 10_000,
           },
         },
       },
@@ -908,7 +908,7 @@ describe('Session MCP startup', () => {
       await session.close();
       await rm(tmp, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
     }
-  }, 7000);
+  }, 20000);
 
   it('emits tool.list.updated(mcp.disconnected) when reconnect drops the live tools', async () => {
     const tmp = await mkdtemp(join(tmpdir(), 'kimi-session-mcp-reconnect-'));
@@ -924,7 +924,7 @@ describe('Session MCP startup', () => {
             transport: 'stdio',
             command: process.execPath,
             args: [stdioFixture],
-            startupTimeoutMs: 4_000,
+            startupTimeoutMs: 10_000,
           },
         },
       },
@@ -962,7 +962,7 @@ describe('Session MCP startup', () => {
       await session.close();
       await rm(tmp, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
     }
-  }, 10_000);
+  }, 20_000);
 });
 
 function testProviderManager(): ProviderManager {

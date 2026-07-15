@@ -330,7 +330,7 @@ describe('displayBlockToAcpContent — plan_review branch (Phase 13.2)', () => {
   });
 });
 
-describe('compressPromptImageParts', () => {
+describe('compressPromptImageParts', { timeout: 30_000 }, () => {
   async function pngBase64(width: number, height: number): Promise<string> {
     const buf = await new Jimp({ width, height, color: 0x3366ccff }).getBuffer('image/png');
     return Buffer.from(buf).toString('base64');

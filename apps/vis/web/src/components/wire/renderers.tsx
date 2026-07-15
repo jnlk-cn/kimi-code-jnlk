@@ -553,6 +553,48 @@ export const WIRE_RENDERERS: RendererMap = {
     headline: () => ({ main: <Dim>swarm mode exited</Dim> }),
   },
 
+  'ask_mode.enter': {
+    tone: 'lifecycle',
+    label: 'ask↻',
+    headline: () => ({
+      main: (
+        <span className="flex items-center gap-2">
+          <Pill tone="lifecycle" variant="soft">
+            enter
+          </Pill>
+          <Dim>ask mode</Dim>
+        </span>
+      ),
+    }),
+  },
+
+  'ask_mode.exit': {
+    tone: 'lifecycle',
+    label: 'ask✓',
+    headline: () => ({ main: <Dim>ask mode exited</Dim> }),
+  },
+
+  'debug_mode.enter': {
+    tone: 'lifecycle',
+    label: 'debug↻',
+    headline: () => ({
+      main: (
+        <span className="flex items-center gap-2">
+          <Pill tone="lifecycle" variant="soft">
+            enter
+          </Pill>
+          <Dim>debug mode</Dim>
+        </span>
+      ),
+    }),
+  },
+
+  'debug_mode.exit': {
+    tone: 'lifecycle',
+    label: 'debug✓',
+    headline: () => ({ main: <Dim>debug mode exited</Dim> }),
+  },
+
   'goal.create': {
     tone: 'lifecycle',
     label: 'goal+',
