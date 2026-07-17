@@ -6,7 +6,7 @@ export { INTERACTION_MODES, isInteractionMode } from './types';
 
 /**
  * Coordinates mutually exclusive interaction modes on a single agent.
- * Derives the current mode from Ask / Debug / Plan / Swarm flags.
+ * Derives the current mode from Ask / Debug / Plan / Swarm / Engineering flags.
  */
 export class InteractionModeManager {
   constructor(protected readonly agent: Agent) {}
@@ -16,6 +16,7 @@ export class InteractionModeManager {
     if (this.agent.debugMode.isActive) return 'debug';
     if (this.agent.planMode.isActive) return 'plan';
     if (this.agent.swarmMode.isActive) return 'multitask';
+    if (this.agent.engineeringMode.isActive) return 'engineering';
     return 'agent';
   }
 
@@ -42,6 +43,9 @@ export class InteractionModeManager {
       case 'multitask':
         this.agent.swarmMode.enter('manual');
         break;
+      case 'engineering':
+        this.agent.engineeringMode.enter();
+        break;
       default: {
         const _exhaustive: never = mode;
         throw new Error(`Unhandled InteractionMode: ${String(_exhaustive)}`);
@@ -53,6 +57,7 @@ export class InteractionModeManager {
   async prepareForLegacyPlan(): Promise<void> {
     this.agent.askMode.exit();
     this.agent.debugMode.exit();
+    this.agent.engineeringMode.exit();
     if (this.agent.swarmMode.isActive) {
       this.agent.swarmMode.exit();
     }
@@ -61,6 +66,7 @@ export class InteractionModeManager {
   prepareForLegacySwarm(): void {
     this.agent.askMode.exit();
     this.agent.debugMode.exit();
+    this.agent.engineeringMode.exit();
     if (this.agent.planMode.isActive) {
       this.agent.planMode.cancel();
     }
@@ -69,6 +75,7 @@ export class InteractionModeManager {
   private async exitAll(): Promise<void> {
     this.agent.askMode.exit();
     this.agent.debugMode.exit();
+    this.agent.engineeringMode.exit();
     if (this.agent.planMode.isActive) {
       this.agent.planMode.cancel();
     }

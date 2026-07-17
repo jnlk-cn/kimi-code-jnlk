@@ -15,6 +15,7 @@ const MODE_DESCRIPTIONS_EN: Record<InteractionMode, string> = {
   debug: 'Troubleshooting mode with step timing details.',
   multitask: 'Run coordinated multitask / swarm agents.',
   ask: 'Read-only Q&A — answer questions without editing.',
+  engineering: 'Structured software-engineering workflows (design → plan → TDD → review).',
 };
 
 const MODE_DESCRIPTIONS_ZH: Record<InteractionMode, string> = {
@@ -23,6 +24,7 @@ const MODE_DESCRIPTIONS_ZH: Record<InteractionMode, string> = {
   debug: '排障模式，展示步骤耗时等细节。',
   multitask: '集群 / 多智能体协同执行。',
   ask: '只读问答，回答问题但不改代码。',
+  engineering: '系统化软件工程工作流（设计 → 计划 → TDD → 评审）。',
 };
 
 function modeOptions(): ChoiceOption[] {

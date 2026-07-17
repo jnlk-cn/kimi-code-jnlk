@@ -2,12 +2,12 @@
 
 当前版本：**0.2.0**。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-Ganymede Code 是基于 Electron 与 `@moonshot-ai/kimi-code-sdk` 的本地优先桌面代理工作台。主进程直接托管 SDK 会话，渲染进程通过受限、类型化的 preload API 使用项目、Git、终端、浏览器和自动化能力。
+Ganymede Code（`@jnlk.zone/ganymede-code`）是基于 Electron 与 `@moonshot-ai/kimi-code-sdk` 的本地优先桌面代理工作台。主进程直接托管 SDK 会话，渲染进程通过受限、类型化的 preload API 使用项目、Git、终端、浏览器和自动化能力。运行时数据默认在 `~/.ganymede`（可用 `GANYMEDE_HOME` 覆盖），项目级配置在 `.ganymede/`，与 Kimi CLI 的 `.kimi-code` 分离。
 
 ## 功能
 
 - 多项目、多会话、流式工具时间线、审批与结构化追问
-- 五种交互模式：助理、计划、排障、集群、问答（权限与模式正交）
+- 六种交互模式：助理、工程、计划、排障、集群、问答（权限与模式正交；工程模式内建 KimiCodeBoost 工作流技能）
 - Local / 托管 Worktree、Git diff、暂存、提交、推送和 GitHub PR
 - 多标签终端、文件浏览/编辑、PDF 与图片预览
 - 内置浏览器、页面截图、Chrome bridge 和 macOS Computer Use helper

@@ -52,12 +52,16 @@ export {
 // RootLogger / getRootLogger / LoggingConfig stay inside agent-core.
 export {
   flushDiagnosticLogs,
+  GANYMEDE_BRAND,
+  KIMI_CODE_BRAND,
   log,
   redact,
+  resolveGanymedeHome,
   resolveGlobalLogPath,
   resolveKimiHome,
+  resolveUserHome,
 } from '@moonshot-ai/agent-core';
-export type { LogContext, LogLevel, LogPayload, Logger } from '@moonshot-ai/agent-core';
+export type { LogContext, LogLevel, LogPayload, Logger, ProductBrand } from '@moonshot-ai/agent-core';
 
 // Host-side config helpers — safe config reader + config path resolution, used
 // by hosts (e.g. the CLI's server telemetry bootstrap) that need to inspect
@@ -137,3 +141,10 @@ export {
   isInteractionMode,
 } from '#/interaction-mode';
 export type { InteractionModeToggles } from '#/interaction-mode';
+
+// DeepSeek billing helpers — balance fetch, embedded CNY rates, peak-hour
+// detection, and session cost accumulation shared by the CLI footer and
+// Ganymede SummaryPanel.
+export * from '#/deepseek/balance';
+export * from '#/deepseek/pricing';
+export * from '#/deepseek/telemetry';

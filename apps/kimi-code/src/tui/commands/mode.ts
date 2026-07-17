@@ -19,7 +19,9 @@ export async function handleModeCommand(host: SlashCommandHost, args: string): P
     return;
   }
   if (!isInteractionMode(trimmed)) {
-    host.showError(`Unknown mode: ${trimmed}. Use agent, plan, debug, multitask, or ask.`);
+    host.showError(
+      `Unknown mode: ${trimmed}. Use agent, plan, debug, multitask, ask, or engineering.`,
+    );
     return;
   }
   await applyInteractionMode(host, trimmed);

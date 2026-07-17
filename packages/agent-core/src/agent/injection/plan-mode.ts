@@ -97,6 +97,23 @@ Workflow:
   4. Write Plan — modify the plan file with Write or Edit. Use Write if the plan file does not exist yet.
   5. Exit — call ExitPlanMode for user approval.
 
+## Plan file format
+Prefer a Cursor-style plan document:
+  - YAML frontmatter with \`name\`, \`overview\`, and \`todos\` (each todo: \`id\`, \`content\`, \`status\`).
+  - Todo \`status\` must be one of: pending, in_progress, completed, cancelled.
+  - Markdown body after the closing frontmatter fence, with GFM tables and fenced code as needed.
+  - Include fenced mermaid diagrams (language tag \`mermaid\`) for architecture, root-cause maps, or sequence/data flows when helpful.
+
+Example frontmatter shape:
+  name: Short plan title
+  overview: One-sentence summary
+  todos:
+    - id: step-1
+      content: Concrete implementation step
+      status: pending
+
+Mermaid tips: use camelCase/PascalCase node IDs (no spaces); give subgraphs explicit IDs with labels in brackets; quote edge labels that contain special characters; do not use reserved words such as \`end\` as node IDs.
+
 ## Handling multiple approaches
 Keep it focused: at most 2-3 meaningfully different approaches. Do NOT pad with minor variations — if one approach is clearly superior, just propose that one.
 When the best approach depends on user preferences, constraints, or context you don't have, use AskUserQuestion to clarify first. This helps you write a better, more targeted plan rather than dumping multiple options for the user to sort through.

@@ -1464,6 +1464,7 @@ export class KimiTUI {
       swarmMode: status.swarmMode,
       askMode: status.askMode,
       debugMode: status.debugMode,
+      engineeringMode: status.engineeringMode,
       interactionMode: status.interactionMode,
     });
     const toggles = interactionModeToToggles(interactionMode);

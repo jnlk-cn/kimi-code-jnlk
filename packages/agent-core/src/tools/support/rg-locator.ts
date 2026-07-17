@@ -125,8 +125,12 @@ function rgBinaryName(): string {
 }
 
 function getShareDir(): string {
-  const override = process.env['KIMI_CODE_HOME'];
-  if (override !== undefined && override !== '') return override;
+  // Prefer the active product home when a host set it; Ganymede uses
+  // GANYMEDE_HOME, Kimi CLI uses KIMI_CODE_HOME.
+  const ganymede = process.env['GANYMEDE_HOME'];
+  if (ganymede !== undefined && ganymede !== '') return ganymede;
+  const kimi = process.env['KIMI_CODE_HOME'];
+  if (kimi !== undefined && kimi !== '') return kimi;
   return join(homedir(), '.kimi-code');
 }
 

@@ -229,6 +229,24 @@ describe('Session skills', () => {
     }
   });
 
+  it('bootstrapSkill passes mode bootstrap to RPC', async () => {
+    const activateSkill = vi.fn(async () => {});
+    const session = new Session({
+      id: 'ses_skill_bootstrap',
+      workDir: '/tmp/work',
+      rpc: {
+        activateSkill,
+      } as unknown as SDKRpcClientBase,
+    });
+
+    await session.bootstrapSkill('using-kimicodeboost');
+    expect(activateSkill).toHaveBeenCalledWith({
+      sessionId: 'ses_skill_bootstrap',
+      name: 'using-kimicodeboost',
+      mode: 'bootstrap',
+    });
+  });
+
   it('rejects empty names before calling RPC and rejects after close', async () => {
     const activateSkill = vi.fn(async () => {});
     const closeSession = vi.fn(async (_input: { readonly sessionId: string }) => {});

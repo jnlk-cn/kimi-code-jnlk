@@ -106,12 +106,15 @@ export class GlobTool implements BuiltinTool<GlobInput> {
   readonly description: string;
   readonly parameters: Record<string, unknown> = toInputJsonSchema(GlobInputSchema);
   private readonly telemetry: TelemetryClient;
+  private readonly shareDir: string | undefined;
   constructor(
     private readonly kaos: Kaos,
     private readonly workspace: WorkspaceConfig,
     telemetry: TelemetryClient = noopTelemetryClient,
+    shareDir?: string,
   ) {
     this.telemetry = telemetry;
+    this.shareDir = shareDir;
     this.description =
       this.kaos.pathClass() === 'win32'
         ? GLOB_DESCRIPTION + WINDOWS_PATH_HINT
@@ -178,7 +181,7 @@ export class GlobTool implements BuiltinTool<GlobInput> {
 
     let rgPath: string;
     try {
-      const resolution = await ensureRgPath({ signal });
+      const resolution = await ensureRgPath({ signal, shareDir: this.shareDir });
       rgPath = resolution.path;
       if (resolution.source !== 'system-path') {
         this.telemetry.track('glob_tool_rg_fallback', {

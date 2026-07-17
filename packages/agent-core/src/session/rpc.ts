@@ -203,6 +203,10 @@ export class SessionAPIImpl implements PromisableMethods<SessionAPI> {
     return (await this.getAgent(agentId)).getDebugMode(payload);
   }
 
+  async getEngineeringMode({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
+    return (await this.getAgent(agentId)).getEngineeringMode(payload);
+  }
+
   async beginCompaction({ agentId, ...payload }: AgentScopedPayload<BeginCompactionPayload>) {
     return (await this.getAgent(agentId)).beginCompaction(payload);
   }
@@ -289,6 +293,10 @@ export class SessionAPIImpl implements PromisableMethods<SessionAPI> {
 
   async getContext({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
     return (await this.getAgent(agentId)).getContext(payload);
+  }
+
+  async getContextUsageBreakdown({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {
+    return (await this.getAgent(agentId)).getContextUsageBreakdown(payload);
   }
 
   async getConfig({ agentId, ...payload }: AgentScopedPayload<EmptyPayload>) {

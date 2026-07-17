@@ -2,7 +2,12 @@ import { dirname, join } from 'pathe';
 
 import type { Kaos } from '@moonshot-ai/kaos';
 
-import { normalizeAdditionalDirs } from '../config';
+import {
+  brandLayout,
+  KIMI_CODE_BRAND,
+  normalizeAdditionalDirs,
+  type ProductBrand,
+} from '../config';
 import { listDirectory } from '../tools/support/list-directory';
 import type { SystemPromptContext } from './types';
 
@@ -24,6 +29,7 @@ export interface PreparedSystemPromptContext
 
 export interface PrepareSystemPromptContextOptions {
   readonly additionalDirs?: readonly string[];
+  readonly brand?: ProductBrand;
 }
 
 export async function prepareSystemPromptContext(
@@ -32,9 +38,10 @@ export async function prepareSystemPromptContext(
   options?: PrepareSystemPromptContextOptions,
 ): Promise<PreparedSystemPromptContext> {
   const additionalDirs = normalizeAdditionalDirs(options?.additionalDirs ?? []);
+  const brand = options?.brand ?? KIMI_CODE_BRAND;
   const [cwdListing, agentsMdResult, additionalDirsInfo] = await Promise.all([
     listDirectory(kaos, undefined, { collapseHiddenDirs: true }),
-    loadAgentsMdForRoots(kaos, brandHome, [kaos.getcwd()]),
+    loadAgentsMdForRoots(kaos, brandHome, [kaos.getcwd()], brand),
     loadAdditionalDirsInfo(kaos, additionalDirs),
   ]);
   return {
@@ -45,8 +52,12 @@ export async function prepareSystemPromptContext(
   };
 }
 
-export async function loadAgentsMd(kaos: Kaos, brandHome?: string): Promise<string> {
-  const result = await loadAgentsMdForRoots(kaos, brandHome, [kaos.getcwd()]);
+export async function loadAgentsMd(
+  kaos: Kaos,
+  brandHome?: string,
+  brand: ProductBrand = KIMI_CODE_BRAND,
+): Promise<string> {
+  const result = await loadAgentsMdForRoots(kaos, brandHome, [kaos.getcwd()], brand);
   return result.content;
 }
 
@@ -59,9 +70,11 @@ async function loadAgentsMdForRoots(
   kaos: Kaos,
   brandHome: string | undefined,
   workDirs: readonly string[],
+  brand: ProductBrand = KIMI_CODE_BRAND,
 ): Promise<LoadedAgentsMd> {
   const discovered: AgentFile[] = [];
   const seen = new Set<string>();
+  const layout = brandLayout(brand);
 
   const collect = async (path: string): Promise<boolean> => {
     const file = await readAgentFile(kaos, path);
@@ -74,10 +87,10 @@ async function loadAgentsMdForRoots(
   };
 
   // User-level files come first so any project-level AGENTS.md overrides them.
-  // The brand dir follows KIMI_CODE_HOME (default ~/.kimi-code); the generic
-  // .agents dir stays under the real OS home so it can be shared across tools.
+  // The brand dir follows the product home env; the generic .agents dir stays
+  // under the real OS home so it can be shared across tools.
   const realHome = kaos.gethome();
-  const brandDir = brandHome ?? join(realHome, '.kimi-code');
+  const brandDir = brandHome ?? join(realHome, layout.userHomeDirName);
   await collect(join(brandDir, 'AGENTS.md'));
 
   // Generic user-level dir (.agents) matches skill discovery.
@@ -96,7 +109,7 @@ async function loadAgentsMdForRoots(
     const dirs = dirsRootToLeaf(rootKaos, rootWorkDir, projectRoot);
 
     for (const dir of dirs) {
-      await collect(join(dir, '.kimi-code', 'AGENTS.md'));
+      await collect(join(dir, layout.projectDirName, 'AGENTS.md'));
       for (const fileName of ['AGENTS.md', 'agents.md']) {
         if (await collect(join(dir, fileName))) break;
       }

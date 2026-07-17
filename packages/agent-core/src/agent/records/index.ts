@@ -96,6 +96,12 @@ function restoreAgentRecord(agent: Agent, input: AgentRecord): void {
     case 'debug_mode.exit':
       agent.debugMode.exit();
       return;
+    case 'engineering_mode.enter':
+      agent.engineeringMode.restoreEnter();
+      return;
+    case 'engineering_mode.exit':
+      agent.engineeringMode.exit();
+      return;
     case 'context.append_message':
       agent.context.appendMessage(input.message);
       return;

@@ -66,6 +66,9 @@ export function compactionUserMessageDisposition(
     case 'user':
       return 'keep';
     case 'skill_activation':
+      return origin.trigger === 'user-slash' || origin.trigger === 'engineering-bootstrap'
+        ? 'keep'
+        : 'drop';
     case 'plugin_command':
       return origin.trigger === 'user-slash' ? 'keep' : 'drop';
     case 'injection':
@@ -101,9 +104,10 @@ export function isCompactionSummaryMessage(message: MessageLike): boolean {
 }
 
 /**
- * Keep only genuine user input (real user prompts and user-slash skill
- * activations). See `compactionUserMessageDisposition` for the full keep/drop
- * policy and the rationale for each origin.
+ * Keep only genuine user input (real user prompts, user-slash skill
+ * activations, and engineering-bootstrap preloads). See
+ * `compactionUserMessageDisposition` for the full keep/drop policy and the
+ * rationale for each origin.
  */
 export function isRealUserInput(message: MessageLike): boolean {
   return message.role === 'user' && compactionUserMessageDisposition(message.origin) === 'keep';

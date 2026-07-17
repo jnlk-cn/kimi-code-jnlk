@@ -1,10 +1,12 @@
+import { createServer } from 'node:net';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+import { gateResponse, isPortOpen } from '../scripts/vite-web-api-gate.mjs';
 import { WebDevBridge } from '../src/main/web-dev-bridge';
 
 async function freePort(): Promise<number> {
-  const { createServer } = await import('node:net');
   return await new Promise((resolve, reject) => {
     const server = createServer();
     server.listen(0, '127.0.0.1', () => {
@@ -18,6 +20,41 @@ async function freePort(): Promise<number> {
     });
   });
 }
+
+describe('vite web-api gate', () => {
+  it('returns health ready:false and 503 for other /api routes', () => {
+    expect(gateResponse('GET', '/api/health')).toEqual({
+      status: 200,
+      body: { ok: true, ready: false },
+    });
+    expect(gateResponse('POST', '/api/invoke')).toEqual({
+      status: 503,
+      body: { error: 'Web bridge not ready' },
+    });
+    expect(gateResponse('GET', '/api/events')).toEqual({
+      status: 503,
+      body: { error: 'Web bridge not ready' },
+    });
+    expect(gateResponse('GET', '/assets/app.js')).toBeNull();
+  });
+
+  it('detects whether the API port is listening', async () => {
+    const port = await freePort();
+    await expect(isPortOpen(port, 100)).resolves.toBe(false);
+
+    const server = createServer();
+    await new Promise<void>((resolve) => {
+      server.listen(port, '127.0.0.1', () => resolve());
+    });
+    try {
+      await expect(isPortOpen(port, 100)).resolves.toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    }
+  });
+});
 
 describe('WebDevBridge', () => {
   let bridge: WebDevBridge | undefined;

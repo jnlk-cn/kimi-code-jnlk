@@ -36,6 +36,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./deepseek/format": {
+      "types": "./src/deepseek/format.ts",
+      "default": "./src/deepseek/format.ts"
     }
   },
   "publishConfig": {

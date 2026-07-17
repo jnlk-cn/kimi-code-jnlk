@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BrowserWindow,
   WebContentsView,
+  nativeTheme,
   shell,
   type Rectangle,
 } from 'electron';
@@ -14,6 +15,7 @@ import {
   type BrowserAnnotation,
   type BrowserTab,
 } from '../shared/contracts';
+import { hexToRgbTriplet, resolveAccentColor } from '../shared/theme-accent';
 import { createScopedLogger } from './logging';
 
 type Emit = (channel: string, payload: unknown) => void;
@@ -187,6 +189,9 @@ export class BrowserManager {
   async annotate(id: string): Promise<BrowserAnnotation | undefined> {
     const browser = this.require(id);
     const contents = browser.view.webContents;
+    const settings = this.settings();
+    const accent = resolveAccentColor(settings, !nativeTheme.shouldUseDarkColors);
+    const accentRgb = hexToRgbTriplet(accent) ?? '79, 168, 255';
     const selected = (await contents.executeJavaScript(`new Promise((resolve) => {
       if (typeof window.__ganymedeAnnotationCancel === 'function') {
         window.__ganymedeAnnotationCancel();
@@ -204,8 +209,8 @@ export class BrowserManager {
       highlight.id = '__ganymede_annotation_highlight';
       Object.assign(highlight.style, {
         position: 'fixed', zIndex: '2147483646', display: 'none',
-        border: '2px solid #7c8cff', borderRadius: '3px',
-        background: 'rgba(124,140,255,.12)', pointerEvents: 'none',
+        border: '2px solid ${accent}', borderRadius: '3px',
+        background: 'rgba(${accentRgb},.12)', pointerEvents: 'none',
         boxSizing: 'border-box'
       });
       document.documentElement.appendChild(banner);

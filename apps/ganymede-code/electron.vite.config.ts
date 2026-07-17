@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
 
+import { createWebApiGatePlugin } from './scripts/vite-web-api-gate.mjs';
+
 const sdkDist = fileURLToPath(
   new URL('../../packages/node-sdk/dist/index.mjs', import.meta.url),
 );
@@ -22,7 +24,7 @@ export default defineConfig({
         exclude: ['@moonshot-ai/kimi-code-sdk', 'rrule'],
       },
       rollupOptions: {
-        external: ['electron', 'node-pty'],
+        external: ['electron', 'node-pty', '@huggingface/transformers', 'chokidar'],
       },
     },
   },
@@ -40,14 +42,9 @@ export default defineConfig({
   },
   renderer: {
     base: './',
-    plugins: [react()],
+    plugins: [react(), createWebApiGatePlugin(webApiPort)],
     build: {
       outDir: 'dist/renderer',
-    },
-    resolve: {
-      alias: {
-        '#': fileURLToPath(new URL('./src', import.meta.url)),
-      },
     },
     server: {
       port: rendererPort,
@@ -56,6 +53,19 @@ export default defineConfig({
         '/api': {
           target: `http://127.0.0.1:${webApiPort}`,
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (_err, _req, res) => {
+              if (
+                res !== undefined &&
+                'writeHead' in res &&
+                typeof res.writeHead === 'function' &&
+                !res.headersSent
+              ) {
+                res.writeHead(503, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Web bridge not ready' }));
+              }
+            });
+          },
         },
       },
     },

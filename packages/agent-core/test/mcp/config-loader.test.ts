@@ -40,6 +40,23 @@ describe('resolveMcpJsonPaths', () => {
     expect(paths.projectRoot).toBe(join(repoRoot, '.mcp.json'));
     expect(paths.project).toBe(join(cwd, '.kimi-code', 'mcp.json'));
   });
+
+  it('returns .ganymede project paths when brand is ganymede', async () => {
+    const repoRoot = makeTempDir();
+    const cwd = join(repoRoot, 'packages', 'app');
+    await mkdir(join(repoRoot, '.git'), { recursive: true });
+    await mkdir(cwd, { recursive: true });
+
+    const paths = await resolveMcpJsonPaths({
+      cwd,
+      homeDir: '/home/user/.ganymede',
+      brand: 'ganymede',
+    });
+
+    expect(paths.user).toBe('/home/user/.ganymede/mcp.json');
+    expect(paths.projectRoot).toBe(join(repoRoot, '.mcp.json'));
+    expect(paths.project).toBe(join(cwd, '.ganymede', 'mcp.json'));
+  });
 });
 
 describe('loadMcpServers', () => {

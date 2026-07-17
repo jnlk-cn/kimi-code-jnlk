@@ -47,7 +47,7 @@ export interface SkillActivationOrigin {
   readonly activationId: string;
   readonly skillName: string;
   readonly skillArgs?: string;
-  readonly trigger: 'user-slash' | 'model-tool' | 'nested-skill';
+  readonly trigger: 'user-slash' | 'model-tool' | 'nested-skill' | 'engineering-bootstrap';
   readonly skillType?: string;
   readonly skillPath?: string;
   readonly skillSource?: SkillSource;
@@ -343,7 +343,7 @@ export interface McpOAuthAuthorizationUrlUpdateData {
 
 export type TurnEndReason = 'completed' | 'cancelled' | 'failed' | 'filtered';
 
-export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask';
+export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask' | 'engineering';
 
 export interface AgentStatusUpdatedEvent {
   readonly type: 'agent.status.updated';
@@ -352,9 +352,12 @@ export interface AgentStatusUpdatedEvent {
   readonly maxContextTokens?: number;
   readonly contextUsage?: number;
   readonly planMode?: boolean;
+  /** Absolute path of the active plan file while plan mode is on. */
+  readonly planFilePath?: string;
   readonly swarmMode?: boolean;
   readonly askMode?: boolean;
   readonly debugMode?: boolean;
+  readonly engineeringMode?: boolean;
   readonly interactionMode?: InteractionMode;
   readonly permission?: PermissionMode;
   readonly usage?: UsageStatus;
@@ -424,7 +427,7 @@ export interface SkillActivatedEvent {
   readonly activationId: string;
   readonly skillName: string;
   readonly skillArgs?: string;
-  readonly trigger: 'user-slash' | 'model-tool' | 'nested-skill';
+  readonly trigger: 'user-slash' | 'model-tool' | 'nested-skill' | 'engineering-bootstrap';
   readonly skillPath?: string;
   readonly skillSource?: SkillSource;
 }
@@ -781,7 +784,7 @@ export const skillActivationOriginSchema = z.object({
   activationId: z.string(),
   skillName: z.string(),
   skillArgs: z.string().optional(),
-  trigger: z.enum(['user-slash', 'model-tool', 'nested-skill']),
+  trigger: z.enum(['user-slash', 'model-tool', 'nested-skill', 'engineering-bootstrap']),
   skillType: z.string().optional(),
   skillPath: z.string().optional(),
   skillSource: skillSourceSchema.optional(),
@@ -1063,6 +1066,7 @@ export const interactionModeSchema = z.enum([
   'debug',
   'multitask',
   'ask',
+  'engineering',
 ]) satisfies z.ZodType<InteractionMode>;
 
 export const agentStatusUpdatedEventSchema = z.object({
@@ -1072,9 +1076,11 @@ export const agentStatusUpdatedEventSchema = z.object({
   maxContextTokens: z.number().optional(),
   contextUsage: z.number().optional(),
   planMode: z.boolean().optional(),
+  planFilePath: z.string().optional(),
   swarmMode: z.boolean().optional(),
   askMode: z.boolean().optional(),
   debugMode: z.boolean().optional(),
+  engineeringMode: z.boolean().optional(),
   interactionMode: interactionModeSchema.optional(),
   permission: permissionModeSchema.optional(),
   usage: usageStatusSchema.optional(),
@@ -1138,7 +1144,7 @@ export const skillActivatedEventSchema = z.object({
   activationId: z.string(),
   skillName: z.string(),
   skillArgs: z.string().optional(),
-  trigger: z.enum(['user-slash', 'model-tool', 'nested-skill']),
+  trigger: z.enum(['user-slash', 'model-tool', 'nested-skill', 'engineering-bootstrap']),
   skillPath: z.string().optional(),
   skillSource: skillSourceSchema.optional(),
 }) satisfies z.ZodType<SkillActivatedEvent>;

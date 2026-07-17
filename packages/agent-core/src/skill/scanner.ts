@@ -1,16 +1,20 @@
 import { promises as fs } from 'node:fs';
 import path from 'pathe';
 
+import { brandLayout, KIMI_CODE_BRAND, type ProductBrand } from '#/config/brand-paths';
 import { SkillParseError, UnsupportedSkillTypeError, parseSkillFromFile } from './parser';
 import type { SkillDefinition, SkillRoot, SkillSource, SkippedSkill } from './types';
 import { normalizeSkillName } from './types';
 
-// Relative to brandHomeDir, which already IS the brand data dir (~/.kimi-code or
-// $KIMI_CODE_HOME) — no '.kimi-code' segment here, or it would nest twice.
+// Relative to brandHomeDir, which already IS the brand data dir — no project
+// brand segment here, or it would nest twice.
 const USER_BRAND_DIRS = ['skills'] as const;
 const USER_GENERIC_DIRS = ['.agents/skills'] as const;
-const PROJECT_BRAND_DIRS = ['.kimi-code/skills'] as const;
 const PROJECT_GENERIC_DIRS = ['.agents/skills'] as const;
+
+function projectBrandSkillDirs(brand: ProductBrand): readonly string[] {
+  return [`${brandLayout(brand).projectDirName}/skills`];
+}
 
 // Bounds recursion so a directory symlink cycle inside a skill root cannot
 // loop forever. Real skill trees are 1-3 levels deep.
@@ -19,11 +23,12 @@ const MAX_SKILL_SCAN_DEPTH = 8;
 export interface SkillPathContext {
   readonly userHomeDir: string;
   /**
-   * Brand data dir — `KIMI_CODE_HOME`, or `<userHomeDir>/.kimi-code` by default.
+   * Brand data dir — brand home env / default under `<userHomeDir>`.
    * User brand skills live directly under here as `skills/`, so this path
-   * carries no `.kimi-code` segment of its own (that would double the prefix).
+   * carries no project brand segment of its own (that would double the prefix).
    */
   readonly brandHomeDir?: string;
+  readonly brand?: ProductBrand;
   readonly workDir: string;
 }
 
@@ -68,7 +73,12 @@ export async function resolveSkillRoots(
   const roots: SkillRoot[] = [];
   const mergeAllAvailableSkills = options.mergeAllAvailableSkills ?? true;
   const { userHomeDir, workDir } = options.paths;
-  const brandHomeDir = options.paths.brandHomeDir ?? path.join(userHomeDir, '.kimi-code');
+  const brand = options.paths.brand ?? KIMI_CODE_BRAND;
+  // Prefer an explicit brand home; otherwise nest under the provided user home
+  // (tests and hosts pass a temp userHomeDir). Env-based resolveUserHome is for
+  // process-global defaults when neither is set — not used here.
+  const brandHomeDir =
+    options.paths.brandHomeDir ?? path.join(userHomeDir, brandLayout(brand).userHomeDirName);
   const projectRoot = await findProjectRoot(workDir);
 
   if (options.explicitDirs !== undefined && options.explicitDirs.length > 0) {
@@ -84,7 +94,7 @@ export async function resolveSkillRoots(
   } else {
     await pushBrandGroup(
       roots,
-      PROJECT_BRAND_DIRS,
+      projectBrandSkillDirs(brand),
       projectRoot,
       'project',
       mergeAllAvailableSkills,

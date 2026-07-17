@@ -1,5 +1,6 @@
 import type { AgentConfigData } from '#/agent/config';
 import type { AgentContextData } from '#/agent/context';
+import type { ContextUsageBreakdown } from '#/agent/context-usage';
 import type { BackgroundTaskInfo } from '#/agent/background';
 import type { CronTaskSnapshot } from '#/agent/cron';
 import type {
@@ -278,6 +279,11 @@ export interface SkillSummary {
 export interface ActivateSkillPayload {
   readonly name: string;
   readonly args?: string | undefined;
+  /**
+   * `activate` (default): visible user-slash activation that starts a turn.
+   * `bootstrap`: silent preload into context without launching a turn.
+   */
+  readonly mode?: 'activate' | 'bootstrap' | undefined;
 }
 
 export interface ListWorkspaceSkillsPayload {
@@ -411,6 +417,7 @@ export interface AgentAPI {
   getInteractionMode: (payload: EmptyPayload) => InteractionMode;
   getAskMode: (payload: EmptyPayload) => boolean;
   getDebugMode: (payload: EmptyPayload) => boolean;
+  getEngineeringMode: (payload: EmptyPayload) => boolean;
   beginCompaction: (payload: BeginCompactionPayload) => void;
   cancelCompaction: (payload: EmptyPayload) => void;
   registerTool: (payload: RegisterToolPayload) => void;
@@ -430,6 +437,7 @@ export interface AgentAPI {
   getCronTasks: (payload: EmptyPayload) => GetCronTasksResult;
   getBackgroundOutput: (payload: GetBackgroundOutputPayload) => string;
   getContext: (payload: EmptyPayload) => AgentContextData;
+  getContextUsageBreakdown: (payload: EmptyPayload) => ContextUsageBreakdown;
   getConfig: (payload: EmptyPayload) => AgentConfigData;
   getPermission: (payload: EmptyPayload) => PermissionData;
   getPlan: (payload: EmptyPayload) => PlanData;

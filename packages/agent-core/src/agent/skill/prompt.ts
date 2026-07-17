@@ -1,7 +1,11 @@
 import { escapeXml } from '#/utils/xml-escape';
 import type { SkillSource } from '../../skill';
 
-export type SkillPromptTrigger = 'user-slash' | 'model-tool' | 'nested-skill';
+export type SkillPromptTrigger =
+  | 'user-slash'
+  | 'model-tool'
+  | 'nested-skill'
+  | 'engineering-bootstrap';
 
 export interface RenderSkillPromptInput {
   readonly skillName: string;
@@ -39,6 +43,15 @@ export function renderModelToolSkillPrompt(input: RenderModelToolSkillPromptInpu
     'Skill tool loaded instructions for this request. Follow them.',
     '',
     renderSkillLoadedBlock({ ...input, trigger: input.trigger }),
+  ].join('\n');
+}
+
+/** Silent preload for engineering-mode bootstrap — no "User activated" framing. */
+export function renderBootstrapSkillPrompt(input: RenderSkillPromptInput): string {
+  return [
+    'Engineering mode preloaded this skill. Follow its instructions on the next user request.',
+    '',
+    renderSkillLoadedBlock({ ...input, trigger: 'engineering-bootstrap' }),
   ].join('\n');
 }
 

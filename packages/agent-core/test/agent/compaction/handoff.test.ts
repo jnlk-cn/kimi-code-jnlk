@@ -149,6 +149,17 @@ describe('compactionUserMessageDisposition', () => {
       }),
     ).toBe('drop');
   });
+
+  it('keeps engineering-bootstrap skill activations', () => {
+    expect(
+      compactionUserMessageDisposition({
+        kind: 'skill_activation',
+        activationId: 'activation',
+        skillName: 'using-kimicodeboost',
+        trigger: 'engineering-bootstrap',
+      }),
+    ).toBe('keep');
+  });
 });
 
 describe('isRealUserInput', () => {

@@ -93,7 +93,7 @@
         "@moonshot-ai/protocol"
         "@moonshot-ai/kimi-telemetry"
         "@moonshot-ai/kimi-code"
-        "@moonshot-ai/ganymede-code"
+        "@jnlk.zone/ganymede-code"
         "@moonshot-ai/kimi-vscode"
         "@moonshot-ai/vis"
         "@moonshot-ai/vis-server"

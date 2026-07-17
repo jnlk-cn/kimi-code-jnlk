@@ -15,12 +15,14 @@ import { HookEngine, type HookDef } from './hooks';
 import type { PermissionManagerOptions, PermissionRule } from '../agent/permission';
 import {
   appendWorkspaceAdditionalDir,
+  KIMI_CODE_BRAND,
   normalizeAdditionalDirs,
   parseBooleanEnv,
   readWorkspaceAdditionalDirs,
   resolveWorkspaceAdditionalDirs,
   resolveConfigValue,
   type BackgroundConfig,
+  type ProductBrand,
   type WorkspaceAdditionalDirsLoadResult,
 } from '../config';
 import { makeErrorPayload } from '../errors';
@@ -62,6 +64,7 @@ export interface SessionOptions {
   readonly id?: string | undefined;
   readonly homedir: string;
   readonly kimiHomeDir?: string;
+  readonly brand?: ProductBrand;
   readonly rpc: SDKSessionRPC;
   readonly toolServices?: ToolServices;
   readonly initializeMainAgent?: boolean | undefined;
@@ -89,8 +92,9 @@ export interface SessionOptions {
 
 export interface SessionSkillConfig {
   readonly userHomeDir?: string;
-  /** Brand data dir (KIMI_CODE_HOME); user brand skills live under `<brandHomeDir>/skills`. */
+  /** Brand data dir; user brand skills live under `<brandHomeDir>/skills`. */
   readonly brandHomeDir?: string;
+  readonly brand?: ProductBrand;
   readonly explicitDirs?: readonly string[];
   readonly extraDirs?: readonly string[];
   readonly pluginSkillRoots?: readonly SkillRoot[];
@@ -192,6 +196,10 @@ export class Session {
   private printSteerDeadline: number | undefined;
   private printSteerTurns = 0;
 
+  get brand(): ProductBrand {
+    return this.options.brand ?? this.options.skills?.brand ?? KIMI_CODE_BRAND;
+  }
+
   constructor(public readonly options: SessionOptions) {
     // Attach the per-session log sink up front so the constructor's
     // fire-and-forget `loadSkills` / `loadMcpServers` failures (and
@@ -268,14 +276,20 @@ export class Session {
     const cwd = this.toolKaos.getcwd();
     const systemKaos = this.systemContextKaos(cwd);
     if (persist) {
-      const result = await appendWorkspaceAdditionalDir(systemKaos, cwd, path, this.additionalDirs);
+      const result = await appendWorkspaceAdditionalDir(
+        systemKaos,
+        cwd,
+        path,
+        this.additionalDirs,
+        this.brand,
+      );
       const additionalDirs = normalizeAdditionalDirs([...this.additionalDirs, ...result.additionalDirs]);
       await this.setAdditionalDirs(additionalDirs);
       this.notifyAdditionalDirAdded(path, true, result.configPath);
       return { ...result, additionalDirs, persisted: true };
     }
 
-    const workspace = await readWorkspaceAdditionalDirs(systemKaos, cwd);
+    const workspace = await readWorkspaceAdditionalDirs(systemKaos, cwd, this.brand);
     const additionalDirs = await resolveWorkspaceAdditionalDirs(systemKaos, cwd, [path]);
     const nextAdditionalDirs = normalizeAdditionalDirs([...this.additionalDirs, ...additionalDirs]);
     await this.setAdditionalDirs(nextAdditionalDirs);
@@ -632,7 +646,7 @@ export class Session {
     const context = await prepareSystemPromptContext(
       this.systemContextKaos(agent.kaos.getcwd()),
       this.options.kimiHomeDir,
-      { additionalDirs: this.additionalDirs },
+      { additionalDirs: this.additionalDirs, brand: this.brand },
     );
     agent.useProfile(profile, context, this.options.kimiHomeDir);
     const { agentsMdWarning } = context;
@@ -671,7 +685,7 @@ export class Session {
       const context = await prepareSystemPromptContext(
         this.systemContextKaos(this.toolKaos.getcwd()),
         this.options.kimiHomeDir,
-        { additionalDirs: this.additionalDirs },
+        { additionalDirs: this.additionalDirs, brand: this.brand },
       );
       this.agentsMdWarning = context.agentsMdWarning;
     } catch (error) {
@@ -695,7 +709,7 @@ export class Session {
       });
       await handle.completion;
 
-      const agentsMd = await loadAgentsMd(mainAgent.kaos, this.options.kimiHomeDir);
+      const agentsMd = await loadAgentsMd(mainAgent.kaos, this.options.kimiHomeDir, this.brand);
       mainAgent.context.appendSystemReminder(initCompletionReminder(agentsMd), {
         kind: 'injection',
         variant: 'init',
@@ -807,6 +821,7 @@ export class Session {
       paths: {
         userHomeDir: this.options.skills?.userHomeDir ?? homedir(),
         brandHomeDir: this.options.skills?.brandHomeDir ?? this.options.kimiHomeDir,
+        brand: this.brand,
         workDir: this.options.kaos.getcwd(),
       },
       explicitDirs: this.options.skills?.explicitDirs,
@@ -911,11 +926,13 @@ export class Session {
       experimentalFlags: this.experimentalFlags,
       imageLimits: this.imageLimits,
       additionalDirs: parentAgent?.getAdditionalDirs() ?? this.additionalDirs,
+      brand: this.brand,
+      brandHomeDir: this.options.kimiHomeDir,
       systemPromptContextProvider: () =>
         prepareSystemPromptContext(
           this.systemContextKaos(agent.kaos.getcwd()),
           this.options.kimiHomeDir,
-          { additionalDirs: agent.getAdditionalDirs() },
+          { additionalDirs: agent.getAdditionalDirs(), brand: this.brand },
         ),
     });
     return agent;

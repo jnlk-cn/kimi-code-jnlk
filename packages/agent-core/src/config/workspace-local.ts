@@ -4,6 +4,11 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 import { z } from 'zod';
 
 import { ErrorCodes, KimiError } from '#/errors';
+import {
+  KIMI_CODE_BRAND,
+  projectBrandPath,
+  type ProductBrand,
+} from './brand-paths';
 
 const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;
@@ -35,9 +40,10 @@ interface WorkspaceLocalTomlFile {
 export async function loadWorkspaceLocalConfig(
   kaos: Kaos,
   workDir: string,
+  brand: ProductBrand = KIMI_CODE_BRAND,
 ): Promise<WorkspaceLocalConfig> {
   const projectRoot = await findProjectRoot(kaos, workDir);
-  const configPath = getWorkspaceLocalConfigPath(projectRoot);
+  const configPath = getWorkspaceLocalConfigPath(projectRoot, brand);
   const file = await readWorkspaceLocalToml(kaos, configPath);
 
   const additionalDirs = file?.parsed.workspace?.additional_dir;
@@ -55,8 +61,9 @@ export async function loadWorkspaceLocalConfig(
 export async function readWorkspaceAdditionalDirs(
   kaos: Kaos,
   workDir: string,
+  brand: ProductBrand = KIMI_CODE_BRAND,
 ): Promise<WorkspaceAdditionalDirsLoadResult> {
-  return loadWorkspaceLocalConfig(kaos, workDir);
+  return loadWorkspaceLocalConfig(kaos, workDir, brand);
 }
 
 export async function resolveWorkspaceAdditionalDirs(
@@ -72,9 +79,10 @@ export async function appendWorkspaceAdditionalDir(
   workDir: string,
   inputPath: string,
   _currentAdditionalDirs: readonly string[],
+  brand: ProductBrand = KIMI_CODE_BRAND,
 ): Promise<WorkspaceAdditionalDirsLoadResult> {
   const projectRoot = await findProjectRoot(kaos, workDir);
-  const configPath = getWorkspaceLocalConfigPath(projectRoot);
+  const configPath = getWorkspaceLocalConfigPath(projectRoot, brand);
   const additionalDir = await resolveAdditionalDir(kaos, workDir, inputPath);
   const file = (await readWorkspaceLocalToml(kaos, configPath)) ?? { raw: {}, parsed: {} };
   const fileAdditionalDirs = file.parsed.workspace?.additional_dir ?? [];
@@ -108,8 +116,11 @@ export function normalizeAdditionalDirs(additionalDirs: readonly string[]): stri
   return normalizedDirs;
 }
 
-function getWorkspaceLocalConfigPath(projectRoot: string): string {
-  return join(projectRoot, '.kimi-code', 'local.toml');
+function getWorkspaceLocalConfigPath(
+  projectRoot: string,
+  brand: ProductBrand = KIMI_CODE_BRAND,
+): string {
+  return projectBrandPath(projectRoot, brand, 'local.toml');
 }
 
 async function findProjectRoot(kaos: Kaos, workDir: string): Promise<string> {

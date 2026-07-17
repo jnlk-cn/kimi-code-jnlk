@@ -7,7 +7,7 @@ import type { Agent } from '..';
 import { ErrorCodes, KimiError } from '#/errors';
 import { isUserActivatableSkillType } from '../../skill';
 import type { SkillActivationOrigin } from '../context';
-import { renderUserSlashSkillPrompt } from './prompt';
+import { renderBootstrapSkillPrompt, renderUserSlashSkillPrompt } from './prompt';
 import type { SkillRegistry } from './types';
 
 export type { SkillRegistry } from './types';
@@ -57,10 +57,54 @@ export class SkillManager {
     );
   }
 
+  /**
+   * Silently preload a skill into context without launching a turn.
+   * Used by engineering-mode bootstrap so mode switch does not busy the agent.
+   */
+  bootstrap(input: ActivateSkillPayload): void {
+    const skill = this.registry.getSkill(input.name);
+    if (skill === undefined) {
+      throw new KimiError(ErrorCodes.SKILL_NOT_FOUND, `Skill "${input.name}" was not found`);
+    }
+    if (!isUserActivatableSkillType(skill.metadata.type)) {
+      throw new KimiError(ErrorCodes.SKILL_TYPE_UNSUPPORTED, `Skill "${skill.name}" cannot be activated by the user`);
+    }
+
+    const skillArgs = input.args ?? '';
+    const skillContent = this.registry.renderSkillPrompt(skill, skillArgs);
+    const origin: SkillActivationOrigin = {
+      kind: 'skill_activation',
+      activationId: randomUUID(),
+      skillName: skill.name,
+      trigger: 'engineering-bootstrap',
+      skillType: skill.metadata.type,
+      skillPath: skill.path,
+      skillSource: skill.source,
+      skillArgs: input.args,
+    };
+    const text = renderBootstrapSkillPrompt({
+      skillName: skill.name,
+      skillArgs,
+      skillContent,
+      skillSource: skill.source,
+      skillDir: skill.dir,
+    });
+
+    this.emitActivation(origin);
+    this.agent.context.appendUserMessage([{ type: 'text', text }], origin);
+  }
+
   recordActivation(
     origin: SkillActivationOrigin,
     input?: readonly ContentPart[] | undefined,
   ): void {
+    this.emitActivation(origin);
+    if (input !== undefined) {
+      this.agent.turn.prompt(input, origin);
+    }
+  }
+
+  private emitActivation(origin: SkillActivationOrigin): void {
     this.agent.emitEvent({
       type: 'skill.activated',
       activationId: origin.activationId,
@@ -78,9 +122,6 @@ export class SkillManager {
       this.agent.telemetry.track('flow_invoked', {
         flow_name: origin.skillName,
       });
-    }
-    if (input !== undefined) {
-      this.agent.turn.prompt(input, origin);
     }
   }
 }

@@ -1,0 +1,33 @@
+/* Loaded after @xterm/xterm/css/xterm.css so these overrides win the cascade. */
+
+.side-panel.terminal {
+  background: var(--bg);
+}
+
+.side-panel.terminal .terminal-panel {
+  background: var(--bg);
+}
+
+.terminal-host {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  background: var(--bg);
+}
+
+.terminal-host .xterm {
+  width: 100%;
+  min-height: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.terminal-host .xterm .xterm-viewport {
+  background-color: var(--bg);
+}
+
+.terminal-host .xterm .xterm-screen {
+  background-color: var(--bg);
+}

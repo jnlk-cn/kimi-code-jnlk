@@ -201,4 +201,22 @@ describe('workspace local config', () => {
       normalizeAdditionalDirs(['shared', './shared', 'nested//dir', 'nested/dir/../final']),
     ).toEqual(['shared', 'nested/dir', 'nested/final']);
   });
+
+  it('uses .ganymede/local.toml when brand is ganymede', async () => {
+    const root = await makeProject();
+    const sharedDir = join(root, 'shared');
+    await mkdir(sharedDir, { recursive: true });
+    await mkdir(join(root, '.ganymede'), { recursive: true });
+    await writeFile(
+      join(root, '.ganymede', 'local.toml'),
+      '[workspace]\nadditional_dir = ["shared"]\n',
+      'utf-8',
+    );
+
+    await expect(readWorkspaceAdditionalDirs(testKaos, root, 'ganymede')).resolves.toEqual({
+      projectRoot: root,
+      configPath: join(root, '.ganymede', 'local.toml'),
+      additionalDirs: [sharedDir],
+    });
+  });
 });

@@ -1,0 +1,133 @@
+/* Keep the established sidebar appearance from styles.css. This file only
+   covers behavior introduced by the extracted component. */
+
+.sidebar button {
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-mobile-close {
+  display: none;
+}
+
+.nav-button > strong {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  font-size: inherit;
+  font-weight: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-button > kbd {
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.task-row .task-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.task-row .task-row-meta {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+}
+
+.task-row-meta > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-target {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  color: color-mix(in srgb, var(--accent) 78%, var(--muted));
+}
+
+.task-pin {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--accent);
+  fill: currentColor;
+}
+
+.task-state.running {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent);
+  opacity: 1;
+  animation: sidebar-running-pulse 1.5s ease-in-out infinite;
+}
+
+.show-all-tasks {
+  display: flex;
+  min-height: 25px;
+  align-items: center;
+  gap: 4px;
+  margin: 1px 4px 0 8px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: left;
+}
+
+.show-all-tasks:hover {
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+}
+
+.workspace-sidebar-backdrop {
+  display: none;
+}
+
+@keyframes sidebar-running-pulse {
+  50% { opacity: 0.48; }
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    z-index: 80;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    width: clamp(220px, var(--sidebar-width), 320px);
+    max-width: calc(100vw - 56px);
+    box-shadow: 18px 0 48px rgba(0, 0, 0, 0.28);
+  }
+
+  .sidebar-mobile-close {
+    display: inline-grid;
+  }
+
+  .sidebar-resize-handle {
+    display: none;
+  }
+
+  .workspace-sidebar-backdrop {
+    position: fixed;
+    z-index: 70;
+    inset: 0;
+    display: block;
+    border: 0;
+    background: rgba(4, 7, 16, 0.34);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-state.running {
+    animation: none;
+  }
+}

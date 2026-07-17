@@ -42,3 +42,21 @@ export function fuzzyTextMatch(value: string, query: string): boolean {
   }
   return false;
 }
+
+/**
+ * Resolve the text to submit when Enter confirms a `/` suggestion.
+ * Keeps args when the user has already typed past the command name;
+ * otherwise replaces the trigger span with the selected command.
+ */
+export function resolveSlashSubmitText(
+  value: string,
+  trigger: TriggerContext,
+  selectedSlash?: string,
+): string {
+  if (trigger.trigger !== '/') return value.trim();
+  if (/\s/u.test(trigger.query) || selectedSlash === undefined) {
+    return value.trim();
+  }
+  const replacement = `/${selectedSlash}`;
+  return `${value.slice(0, trigger.start)}${replacement}${value.slice(trigger.end)}`.trim();
+}

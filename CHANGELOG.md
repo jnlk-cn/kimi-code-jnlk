@@ -1,6 +1,10 @@
 # Changelog
 
-User-facing release notes for the **kimi-code-jnlk** fork. The English docs page at `docs/en/release-notes/changelog.md` is synced from this file via `node docs/scripts/sync-changelog.mjs`.
+User-facing release notes for the **kimi-code-jnlk** fork. Simplified Chinese: [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md). The English docs page at `docs/en/release-notes/changelog.md` is synced from this file via `node docs/scripts/sync-changelog.mjs`; the Chinese docs page at `docs/zh/release-notes/changelog.md` is synced from `CHANGELOG.zh-CN.md` by the same script.
+
+When cutting a release or bumping the fork version, update **both** this file and [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md) — keep version blocks, section headings, and entry counts in sync.
+
+> 中文版变更记录见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。发版或 bump 版本时，请同步更新英文与本文件。
 
 Product-specific changelogs:
 
@@ -12,17 +16,54 @@ Product-specific changelogs:
 
 ### Features
 
+- Add a Debug / 排障 verification workflow in Ganymede Code: silently preload systematic-debugging skills, register temporary probes, and show numbered verification steps above the composer with “问题已修复 / 问题未修复”. Switch via `/debug` or the mode menu after a fix.
+- Show Engineering-mode design specs from `docs/kimicodeboost/specs/` in Ganymede Code’s Plans panel (labeled separately from implementation plans), auto-open the panel when a spec is written, and let chat paths open that preview. Open Plans (⌘⇧L) after brainstorming writes a design doc.
+- In Ganymede Code Engineering mode, finish design review by switching to Plan mode so the written plan opens in the Plans panel for Build; after approval, Composer todos stay synced with that plan file’s YAML todos. Approve a design, switch to Plan, call ExitPlanMode, then press Build.
+- Add Engineering mode in Ganymede Code with bundled KimiCodeBoost workflow skills (brainstorming, TDD, subagent-driven development, review, and more), mapped to native Plans / Question / Todo / Browser / Worktree surfaces. Switch via the mode menu or `/engineering`.
+- Add a Cursor-style inline Questions bar in Ganymede Code (Skip/Continue per question, Other free text) and queue composer follow-ups while a turn is running. Enter queues; ⌘↵ / Ctrl↵ steers into the current turn.
+- Replace Ganymede Code plan approval with a Cursor-style model picker and split Build control in the composer and Plans panel. When ExitPlanMode is ready, pick a model and press Build (⌘↵ / Ctrl↵).
+- Move Ganymede Code runtime data to `GANYMEDE_HOME` (default `~/.ganymede`) and project config to `.ganymede/`, separate from Kimi CLI’s `.kimi-code`. Package name is `@jnlk.zone/ganymede-code`. To keep old settings, copy `~/.kimi-code` → `~/.ganymede` and project `.kimi-code` → `.ganymede` manually.
+- Add a Plans side panel in Ganymede Code that lists every plan file created for the open project, keep a single compact timeline hint, suppress the streaming cursor while writing plans, open plan files in the panel with YAML frontmatter todos / overview, and render Mermaid diagrams in plan Markdown (external editors remain secondary). Open Plans from the right dock (⌘⇧L) after creating a plan in Plan mode.
+- Complete Ganymede Code's sidebar utility pages: live Inbox with unread badges and background notifications, editable Scheduled tasks, Local Sites (preview/stop/delete), agent-driven PR feedback fixes, Memory tags and project scopes, and a Skills & Plugins marketplace with tabbed management. Open 更多功能 or run `/inbox`, `/scheduled`, `/sites`, `/pulls`, `/memory`, or `/skills`.
+- Add a local project index in Ganymede Code (path, full-text, and on-device semantic search) with @codebase composer mentions, an Agent codebase-search tool, ignore files, and index status in Settings / the bottom bar. Open a project, then type `@codebase` or open Settings → Project Index.
+- Align Ganymede Code Plan mode with a Cursor-style review flow: Markdown plan cards in the timeline, a dedicated “Build” approval dialog (Approve / Revise / Reject), Shift+Tab mode cycling, a Plan-mode hint, and a collapsible Todo bar above the composer. Switch to Plan via `/plan` or the mode menu; approve when ExitPlanMode is ready.
+- Upgrade Ganymede Code's Review panel into a full Git workflow: per-file diffs (including untracked files), stage/unstage filtering, syntax-highlighted diffs, discard changes, and fetch/pull/push with branch switching. Open Review on a Git project to try it.
+- Fix Ganymede Code's composer permission control so Manual/Auto/YOLO work before a session exists, align labels with the CLI, and add `/permission`, `/auto`, `/yolo`, `/mode`, `/model`, `/plan`, `/compact`, `/status`, and `/usage`. Use the permission button or type `/auto` in the composer.
+- Replace Ganymede Code's top-bar IDE shortcuts with a split button that lists scanned editors and remembers the last choice. Open a project and use the editor control next to the ready state.
+- Expand Ganymede Code's external editor list to about 30 IDEs (full JetBrains suite, Android Studio, Xcode, VSCodium, Trae, and more) with built-in brand icons. Open a project and use the editor split button next to the ready state.
+- Show a context-usage ring next to the model label in Ganymede Code's composer; click it for a categorized token breakdown (system prompt, tools, rules, skills, subagents, conversation). Open a session and click the ring beside the model name.
+- Align Ganymede Code multitask/swarm mode with the CLI: AgentSwarm progress grid in the timeline, `/swarm` toggle and task launch, Manual-mode permission prompt, swarm markers, and composer badges. Run `/swarm` or `/multitask`; open `/agents` for background tasks only (foreground swarm members stay in the AgentSwarm block).
+- Add syntax-highlighted code views with line numbers in Ganymede Code tool blocks and the Files panel, and HTML preview via the built-in browser. Open Files or a Write tool result to try highlighting and preview.
 - Add five interaction modes — Agent, Plan, Debug, Multitask, and Ask — with mutually exclusive switching. Run `/mode` or press Shift-Tab to cycle modes in the TUI.
 - Keep `kimi -p` running after a turn ends while a goal is still active or a cron task is pending, so goal continuations and scheduled tasks are not cut off when the main turn finishes.
 - Set `[background].print_background_mode = "steer"` to keep print-mode runs alive across background-task completions and steer follow-up turns.
 - Default `/provider` and `kimi provider catalog` to this fork's verified provider allowlist mirror (currently DeepSeek V4) instead of the full models.dev catalog.
+- Show DeepSeek balance, estimated session cost, and peak pricing in Ganymede Code's task summary panel. Open the summary panel while using the official DeepSeek API.
+- In Ganymede Code, show a clear empty state for non-Git workspaces in Review and Pull Requests, with a one-click Initialize Git repository action. Open Review on a plain folder to try it.
+- Let Ganymede Code's composer accept dragged files and pasted images as attachments, and harden the + context menu (focus after attach, caret-synced suggestions, disable mode switching while a task runs). Drag a file onto the composer, paste a screenshot, or use the + menu.
+- Turn Ganymede Code's Git Sync sidebar into a read-only dashboard for ahead/behind commits and staged/unstaged line change stats. Open the Git Sync dock panel on a Git project to view it.
+- After a Ganymede Code turn that edits files finishes, show a file-edit summary above the composer (totals, expandable file list, Review / revert) and a floating Codex-style turn catalog over the chat content; hover a marker to elongate it and show a turn preview card. Finish a turn that writes or edits files to try it.
 
 ### Bug Fixes
 
+- Fix Ganymede Code startup recovery so missing desktop bridge and early renderer errors show a stable reload screen, and restore clean TypeScript builds.
+- In Ganymede Code Engineering mode, silently preload workflow skills on mode switch so the agent stays idle (no visible skill activation or busy turn) until the user sends a message, and require clarifying / scope choices via AskUserQuestion (Question bar) instead of Markdown A/B/C. Switch to Engineering via the mode menu or `/engineering`, then send a prompt.
 - Treat a dismissed question prompt as the user choosing not to answer, instead of implicitly selecting the recommended option.
 
 ### Polish
 
+- Align Ganymede Code Agent-mode composer UX with Cursor: mode-specific placeholders, Shift+Tab cycling over the core five modes (Engineering stays menu/`/engineering` only), Cmd+./Ctrl+. to open the mode menu, and a footer hint that shows those shortcuts. Focus the composer and press Shift+Tab or Cmd+./Ctrl+. to try it.
+- Keep Ganymede Code smooth in long sessions with frame-batched streaming updates, progressive history rendering, lazy code and tool bodies, lightweight motion, and frame-coalesced panel resizing.
+- Render GFM tables, task lists, images, code, and viewport-lazy Mermaid diagrams in Ganymede Code with polished transcript styling.
+- Fade streamed assistant and thinking text in smoothly without a trailing cursor in the Ganymede Code timeline.
+- Fix Ganymede Code chat auto-layout so the timeline and composer share one flex column, with a floating turn catalog that no longer shrinks the message column.
+- Hide the streaming accent cursor in Ganymede Code Plan mode (including before a plan file exists), showing a quiet writing hint instead.
+- Move Ganymede Code plan approval into an inline bar above the composer so you can review the plan in the Plans panel without a full-screen modal.
+- Guide Plan mode to write Cursor-style plan files with YAML frontmatter (name, overview, todos) and Mermaid diagrams in the Markdown body.
+- Remove background blur from Ganymede Code modals and the command palette so overlays use a solid dimmed backdrop.
+- Use built-in brand icons for Ganymede Code's top-bar editor control instead of downscaled system file icons.
+- Warn before indexing home directories or oversized folders in Ganymede Code, allow canceling an in-progress index, and stop indexing immediately when Project Index is disabled. Open a large folder or toggle Settings → Project Index to try it.
+- Refine Ganymede Code's workspace tool dock and desktop interaction styling with neutral selection states, responsive drawers, and more efficient long task-history browsing while preserving its established project sidebar design.
 - Update the WebBridge install page link opened from the `/plugins` panel.
 
 ### Other

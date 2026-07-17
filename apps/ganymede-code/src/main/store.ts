@@ -11,6 +11,7 @@ import type {
   ProjectSummary,
   SiteRecord,
 } from '../shared/contracts';
+import { DEFAULT_ACCENT_DARK, DEFAULT_ACCENT_LIGHT } from '../shared/theme-accent';
 
 type SqlRow = Record<string, unknown>;
 
@@ -39,15 +40,20 @@ export class AppStore {
     this.defaultSettings = {
       locale: 'zh-CN',
       theme: 'dark',
-      accent: '#7c8cff',
+      accentDark: DEFAULT_ACCENT_DARK,
+      accentLight: DEFAULT_ACCENT_LIGHT,
       uiFont: 'Inter, SF Pro Text, PingFang SC, sans-serif',
       codeFont: 'ui-monospace, SFMono-Regular, Menlo, Monaco, "JetBrains Mono", monospace',
       terminalFontSize: 13,
       notifications: true,
-      followUp: 'steer',
+      followUp: 'queue',
       worktreeRoot,
       worktreeRetention: 15,
       memoryEnabled: true,
+      indexEnabled: true,
+      indexSemanticEnabled: true,
+      indexMaxFileBytes: 512 * 1024,
+      indexOptOutRoots: [],
       browserAllowlist: ['localhost', '127.0.0.1'],
       browserBlocklist: [],
       computerAllowlist: [],
@@ -88,7 +94,8 @@ export class AppStore {
         session_id TEXT PRIMARY KEY,
         pinned INTEGER NOT NULL DEFAULT 0,
         unread INTEGER NOT NULL DEFAULT 0,
-        target TEXT NOT NULL DEFAULT 'local'
+        target TEXT NOT NULL DEFAULT 'local',
+        approved_plan_path TEXT
       );
       CREATE TABLE IF NOT EXISTS automations (
         id TEXT PRIMARY KEY,
@@ -138,16 +145,33 @@ export class AppStore {
         updated_at INTEGER NOT NULL
       );
     `);
+    this.ensureTaskMetaApprovedPlanColumn();
+  }
+
+  private ensureTaskMetaApprovedPlanColumn(): void {
+    const rows = this.db.prepare(`PRAGMA table_info(task_meta)`).all() as SqlRow[];
+    const hasColumn = rows.some((row) => String(row['name']) === 'approved_plan_path');
+    if (!hasColumn) {
+      this.db.exec('ALTER TABLE task_meta ADD COLUMN approved_plan_path TEXT');
+    }
   }
 
   getSettings(): AppSettings {
     const rows = this.db.prepare('SELECT key, value FROM settings').all() as SqlRow[];
-    const stored: Partial<Record<keyof AppSettings, unknown>> = {};
+    const stored: Record<string, unknown> = {};
     for (const row of rows) {
-      const key = String(row['key']) as keyof AppSettings;
-      stored[key] = json.parse(row['value'], row['value']);
+      stored[String(row['key'])] = json.parse(row['value'], row['value']);
     }
-    return { ...this.defaultSettings, ...stored } as AppSettings;
+    const legacyAccent = typeof stored['accent'] === 'string' ? stored['accent'] : undefined;
+    const settings = {
+      ...this.defaultSettings,
+      ...(stored as Partial<AppSettings>),
+    };
+    if (legacyAccent !== undefined) {
+      if (typeof stored['accentDark'] !== 'string') settings.accentDark = legacyAccent;
+      if (typeof stored['accentLight'] !== 'string') settings.accentLight = legacyAccent;
+    }
+    return settings;
   }
 
   setSettings(patch: Partial<AppSettings>): AppSettings {
@@ -203,6 +227,8 @@ export class AppStore {
       sessionCount: 0,
       pinned: Number(row['pinned']) === 1,
       additionalDirs: json.parse<readonly string[]>(row['additional_dirs'], []),
+      // Enriched by WorkspaceService.listProjects / inspectProject; not persisted.
+      isGitRepository: false,
     }));
   }
 
@@ -222,6 +248,16 @@ export class AppStore {
     return this.db.prepare('SELECT 1 FROM hidden_projects WHERE work_dir = ?').get(workDir) !== undefined;
   }
 
+  listHiddenProjects(): readonly { readonly workDir: string; readonly hiddenAt: number }[] {
+    const rows = this.db.prepare(
+      'SELECT work_dir, hidden_at FROM hidden_projects ORDER BY hidden_at DESC',
+    ).all() as SqlRow[];
+    return rows.map((row) => ({
+      workDir: String(row['work_dir']),
+      hiddenAt: Number(row['hidden_at']),
+    }));
+  }
+
   setProjectPinned(workDir: string, pinned: boolean): void {
     this.db.prepare('UPDATE projects SET pinned = ? WHERE work_dir = ?').run(
       pinned ? 1 : 0,
@@ -231,31 +267,55 @@ export class AppStore {
 
   setTaskMeta(
     sessionId: string,
-    patch: { readonly pinned?: boolean; readonly unread?: boolean; readonly target?: string },
+    patch: {
+      readonly pinned?: boolean;
+      readonly unread?: boolean;
+      readonly target?: string;
+      readonly approvedPlanPath?: string | null;
+    },
   ): void {
     const current = this.taskMeta(sessionId);
+    const approvedPlanPath =
+      patch.approvedPlanPath === null
+        ? null
+        : patch.approvedPlanPath !== undefined
+          ? patch.approvedPlanPath
+          : current.approvedPlanPath;
     this.db.prepare(`
-      INSERT INTO task_meta(session_id, pinned, unread, target) VALUES (?, ?, ?, ?)
+      INSERT INTO task_meta(session_id, pinned, unread, target, approved_plan_path)
+      VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(session_id) DO UPDATE SET
         pinned = excluded.pinned,
         unread = excluded.unread,
-        target = excluded.target
+        target = excluded.target,
+        approved_plan_path = excluded.approved_plan_path
     `).run(
       sessionId,
-      patch.pinned ?? current.pinned ? 1 : 0,
-      patch.unread ?? current.unread ? 1 : 0,
+      (patch.pinned ?? current.pinned) ? 1 : 0,
+      (patch.unread ?? current.unread) ? 1 : 0,
       patch.target ?? current.target,
+      approvedPlanPath ?? null,
     );
   }
 
-  taskMeta(sessionId: string): { pinned: boolean; unread: boolean; target: string } {
+  taskMeta(sessionId: string): {
+    pinned: boolean;
+    unread: boolean;
+    target: string;
+    approvedPlanPath?: string;
+  } {
     const row = this.db.prepare(
-      'SELECT pinned, unread, target FROM task_meta WHERE session_id = ?',
+      'SELECT pinned, unread, target, approved_plan_path FROM task_meta WHERE session_id = ?',
     ).get(sessionId) as SqlRow | undefined;
+    const approved =
+      typeof row?.['approved_plan_path'] === 'string' && row['approved_plan_path'].length > 0
+        ? row['approved_plan_path']
+        : undefined;
     return {
       pinned: Number(row?.['pinned']) === 1,
       unread: Number(row?.['unread']) === 1,
       target: typeof row?.['target'] === 'string' ? row['target'] : 'local',
+      approvedPlanPath: approved,
     };
   }
 
@@ -361,6 +421,21 @@ export class AppStore {
     this.db.prepare('UPDATE inbox SET unread = 0 WHERE id = ?').run(id);
   }
 
+  markAllInboxRead(): void {
+    this.db.prepare('UPDATE inbox SET unread = 0 WHERE unread = 1').run();
+  }
+
+  deleteInbox(id: string): void {
+    this.db.prepare('DELETE FROM inbox WHERE id = ?').run(id);
+  }
+
+  countUnreadInbox(): number {
+    const row = this.db.prepare(
+      'SELECT COUNT(*) AS count FROM inbox WHERE unread = 1',
+    ).get() as SqlRow | undefined;
+    return Number(row?.['count'] ?? 0);
+  }
+
   saveMemory(
     input: Pick<MemoryRecord, 'content' | 'projectPath' | 'tags'> & { readonly id?: string },
   ): MemoryRecord {
@@ -454,6 +529,10 @@ export class AppStore {
         updated_at = excluded.updated_at
     `).run(id, input.title, input.path, input.url ?? null, createdAt, now);
     return this.getSite(id) as SiteRecord;
+  }
+
+  deleteSite(id: string): void {
+    this.db.prepare('DELETE FROM sites WHERE id = ?').run(id);
   }
 }
 

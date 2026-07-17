@@ -1,0 +1,175 @@
+import {
+  memo,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import mermaid from 'mermaid';
+
+function readCssVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value.length > 0 ? value : fallback;
+}
+
+function themeVariablesFromCss(): Record<string, string> {
+  const text = readCssVar('--text', '#f1f3f7');
+  const muted = readCssVar('--muted', '#8b919e');
+  const border = readCssVar('--border', '#2a2e38');
+  const surface = readCssVar('--surface-1', readCssVar('--bg-elevated', '#15171c'));
+  const bg = readCssVar('--bg', '#0e1014');
+  return {
+    background: surface,
+    primaryColor: surface,
+    primaryTextColor: text,
+    primaryBorderColor: border,
+    secondaryColor: bg,
+    secondaryTextColor: text,
+    secondaryBorderColor: border,
+    tertiaryColor: surface,
+    tertiaryTextColor: text,
+    tertiaryBorderColor: border,
+    lineColor: muted,
+    textColor: text,
+    mainBkg: surface,
+    nodeBorder: border,
+    clusterBkg: bg,
+    clusterBorder: border,
+    titleColor: text,
+    edgeLabelBackground: surface,
+  };
+}
+
+function isDarkTheme(): boolean {
+  if (typeof document === 'undefined') return true;
+  return document.documentElement.dataset['theme'] !== 'light';
+}
+
+let mermaidReady = false;
+let lastThemeKey = '';
+
+function ensureMermaidConfigured(): void {
+  const dark = isDarkTheme();
+  const vars = themeVariablesFromCss();
+  const themeKey = `${dark ? 'dark' : 'light'}:${vars['background']}:${vars['textColor']}`;
+  if (mermaidReady && themeKey === lastThemeKey) return;
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: 'base',
+    themeVariables: vars,
+    flowchart: { htmlLabels: false },
+  });
+  mermaidReady = true;
+  lastThemeKey = themeKey;
+}
+
+function sanitizeRenderId(raw: string): string {
+  return `mmd-${raw.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+}
+
+export const MermaidDiagram = memo(function MermaidDiagram(props: {
+  readonly source: string;
+  readonly className?: string;
+}): ReactNode {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const reactId = useId();
+  const renderId = useMemo(() => sanitizeRenderId(reactId), [reactId]);
+  const [activated, setActivated] = useState(false);
+  const [svg, setSvg] = useState<string>();
+  const [error, setError] = useState<string>();
+  const [themeRevision, setThemeRevision] = useState(0);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (host === null || activated) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setActivated(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setActivated(true);
+        observer.disconnect();
+      },
+      { rootMargin: '600px 0px' },
+    );
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [activated]);
+
+  useEffect(() => {
+    if (!activated || typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setThemeRevision((value) => value + 1);
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    return () => observer.disconnect();
+  }, [activated]);
+
+  useEffect(() => {
+    if (!activated) return;
+    let cancelled = false;
+    const source = props.source.trim();
+    setSvg(undefined);
+    if (source.length === 0) {
+      setSvg(undefined);
+      setError('空的 Mermaid 图表');
+      return;
+    }
+
+    void (async () => {
+      try {
+        ensureMermaidConfigured();
+        const result = await mermaid.render(renderId, source);
+        if (cancelled) return;
+        setSvg(result.svg);
+        setError(undefined);
+      } catch (cause) {
+        if (cancelled) return;
+        setSvg(undefined);
+        setError(cause instanceof Error ? cause.message : String(cause));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activated, props.source, renderId, themeRevision]);
+
+  const className = props.className ?? 'markdown-mermaid';
+
+  return (
+    <div
+      aria-busy={activated && svg === undefined && error === undefined}
+      aria-label="Mermaid 图表"
+      className={`${className}${error !== undefined ? ' markdown-mermaid-error' : ''}`}
+      ref={hostRef}
+      role={svg === undefined ? 'status' : 'img'}
+    >
+      {!activated ? (
+        <div className="markdown-mermaid-loading">图表将在进入视口时渲染</div>
+      ) : error !== undefined ? (
+        <>
+        <p>无法渲染图表</p>
+        <pre>
+          <code>{props.source}</code>
+        </pre>
+        </>
+      ) : svg === undefined ? (
+        <div className="markdown-mermaid-loading">正在渲染图表…</div>
+      ) : (
+        <div
+          className="markdown-mermaid-canvas"
+          // Mermaid SVG is generated by the library under securityLevel: 'strict'.
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      )}
+    </div>
+  );
+});

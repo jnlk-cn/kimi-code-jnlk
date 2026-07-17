@@ -5,10 +5,10 @@ import { nextOccurrence } from './schedule';
 import type { AppStore } from './store';
 import type { SessionManager } from './session-manager';
 import type { WorkspaceService } from './workspace-service';
+import type { NotificationBridge } from './notification-bridge';
 import { createScopedLogger } from './logging';
 
 type Emit = (channel: string, payload: unknown) => void;
-type Notify = (title: string, body: string) => void;
 
 const log = createScopedLogger('automation');
 
@@ -21,7 +21,7 @@ export class AutomationManager {
     private readonly sessions: SessionManager,
     private readonly workspace: WorkspaceService,
     private readonly emit: Emit,
-    private readonly notify: Notify,
+    private readonly inbox: NotificationBridge,
   ) {}
 
   start(): void {
@@ -109,25 +109,30 @@ export class AutomationManager {
       this.sessions.setUnattended(sessionId, true);
       const prompt: PromptRequest = { sessionId, text: automation.prompt };
       await this.sessions.runPrompt(prompt);
-      this.store.addInbox({
+      const promptPreview = automation.prompt.trim().slice(0, 120);
+      this.inbox.addInbox({
         automationId: automation.id,
         sessionId,
         title: `${automation.name} 已完成`,
-        detail: `自动化已在 ${new Date().toLocaleString()} 完成。`,
+        detail: [
+          `自动化已在 ${new Date().toLocaleString()} 完成。`,
+          workDir !== automation.projectPath ? `Worktree：${workDir}` : undefined,
+          promptPreview.length > 0 ? `任务：${promptPreview}${automation.prompt.length > 120 ? '…' : ''}` : undefined,
+        ]
+          .filter((part): part is string => part !== undefined)
+          .join('\n'),
         status: 'success',
       });
-      this.notify('Ganymede Code', `${automation.name} 已完成`);
       log.info('automation completed', { id: automation.id, sessionId });
     } catch (error) {
       log.error('automation failed', { id: automation.id, sessionId, error });
-      this.store.addInbox({
+      this.inbox.addInbox({
         automationId: automation.id,
         sessionId,
         title: `${automation.name} 运行失败`,
         detail: error instanceof Error ? error.message : String(error),
         status: 'failed',
       });
-      this.notify('Ganymede Code', `${automation.name} 运行失败`);
     } finally {
       if (sessionId !== undefined) this.sessions.setUnattended(sessionId, false);
       const now = Date.now();

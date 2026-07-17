@@ -3,12 +3,14 @@ import {
   ensureConfigFile,
   getRootLogger,
   KimiCore,
+  KIMI_CODE_BRAND,
   noopTelemetryClient,
   resolveConfigPath,
-  resolveKimiHome,
   resolveLoggingConfig,
+  resolveUserHome,
   type CoreAPI,
   type OAuthTokenProviderResolver,
+  type ProductBrand,
   type RPCMethods,
   type SDKAPI,
   type TelemetryClient,
@@ -32,6 +34,7 @@ import type {
 export interface SDKRpcClientOptions {
   readonly homeDir?: string;
   readonly configPath?: string;
+  readonly brand?: ProductBrand;
   readonly identity?: KimiHostIdentity;
   readonly resolveOAuthTokenProvider?: OAuthTokenProviderResolver;
   readonly skillDirs?: readonly string[];
@@ -42,6 +45,7 @@ export interface SDKRpcClientOptions {
 export class SDKRpcClient extends SDKRpcClientBase {
   readonly homeDir: string;
   readonly configPath: string;
+  readonly brand: ProductBrand;
   readonly identity: KimiHostIdentity | undefined;
   readonly telemetry: TelemetryClient;
   readonly auth: KimiAuthFacade;
@@ -53,10 +57,12 @@ export class SDKRpcClient extends SDKRpcClientBase {
     super();
     this.identity =
       options.identity === undefined ? undefined : assertKimiHostIdentity(options.identity);
-    this.homeDir = resolveKimiHome(options.homeDir);
+    this.brand = options.brand ?? KIMI_CODE_BRAND;
+    this.homeDir = resolveUserHome({ brand: this.brand, homeDir: options.homeDir });
     this.configPath = resolveConfigPath({
       homeDir: this.homeDir,
       configPath: options.configPath,
+      brand: this.brand,
     });
     this.telemetry = options.telemetry ?? noopTelemetryClient;
     this.auth = new KimiAuthFacade({
@@ -72,6 +78,7 @@ export class SDKRpcClient extends SDKRpcClientBase {
     this.core = new KimiCore(coreRpc, {
       homeDir: options.homeDir,
       configPath: this.configPath,
+      brand: this.brand,
       kimiRequestHeaders: this.createKimiRequestHeaders(),
       resolveOAuthTokenProvider:
         options.resolveOAuthTokenProvider ?? this.auth.resolveOAuthTokenProvider,

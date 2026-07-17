@@ -102,12 +102,23 @@ describe('Session plan, compact, usage, and resume APIs', () => {
         askMode: false,
       });
 
+      await session.setInteractionMode('engineering');
+      await expect(session.getStatus()).resolves.toMatchObject({
+        interactionMode: 'engineering',
+        engineeringMode: true,
+        planMode: false,
+        askMode: false,
+        debugMode: false,
+        swarmMode: false,
+      });
+
       await session.setInteractionMode('agent');
       await expect(session.getStatus()).resolves.toMatchObject({
         interactionMode: 'agent',
         planMode: false,
         askMode: false,
         debugMode: false,
+        engineeringMode: false,
         swarmMode: false,
       });
     } finally {

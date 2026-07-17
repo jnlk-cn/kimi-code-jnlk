@@ -2,6 +2,7 @@ import {
   ErrorCodes,
   KimiError,
   type AgentContextData,
+  type ContextUsageBreakdown,
   type KimiErrorCode,
   type SwarmModeTrigger,
 } from '@moonshot-ai/agent-core';
@@ -255,11 +256,12 @@ export class Session {
       mode !== 'plan' &&
       mode !== 'debug' &&
       mode !== 'multitask' &&
-      mode !== 'ask'
+      mode !== 'ask' &&
+      mode !== 'engineering'
     ) {
       throw new KimiError(
         ErrorCodes.REQUEST_INVALID,
-        'Session interaction mode must be agent, plan, debug, multitask, or ask',
+        'Session interaction mode must be agent, plan, debug, multitask, ask, or engineering',
       );
     }
     await this.rpc.setInteractionMode({ sessionId: this.id, mode });
@@ -312,6 +314,11 @@ export class Session {
   async getContext(): Promise<AgentContextData> {
     this.ensureOpen();
     return this.rpc.getContext({ sessionId: this.id });
+  }
+
+  async getContextUsageBreakdown(): Promise<ContextUsageBreakdown> {
+    this.ensureOpen();
+    return this.rpc.getContextUsageBreakdown({ sessionId: this.id });
   }
 
   async getUsage(): Promise<SessionUsage> {
@@ -547,6 +554,26 @@ export class Session {
     await this.rpc.activateSkill({
       sessionId: this.id,
       name: skillName,
+      ...(skillArgs !== undefined ? { args: skillArgs } : {}),
+    });
+  }
+
+  /**
+   * Silently preload a skill into context without launching a turn.
+   * Used by engineering-mode bootstrap so mode switch does not busy the agent.
+   */
+  async bootstrapSkill(name: string, args?: string | undefined): Promise<void> {
+    this.ensureOpen();
+    const skillName = normalizeRequiredString(
+      name,
+      'Skill name cannot be empty',
+      ErrorCodes.SKILL_NAME_EMPTY,
+    );
+    const skillArgs = normalizeOptionalString(args);
+    await this.rpc.activateSkill({
+      sessionId: this.id,
+      name: skillName,
+      mode: 'bootstrap',
       ...(skillArgs !== undefined ? { args: skillArgs } : {}),
     });
   }

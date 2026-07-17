@@ -31,7 +31,7 @@ Current release: **0.25.0** (`v0.25.0-jnlk`). The fork regularly syncs from upst
 - **Windows / macOS CI**: Windows agent-core test fixes, re-enabled `test-windows`, plus `test-macos` in the fork release workflow.
 - **Distribution**: [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) and `install.sh` / `install.ps1` only — not `code.kimi.com` or npm `@moonshot-ai/kimi-code`.
 
-Full release notes: [CHANGELOG.md](CHANGELOG.md) (synced to the [docs site](docs/en/release-notes/changelog.md)). Package-level history: [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md). If you only need official Kimi models and the upstream channel, use the upstream project.
+Full release notes: [CHANGELOG.md](CHANGELOG.md) (Simplified Chinese: [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md); synced to the [docs site](docs/en/release-notes/changelog.md)). Package-level history: [apps/kimi-code/CHANGELOG.md](apps/kimi-code/CHANGELOG.md). If you only need official Kimi models and the upstream channel, use the upstream project.
 
 ## Install
 

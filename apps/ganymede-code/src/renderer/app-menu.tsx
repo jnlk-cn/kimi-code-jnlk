@@ -42,19 +42,31 @@ export function AppMenuPopover(props: {
   readonly searchPlaceholder?: string;
 }): ReactNode {
   const host = useRef<HTMLDivElement>(null);
+  const surfaces = useRef<Set<HTMLElement>>(new Set());
   const [style, setStyle] = useState<CSSProperties>({ opacity: 0 });
   const [submenuDirection, setSubmenuDirection] = useState<'left' | 'right'>('right');
   const [query, setQuery] = useState('');
+  const registerSurface = useMemo(() => (element: HTMLElement | null): void => {
+    if (element !== null) surfaces.current.add(element);
+  }, []);
+  const unregisterSurface = useMemo(() => (element: HTMLElement | null): void => {
+    if (element !== null) surfaces.current.delete(element);
+  }, []);
   const visibleItems = useMemo(
     () => props.searchPlaceholder === undefined || query.trim().length === 0
       ? props.items
       : menuSearchItems(props.items, query),
     [props.items, props.searchPlaceholder, query],
   );
+  const visibleItemCount = useMemo(
+    () => visibleItems.filter((item) => !item.separator).length,
+    [visibleItems],
+  );
 
   useLayoutEffect(() => {
     const menu = host.current;
     if (menu === null) return;
+    registerSurface(menu);
     const bounds = menu.getBoundingClientRect();
     const gap = 7;
     let left: number;
@@ -71,13 +83,16 @@ export function AppMenuPopover(props: {
     top = Math.max(8, Math.min(top, window.innerHeight - bounds.height - 8));
     setSubmenuDirection(left + bounds.width * 2 + 12 > window.innerWidth ? 'left' : 'right');
     setStyle({ left, top, opacity: 1 });
-  }, [props.anchor, props.placement, visibleItems]);
+    return () => unregisterSurface(menu);
+  }, [props.anchor, props.placement, query, visibleItemCount, registerSurface, unregisterSurface]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent): void => {
-      if (event.target instanceof Node && host.current?.contains(event.target) !== true) {
-        props.onClose();
+      if (!(event.target instanceof Node)) return;
+      for (const surface of surfaces.current) {
+        if (surface.contains(event.target)) return;
       }
+      props.onClose();
     };
     const onWindowBlur = (): void => props.onClose();
     window.addEventListener('mousedown', onPointerDown, true);
@@ -104,6 +119,10 @@ export function AppMenuPopover(props: {
                 event.preventDefault();
                 first.onSelect();
                 props.onClose();
+              } else if (first?.onSelect !== undefined && first.children !== undefined) {
+                event.preventDefault();
+                first.onSelect();
+                props.onClose();
               }
             }
             if (event.key === 'ArrowDown') {
@@ -115,13 +134,60 @@ export function AppMenuPopover(props: {
           value={query}
         />
       ) : null}
-      <MenuLevel
-        items={visibleItems}
-        ariaLabel={props.ariaLabel}
-        autoFocus={props.searchPlaceholder === undefined}
-        onClose={props.onClose}
-        submenuDirection={submenuDirection}
-      />
+      <div className="app-menu-scroll">
+        <MenuLevel
+          items={visibleItems}
+          ariaLabel={props.ariaLabel}
+          autoFocus={props.searchPlaceholder === undefined}
+          onClose={props.onClose}
+          registerSurface={registerSurface}
+          submenuDirection={submenuDirection}
+          unregisterSurface={unregisterSurface}
+        />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+const SUBMENU_SWITCH_DELAY_MS = 180;
+
+function SubmenuPanel(props: {
+  readonly direction: 'left' | 'right';
+  readonly anchor: DOMRect;
+  readonly onMouseEnter: () => void;
+  readonly registerSurface: (element: HTMLElement | null) => void;
+  readonly unregisterSurface: (element: HTMLElement | null) => void;
+  readonly children: ReactNode;
+}): ReactNode {
+  const host = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<CSSProperties>({ opacity: 0 });
+
+  useLayoutEffect(() => {
+    const element = host.current;
+    if (element === null) return;
+    props.registerSurface(element);
+    const bounds = element.getBoundingClientRect();
+    const gap = 4;
+    const margin = 8;
+    let left = props.direction === 'left'
+      ? props.anchor.left - bounds.width - gap
+      : props.anchor.right + gap;
+    let top = props.anchor.top;
+    left = Math.max(margin, Math.min(left, window.innerWidth - bounds.width - margin));
+    top = Math.max(margin, Math.min(top, window.innerHeight - bounds.height - margin));
+    setStyle({ left, top, opacity: 1 });
+    return () => props.unregisterSurface(element);
+  }, [props.anchor, props.direction, props.registerSurface, props.unregisterSurface]);
+
+  return createPortal(
+    <div
+      className={`app-menu-submenu${props.direction === 'left' ? ' open-left' : ''}`}
+      onMouseEnter={props.onMouseEnter}
+      ref={host}
+      style={style}
+    >
+      {props.children}
     </div>,
     document.body,
   );
@@ -133,20 +199,74 @@ function MenuLevel(props: {
   readonly autoFocus?: boolean;
   readonly onClose: () => void;
   readonly submenuDirection: 'left' | 'right';
+  readonly registerSurface: (element: HTMLElement | null) => void;
+  readonly unregisterSurface: (element: HTMLElement | null) => void;
 }): ReactNode {
   const selectable = props.items.filter((item) => !item.separator && !item.disabled);
   const [activeId, setActiveId] = useState(selectable[0]?.id);
   const [submenuId, setSubmenuId] = useState<string>();
+  const [submenuAnchor, setSubmenuAnchor] = useState<DOMRect>();
   const menu = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
+  const submenuSwitchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const clearSubmenuSwitchTimer = (): void => {
+    if (submenuSwitchTimer.current !== undefined) {
+      clearTimeout(submenuSwitchTimer.current);
+      submenuSwitchTimer.current = undefined;
+    }
+  };
+
+  const measureItem = (itemId: string): DOMRect | undefined =>
+    itemRefs.current.get(itemId)?.getBoundingClientRect();
+
+  const openSubmenuForItem = (item: AppMenuItem, immediate = false): void => {
+    setActiveId(item.id);
+    if (item.children === undefined) {
+      clearSubmenuSwitchTimer();
+      setSubmenuId(undefined);
+      setSubmenuAnchor(undefined);
+      return;
+    }
+    const anchor = measureItem(item.id);
+    if (submenuId === item.id) {
+      if (anchor !== undefined) setSubmenuAnchor(anchor);
+      return;
+    }
+    const open = (): void => {
+      setSubmenuId(item.id);
+      setSubmenuAnchor(anchor ?? measureItem(item.id));
+      submenuSwitchTimer.current = undefined;
+    };
+    if (immediate || submenuId === undefined) {
+      clearSubmenuSwitchTimer();
+      open();
+      return;
+    }
+    clearSubmenuSwitchTimer();
+    submenuSwitchTimer.current = setTimeout(open, SUBMENU_SWITCH_DELAY_MS);
+  };
+
+  const lockSubmenu = (itemId: string): void => {
+    clearSubmenuSwitchTimer();
+    setActiveId(itemId);
+    setSubmenuId(itemId);
+    const anchor = measureItem(itemId);
+    if (anchor !== undefined) setSubmenuAnchor(anchor);
+  };
 
   useEffect(() => {
     if (props.autoFocus !== false) menu.current?.focus();
   }, [props.autoFocus]);
 
+  useEffect(() => () => clearSubmenuSwitchTimer(), []);
+
   useEffect(() => {
     if (!selectable.some((item) => item.id === activeId)) {
+      clearSubmenuSwitchTimer();
       setActiveId(selectable[0]?.id);
       setSubmenuId(undefined);
+      setSubmenuAnchor(undefined);
     }
   }, [activeId, props.items, selectable]);
 
@@ -154,14 +274,23 @@ function MenuLevel(props: {
     if (selectable.length === 0) return;
     const index = Math.max(0, selectable.findIndex((item) => item.id === activeId));
     const next = (index + delta + selectable.length) % selectable.length;
-    setActiveId(selectable[next]?.id);
+    const nextItem = selectable[next];
+    if (nextItem === undefined) return;
+    clearSubmenuSwitchTimer();
+    setActiveId(nextItem.id);
     setSubmenuId(undefined);
+    setSubmenuAnchor(undefined);
   };
 
   const activate = (item: AppMenuItem | undefined): void => {
     if (item === undefined || item.disabled) return;
     if (item.children !== undefined) {
-      setSubmenuId(item.id);
+      if (item.onSelect !== undefined) {
+        item.onSelect();
+        props.onClose();
+        return;
+      }
+      openSubmenuForItem(item, true);
       return;
     }
     item.onSelect?.();
@@ -178,10 +307,12 @@ function MenuLevel(props: {
       move(-1);
     } else if (event.key === 'ArrowRight' && active?.children !== undefined) {
       event.preventDefault();
-      setSubmenuId(active.id);
+      openSubmenuForItem(active, true);
     } else if (event.key === 'ArrowLeft' && submenuId !== undefined) {
       event.preventDefault();
+      clearSubmenuSwitchTimer();
       setSubmenuId(undefined);
+      setSubmenuAnchor(undefined);
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       activate(active);
@@ -190,6 +321,9 @@ function MenuLevel(props: {
       props.onClose();
     }
   };
+
+  const openItem = props.items.find((item) => item.id === submenuId);
+  const openChildren = openItem?.children;
 
   return (
     <div
@@ -200,20 +334,21 @@ function MenuLevel(props: {
       role="menu"
       tabIndex={-1}
     >
-      {props.items.map((item, index) => {
+      {props.items.map((item) => {
         if (item.separator) return <div className="app-menu-separator" key={item.id} role="separator" />;
         const active = item.id === activeId;
-        const submenuOpen = item.id === submenuId && item.children !== undefined;
         return (
-          <div className="app-menu-item-wrap" key={item.id}>
+          <div className={`app-menu-item-wrap${item.id === submenuId ? ' submenu-open' : ''}`} key={item.id}>
             <button
               aria-checked={item.checked}
               className={`${active ? 'active ' : ''}${item.danger ? 'danger' : ''}`}
               disabled={item.disabled}
               onClick={() => activate(item)}
-              onMouseEnter={() => {
-                setActiveId(item.id);
-                setSubmenuId(item.children === undefined ? undefined : item.id);
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => openSubmenuForItem(item)}
+              ref={(element) => {
+                if (element === null) itemRefs.current.delete(item.id);
+                else itemRefs.current.set(item.id, element);
               }}
               role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
               type="button"
@@ -227,39 +362,76 @@ function MenuLevel(props: {
               {item.shortcut !== undefined ? <kbd>{item.shortcut}</kbd> : null}
               {item.children !== undefined ? <ChevronRight className="app-menu-chevron" size={13} /> : null}
             </button>
-            {submenuOpen ? (
-              <div
-                className={`app-menu-submenu${props.submenuDirection === 'left' ? ' open-left' : ''}`}
-                style={index >= props.items.length / 2 ? { bottom: -6 } : { top: -6 }}
-              >
-                <MenuLevel
-                  ariaLabel={item.label ?? props.ariaLabel}
-                  autoFocus
-                  items={item.children ?? []}
-                  onClose={props.onClose}
-                  submenuDirection={props.submenuDirection}
-                />
-              </div>
-            ) : null}
           </div>
         );
       })}
+      {openChildren !== undefined && submenuAnchor !== undefined && openItem !== undefined ? (
+        <SubmenuPanel
+          anchor={submenuAnchor}
+          direction={props.submenuDirection}
+          onMouseEnter={() => lockSubmenu(openItem.id)}
+          registerSurface={props.registerSurface}
+          unregisterSurface={props.unregisterSurface}
+        >
+          <MenuLevel
+            ariaLabel={openItem.label ?? props.ariaLabel}
+            autoFocus={false}
+            items={openChildren}
+            onClose={props.onClose}
+            registerSurface={props.registerSurface}
+            submenuDirection={props.submenuDirection}
+            unregisterSurface={props.unregisterSurface}
+          />
+        </SubmenuPanel>
+      ) : null}
     </div>
   );
 }
 
+/** Action ids kept at the bottom of filtered search results (not dropped by query). */
+const PINNED_MENU_ACTION_IDS = new Set([
+  'open-project',
+  'open-from-disk',
+  'add-additional-dir',
+]);
+
 function menuSearchItems(items: readonly AppMenuItem[], query: string): readonly AppMenuItem[] {
   const normalized = query.trim().toLocaleLowerCase();
-  const matched = items.filter((item) => {
-    if (item.separator) return false;
-    if (item.id === 'open-project') return true;
-    return `${item.label ?? ''} ${item.description ?? ''}`.toLocaleLowerCase().includes(normalized);
-  });
-  const openProjectIndex = matched.findIndex((item) => item.id === 'open-project');
-  if (openProjectIndex <= 0) return matched;
+  if (normalized.length === 0) return items;
+
+  const matched: AppMenuItem[] = [];
+  for (const item of items) {
+    if (item.separator) continue;
+    if (PINNED_MENU_ACTION_IDS.has(item.id)) {
+      matched.push(item);
+      continue;
+    }
+    const parentText = `${item.label ?? ''} ${item.description ?? ''}`.toLocaleLowerCase();
+    if (parentText.includes(normalized)) {
+      matched.push(item);
+      continue;
+    }
+    if (item.children === undefined) continue;
+    for (const child of item.children) {
+      if (child.separator || child.disabled) continue;
+      const childText = `${item.label ?? ''} ${child.label ?? ''} ${child.description ?? ''}`.toLocaleLowerCase();
+      if (!childText.includes(normalized) || child.onSelect === undefined) continue;
+      matched.push({
+        ...child,
+        id: child.id,
+        label: `${item.label ?? ''} · ${child.label ?? ''}`,
+        description: child.description ?? item.description,
+        icon: child.icon ?? item.icon,
+        children: undefined,
+      });
+    }
+  }
+
+  const firstPinnedIndex = matched.findIndex((item) => PINNED_MENU_ACTION_IDS.has(item.id));
+  if (firstPinnedIndex <= 0) return matched;
   return [
-    ...matched.slice(0, openProjectIndex),
+    ...matched.slice(0, firstPinnedIndex),
     { id: 'search-separator', separator: true },
-    ...matched.slice(openProjectIndex),
+    ...matched.slice(firstPinnedIndex),
   ];
 }

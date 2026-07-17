@@ -1,7 +1,7 @@
 import { join } from 'pathe';
 import { randomUUID } from 'node:crypto';
 
-import { normalizeAdditionalDirs } from '../config';
+import { KIMI_CODE_BRAND, normalizeAdditionalDirs, type ProductBrand } from '../config';
 import { ErrorCodes, KimiError, makeErrorPayload } from '#/errors';
 import { log } from '#/logging/logger';
 import type { Logger } from '#/logging/types';
@@ -34,11 +34,16 @@ import {
 import { CronManager } from './cron';
 import { ConfigState } from './config';
 import { ContextMemory } from './context';
+import {
+  computeContextUsageBreakdown,
+  type ContextUsageBreakdown,
+} from './context-usage';
 import { GoalMode } from './goal';
 import { HookEngine } from '../session/hooks';
 import { InjectionManager } from './injection/manager';
 import { AskMode } from './ask';
 import { DebugMode } from './debug';
+import { EngineeringMode } from './engineering';
 import { InteractionModeManager } from './interaction-mode';
 import { PermissionManager, type PermissionManagerOptions } from './permission';
 import { PlanMode } from './plan';
@@ -68,6 +73,7 @@ export type { AgentRecord, AgentRecordPersistence } from './records';
 export type { InteractionMode } from './interaction-mode';
 export type { SwarmModeTrigger } from './swarm';
 export type { BuiltinTool, ToolInfo, ToolSource, UserToolRegistration } from './tool';
+export type { ContextUsageBreakdown, ContextUsageCategories } from './context-usage';
 export * from './goal';
 
 export type AgentType = 'main' | 'sub' | 'independent';
@@ -105,6 +111,9 @@ export interface AgentOptions {
   readonly imageLimits?: ImageLimits;
   readonly replay?: ReplayBuilderOptions;
   readonly additionalDirs?: readonly string[];
+  readonly brand?: ProductBrand;
+  /** Brand data root (e.g. ~/.ganymede); used for rg cache and AGENTS.md. */
+  readonly brandHomeDir?: string;
   readonly systemPromptContextProvider?: (() => Promise<PreparedSystemPromptContext>) | undefined;
 }
 
@@ -148,6 +157,7 @@ export class Agent {
   readonly swarmMode: SwarmMode;
   readonly askMode: AskMode;
   readonly debugMode: DebugMode;
+  readonly engineeringMode: EngineeringMode;
   readonly interaction: InteractionModeManager;
   readonly usage: UsageRecorder;
   readonly skills: SkillManager | null;
@@ -169,6 +179,7 @@ export class Agent {
   private additionalDirs: readonly string[];
   private activeProfile?: ResolvedAgentProfile;
   private brandHome?: string;
+  readonly brand: ProductBrand;
   private readonly systemPromptContextProvider?: (() => Promise<PreparedSystemPromptContext>) | undefined;
 
   constructor(options: AgentOptions) {
@@ -191,6 +202,8 @@ export class Agent {
     this.experimentalFlags = options.experimentalFlags ?? new FlagResolver();
     this.imageLimits = options.imageLimits ?? new ImageLimits();
     this.additionalDirs = normalizeAdditionalDirs(options.additionalDirs ?? []);
+    this.brand = options.brand ?? KIMI_CODE_BRAND;
+    this.brandHome = options.brandHomeDir;
     this.systemPromptContextProvider = options.systemPromptContextProvider;
 
     this.llmRequestLogger = new LlmRequestLogger(this.log);
@@ -221,6 +234,7 @@ export class Agent {
     this.swarmMode = new SwarmMode(this);
     this.askMode = new AskMode(this);
     this.debugMode = new DebugMode(this);
+    this.engineeringMode = new EngineeringMode(this);
     this.interaction = new InteractionModeManager(this);
     this.usage = new UsageRecorder(this);
     this.skills = options.skills ? new SkillManager(this, options.skills) : null;
@@ -347,6 +361,11 @@ export class Agent {
     this.brandHome = brandHome;
   }
 
+  /** Brand data root used for rg cache / credentials when set via profile. */
+  get brandHomeDir(): string | undefined {
+    return this.brandHome;
+  }
+
   /**
    * Re-render the system prompt with freshly gathered runtime context (cwd
    * listing, AGENTS.md, additional-dirs info, skill list). Called after
@@ -358,6 +377,7 @@ export class Agent {
     const context = this.systemPromptContextProvider === undefined
       ? await prepareSystemPromptContext(this.kaos, this.brandHome, {
           additionalDirs: this.additionalDirs,
+          brand: this.brand,
         })
       : await this.systemPromptContextProvider();
     this.updateSystemPromptFromProfile(this.activeProfile, context);
@@ -376,6 +396,56 @@ export class Agent {
       additionalDirsInfo: context?.additionalDirsInfo,
     });
     this.config.update({ profileName: profile.name, systemPrompt });
+  }
+
+  async getContextUsageBreakdown(): Promise<ContextUsageBreakdown> {
+    const contextTokens = this.context.tokenCount;
+    const maxContextTokens = this.config.modelCapabilities.max_context_tokens ?? 0;
+    const profile = this.activeProfile;
+
+    if (profile === undefined) {
+      return computeContextUsageBreakdown({
+        contextTokens,
+        maxContextTokens,
+        systemPromptBaseline: this.config.systemPrompt,
+        cwdListing: '',
+        additionalDirsInfo: '',
+        agentsMd: '',
+        skillListing: '',
+        includeSkills: false,
+        subagents: undefined,
+        tools: this.tools.loopTools,
+      });
+    }
+
+    const prepared = this.systemPromptContextProvider === undefined
+      ? await prepareSystemPromptContext(this.kaos, this.brandHome, {
+          additionalDirs: this.additionalDirs,
+          brand: this.brand,
+        })
+      : await this.systemPromptContextProvider();
+
+    const systemPromptBaseline = profile.systemPrompt({
+      osEnv: this.kaos.osEnv,
+      cwd: this.config.cwd,
+      skills: '',
+      agentsMd: '',
+      cwdListing: '',
+      additionalDirsInfo: '',
+    });
+
+    return computeContextUsageBreakdown({
+      contextTokens,
+      maxContextTokens,
+      systemPromptBaseline,
+      cwdListing: prepared.cwdListing ?? '',
+      additionalDirsInfo: prepared.additionalDirsInfo ?? '',
+      agentsMd: prepared.agentsMd ?? '',
+      skillListing: this.skills?.registry.getModelSkillListing() ?? '',
+      includeSkills: profile.tools.includes('Skill'),
+      subagents: profile.subagents,
+      tools: this.tools.loopTools,
+    });
   }
 
   async resume(options?: AgentRecordsReplayOptions): Promise<{ warning?: string }> {
@@ -487,6 +557,9 @@ export class Agent {
       getDebugMode: () => {
         return this.debugMode.isActive;
       },
+      getEngineeringMode: () => {
+        return this.engineeringMode.isActive;
+      },
       beginCompaction: (payload) => {
         this.fullCompaction.begin({ source: 'manual', instruction: payload.instruction });
       },
@@ -515,6 +588,10 @@ export class Agent {
       activateSkill: (payload) => {
         if (this.skills === null) {
           throw new KimiError(ErrorCodes.SKILL_NOT_FOUND, `Skill "${payload.name}" was not found`);
+        }
+        if (payload.mode === 'bootstrap') {
+          this.skills.bootstrap(payload);
+          return;
         }
         this.skills.activate(payload);
       },
@@ -559,6 +636,7 @@ export class Agent {
       getCronTasks: () => ({ tasks: this.cron?.listTaskSnapshots() ?? [] }),
       getBackgroundOutput: (payload) => this.background.readOutput(payload.taskId, payload.tail),
       getContext: () => this.context.data(),
+      getContextUsageBreakdown: () => this.getContextUsageBreakdown(),
       getConfig: () => this.config.data(),
       getPermission: () => this.permission.data(),
       getPlan: () => this.planMode.data(),
@@ -593,9 +671,11 @@ export class Agent {
       maxContextTokens,
       contextUsage,
       planMode: this.planMode.isActive,
+      planFilePath: this.planMode.planFilePath ?? undefined,
       swarmMode: this.swarmMode.isActive,
       askMode: this.askMode.isActive,
       debugMode: this.debugMode.isActive,
+      engineeringMode: this.engineeringMode.isActive,
       interactionMode: this.interaction.getMode(),
       permission: this.permission.mode,
       usage,

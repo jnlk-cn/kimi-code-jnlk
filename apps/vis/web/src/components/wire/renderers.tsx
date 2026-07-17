@@ -595,6 +595,27 @@ export const WIRE_RENDERERS: RendererMap = {
     headline: () => ({ main: <Dim>debug mode exited</Dim> }),
   },
 
+  'engineering_mode.enter': {
+    tone: 'lifecycle',
+    label: 'eng↻',
+    headline: () => ({
+      main: (
+        <span className="flex items-center gap-2">
+          <Pill tone="lifecycle" variant="soft">
+            enter
+          </Pill>
+          <Dim>engineering mode</Dim>
+        </span>
+      ),
+    }),
+  },
+
+  'engineering_mode.exit': {
+    tone: 'lifecycle',
+    label: 'eng✓',
+    headline: () => ({ main: <Dim>engineering mode exited</Dim> }),
+  },
+
   'goal.create': {
     tone: 'lifecycle',
     label: 'goal+',

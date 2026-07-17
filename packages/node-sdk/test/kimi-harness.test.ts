@@ -83,4 +83,21 @@ read_byte_budget = 65536
     expect(harness.imageLimits).toBe(limits);
     expect(harness.imageLimits?.maxEdgePx()).toBe(900);
   });
+
+  it('resolves ganymede brand home under the provided homeDir', async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), 'ganymede-sdk-harness-'));
+    tempDirs.push(homeDir);
+
+    const harness = createKimiHarness({
+      identity: TEST_IDENTITY,
+      brand: 'ganymede',
+      homeDir,
+    });
+    try {
+      expect(harness.homeDir).toBe(homeDir);
+      expect(harness.configPath).toBe(join(homeDir, 'config.toml'));
+    } finally {
+      await harness.close();
+    }
+  });
 });

@@ -1,4 +1,4 @@
-export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask';
+export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask' | 'engineering';
 
 export const INTERACTION_MODES = [
   'agent',
@@ -6,6 +6,7 @@ export const INTERACTION_MODES = [
   'debug',
   'multitask',
   'ask',
+  'engineering',
 ] as const satisfies readonly InteractionMode[];
 
 export function isInteractionMode(value: unknown): value is InteractionMode {
@@ -14,6 +15,7 @@ export function isInteractionMode(value: unknown): value is InteractionMode {
     value === 'plan' ||
     value === 'debug' ||
     value === 'multitask' ||
-    value === 'ask'
+    value === 'ask' ||
+    value === 'engineering'
   );
 }

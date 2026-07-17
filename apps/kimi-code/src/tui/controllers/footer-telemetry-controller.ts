@@ -1,4 +1,5 @@
 import type { AgentStatusUpdatedEvent, ProviderConfig, TurnStepCompletedEvent } from '@moonshot-ai/kimi-code-sdk';
+import { resolveDeepSeekProviderApiKey } from '@moonshot-ai/kimi-code-sdk';
 
 import type { FooterComponent } from '#/tui/components/chrome/footer';
 import { FOOTER_BALANCE_POLL_MS } from '#/tui/constant/footer-telemetry';
@@ -10,20 +11,6 @@ import {
   wireModelId,
 } from '#/utils/usage/deepseek-pricing';
 import { FooterTelemetryAccumulator, usageToStepSnapshot } from '#/utils/usage/footer-telemetry';
-
-function resolveProviderApiKey(provider: ProviderConfig | undefined): string | undefined {
-  if (provider === undefined) return undefined;
-  if (provider.apiKey !== undefined && provider.apiKey.trim().length > 0) {
-    return provider.apiKey.trim();
-  }
-  const env = provider.env;
-  if (env === undefined) return undefined;
-  for (const key of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY']) {
-    const value = env[key]?.trim();
-    if (value !== undefined && value.length > 0) return value;
-  }
-  return undefined;
-}
 
 export class FooterTelemetryController {
   private readonly accumulator = new FooterTelemetryAccumulator();
@@ -137,7 +124,7 @@ export class FooterTelemetryController {
   private async fetchBalanceOnce(): Promise<void> {
     if (this.disposed || this.balanceFetchInFlight || !this.isBillingEnabled()) return;
     const provider = this.deepSeekProviderConfig();
-    const apiKey = resolveProviderApiKey(provider);
+    const apiKey = resolveDeepSeekProviderApiKey(provider);
     if (apiKey === undefined) return;
 
     this.balanceFetchInFlight = true;

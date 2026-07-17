@@ -9,9 +9,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <title>Ganymede Code</title>
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        min-height: 100dvh;
+        margin: 0;
+      }
+
+      body {
+        background: #151515;
+        color: #f0f0f0;
+        font-family: system-ui, -apple-system, "PingFang SC", sans-serif;
+      }
+
+      #boot-fallback {
+        display: grid;
+        place-content: center;
+        place-items: center;
+        gap: 12px;
+        height: 100%;
+        min-height: 100dvh;
+      }
+
+      #boot-fallback strong {
+        font-size: 17px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+      }
+
+      #boot-fallback span {
+        color: #89898d;
+        font-size: 13px;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-fallback" aria-live="polite">
+        <strong>Ganymede Code</strong>
+        <span>加载中…</span>
+      </div>
+    </div>
     <script type="module" src="./main.tsx"></script>
   </body>
 </html>

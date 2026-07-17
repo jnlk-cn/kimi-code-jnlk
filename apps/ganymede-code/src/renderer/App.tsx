@@ -1,6 +1,8 @@
 import {
+  memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -8,6 +10,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import {
   Archive,
@@ -20,6 +23,7 @@ import {
   Boxes,
   Brain,
   Bug,
+  Camera,
   Check,
   ChevronDown,
   ChevronRight,
@@ -37,7 +41,6 @@ import {
   FolderOpen,
   FolderPlus,
   GitBranch,
-  GitCommit,
   GitPullRequest,
   Globe2,
   Hash,
@@ -50,12 +53,13 @@ import {
   MemoryStick,
   MessageCircle,
   MessageSquare,
-  Mic,
   MoonStar,
   MoreHorizontal,
+  MoreVertical,
   Paperclip,
-  PanelBottom,
+  PanelLeft,
   PanelRight,
+  Hammer,
   Play,
   Plug,
   Plus,
@@ -69,6 +73,7 @@ import {
   ShieldQuestion,
   SlidersHorizontal,
   Sparkles,
+  SquareDashedMousePointer,
   Star,
   TerminalSquare,
   Trash2,
@@ -85,60 +90,240 @@ import { FitAddon } from '@xterm/addon-fit';
 
 import type {
   AppSettings,
+  ApprovalResolution,
   AuthStatus,
-  Automation,
   BackgroundTaskView,
   BootstrapInfo,
   BrowserAnnotation,
   BrowserTab,
   CatalogProviderOption,
+  ContextUsageSnapshot,
+  DeepSeekBillingSnapshot,
+  EditorPresetView,
   EventEnvelope,
   FileContent,
   FileEntry,
-  GitStatus,
-  InboxItem,
+  IndexContextPreview,
+  IndexRiskAssessment,
+  IndexStatus,
   InteractionMode,
-  McpServerView,
-  MemoryRecord,
   ModelConfiguration,
   ModelOption,
   PathSuggestion,
   PendingApproval,
+  PendingDebugVerification,
   PendingQuestion,
   PluginCommandView,
-  PluginView,
+  QuestionResolution,
+  DebugVerificationResolution,
   ProjectSummary,
   PromptAttachment,
   PromptReference,
-  PullRequestSummary,
-  PullRequestDetail,
   SessionSnapshot,
   SessionStatusView,
-  SiteRecord,
   SkillView,
   TaskSummary,
   TerminalInfo,
 } from '../shared/contracts';
-import { INTERACTION_MODE_LABELS, resolveInteractionMode } from '../shared/contracts';
+import { INTERACTION_MODE_LABELS } from '../shared/contracts';
+import {
+  hexToRgbTriplet,
+  resolveAccentColor,
+  resolveThemeMode,
+} from '../shared/theme-accent';
 import {
   describeAuthStatus,
   isAuthenticated,
-  pullRequestErrorMessage,
 } from './presentation';
-import { reduceLiveEvent, replayTimeline, type TimelineEntry } from './timeline';
+import type { AgentSubagentView } from './agent-subagent';
+import {
+  type SwarmModeEntry,
+  type SwarmProgressView,
+} from './agent-swarm';
+import { ChildAgentEventRouter } from './child-agent-event-router';
+import {
+  appendSwarmMarker,
+  isFrameBatchedTimelineEvent,
+  reduceLiveEvent,
+  replayTimeline,
+  type TimelineEntry,
+} from './timeline';
+import {
+  createFrameCommitScheduler,
+  type FrameCommitScheduler,
+} from './timeline-frame-scheduler';
+import { patchStatusFromEvent } from './session-event-state';
+import {
+  initialTimelineWindowStart,
+  isTimelineNearBottom,
+  previousTimelineWindowStart,
+  scrollTimelineToBottom,
+  scrollTimelineToElement,
+  stagedTimelineWindowStart,
+  shouldTimelineAutoScroll,
+  TIMELINE_INITIAL_RENDER_SLICE,
+  timelineWindowStartForIndex,
+} from './timeline-scroll';
+import {
+  buildSessionTurns,
+  latestCompletedTurnWithEdits,
+  turnAnchorId,
+  type SessionTurn,
+} from './session-turns';
+import { AgentSwarmProgressView } from './components/agent-swarm-progress';
+import { CodeSurface } from './components/code-surface';
+import { ComposerQueueBar } from './components/composer-queue-bar';
+import { ComposerTodoBar } from './components/composer-todo-bar';
+import { DebugVerificationBar } from './components/debug-verification-bar';
+import { ContextUsagePopover } from './components/context-usage-popover';
+import { ContextUsageRing } from './components/context-usage-ring';
+import { EditorShortcuts } from './components/editor-shortcuts';
+import { IndexRiskModal } from './components/index-risk-modal';
+import { TopbarIndexStatus } from './components/topbar-index-status';
+import { MarkdownMessage } from './components/markdown-message';
+import { StreamingAssistantMessage } from './components/streaming-assistant-message';
+import { StreamingThinkingBody } from './components/streaming-thinking-body';
+import { PlanBoxView } from './components/plan-box-view';
+import { PlanBuildControls } from './components/plan-build-controls';
+import { PlansPanel } from './components/plans-panel';
+import { QuestionBar } from './components/question-bar';
+import {
+  enqueueComposerItem,
+  promoteQueuedComposerItem,
+  removeQueuedComposerItem,
+  shiftQueuedComposerItem,
+  takeQueuedComposerItem,
+  type QueuedComposerItem,
+} from './composer-queue';
+import { modelLabel, modelMenuItems, modelShortLabel, thinkingLabel } from './model-menu';
+import {
+  forceActivateProjectIndex,
+  optOutProjectIndex,
+  prepareProjectIndexActivation,
+} from './project-index-activation';
+import {
+  SwarmStartPermissionModal,
+  type SwarmStartPermissionChoice,
+} from './components/swarm-start-permission-modal';
+import { ReviewPanel } from './components/review-panel';
+import { TimelineTurnRail } from './components/timeline-turn-rail';
+import { ToolBlockView } from './components/tool-block-view';
+import { TurnEditsSummaryBar } from './components/turn-edits-summary-bar';
+import { WorkspaceBottomBar } from './components/workspace-bottom-bar';
+import {
+  GanymedeMark,
+  WorkspaceSidebar,
+  type WorkspaceRoute,
+} from './components/workspace-sidebar';
+import {
+  isUtilityPanel,
+  isUtilityRoute,
+  panelLabel,
+  toggleWorkspacePanel,
+  type WorkspacePanel,
+  type WorkspaceToolPanel,
+} from './components/workspace-panels';
+import {
+  browserTabsRestoreKey,
+  browserTabsToRestore,
+  readGlobalUi,
+  readProjectUi,
+  readSessionUi,
+  snapshotFromBrowserTabs,
+  writeGlobalUi,
+  writeProjectUi,
+  writeSessionUi,
+} from './workspace-ui-persistence';
+import {
+  readProjectRuntime,
+  readSessionRuntime,
+  writeProjectRuntime,
+  writeSessionRuntime,
+} from './workspace-runtime-ui';
+import { RAIL_CHROME_WIDTH, WorkspaceRail } from './components/workspace-rail';
+import {
+  WorkspaceRailChromeProvider,
+  WorkspaceRailChromeSlot,
+  type WorkspaceRailHeaderSlot,
+} from './components/workspace-rail-chrome';
+import {
+  composerFooterHint,
+  composerPlaceholder,
+  composerModeHint,
+  interactionModeClassName,
+  interactionModeMenuDescription,
+  INTERACTION_MODE_MENU_ORDER,
+  nextShiftTabInteractionMode,
+} from './composer-mode-ui';
+import { estimateTokensFromCharCount, resolveContextUsageDisplay } from './context-usage';
+import { estimateReplayIndexContextChars } from './index-replay-context';
+import { isHtmlPath, languageFromPath } from './language-from-path';
+import {
+  isWorkspaceSpecPath,
+  resolveWorkspaceAbsolutePath,
+} from '../shared/plan-paths';
+import {
+  isPlanReviewApproval,
+  parsePlanReviewDisplay,
+} from './plan-review';
+import {
+  latestExitPlanEntry,
+  pendingPlanReviewForTimelineEntry,
+  shouldSuppressPlanAssistantStream,
+} from './plan-timeline';
+import { PageFrame, messageOf } from './page-chrome';
+import { InboxPage } from './pages/inbox-page';
+import { MemoryPage } from './pages/memory-page';
+import { PluginsPage } from './pages/plugins-page';
+import { PullsPage } from './pages/pulls-page';
+import { ScheduledPage } from './pages/scheduled-page';
+import { GitSyncPage } from './pages/git-sync-page';
+import { SitesPage } from './pages/sites-page';
+import {
+  composerItemsToPlanTodos,
+  resolveActivePlanPath,
+  resolveUnifiedTodos,
+} from './plan-todo-sync';
+import {
+  shouldHideTodoBar,
+  todosFromTodoListArgs,
+  type TodoItem,
+} from './todo-panel';
 import {
   AppMenuPopover,
   anchorFromElement,
   type AppMenuItem,
   type MenuAnchor,
 } from './app-menu';
+import { modelProviderIcon } from './model-provider-icon';
+import {
+  canAttachFile,
+  fileToAttachment,
+  filesFromDataTransfer,
+  imageFilesFromClipboard,
+  mergeAttachments,
+} from './composer-attachments';
 import {
   composerTriggerAt,
   fuzzyTextMatch,
   removeComposerTrigger,
+  resolveSlashSubmitText,
   type ComposerTrigger,
   type TriggerContext,
 } from './composer-support';
+import {
+  permissionDescription,
+  permissionToolbarLabel,
+} from './permission-ui';
+import {
+  handleAlignedSlashCommand,
+  type ComposerMenuKind,
+  type SlashCommandHost,
+} from './slash-commands';
+import {
+  buildWorkspacePickerItems,
+  WorkspacePickerPopover,
+} from './workspace-picker';
 import {
   DEFAULT_MONO_FONT,
   DEFAULT_TERMINAL_FONT_SIZE,
@@ -149,17 +334,11 @@ import {
   resolveTerminalFontSize,
 } from './terminal-options';
 
-type Route =
-  | 'new'
-  | 'inbox'
-  | 'scheduled'
-  | 'plugins'
-  | 'sites'
-  | 'pulls'
-  | 'chat'
-  | 'memory'
-  | 'settings';
-type Panel = 'none' | 'summary' | 'review' | 'files' | 'terminal' | 'browser' | 'agents';
+type Route = WorkspaceRoute;
+type Panel = WorkspacePanel;
+type TimelineUpdate =
+  | readonly TimelineEntry[]
+  | ((current: readonly TimelineEntry[]) => readonly TimelineEntry[]);
 
 interface DesktopCommand {
   readonly slash: string;
@@ -171,45 +350,324 @@ interface DesktopCommand {
 }
 
 const api = window.ganymede;
+const initialGlobalUi = readGlobalUi();
+
+function openExternalFromTimeline(url: string): void {
+  void api.openExternal(url);
+}
 
 export function App(): ReactNode {
   const [boot, setBoot] = useState<BootstrapInfo>();
   const [settings, setSettings] = useState<AppSettings>();
   const [projects, setProjects] = useState<readonly ProjectSummary[]>([]);
+  const [archivedProjects, setArchivedProjects] = useState<readonly ProjectSummary[]>([]);
   const [tasks, setTasks] = useState<readonly TaskSummary[]>([]);
   const [referenceTasks, setReferenceTasks] = useState<readonly TaskSummary[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectSummary>();
   const [session, setSession] = useState<SessionSnapshot>();
   const [timeline, setTimeline] = useState<readonly TimelineEntry[]>([]);
-  const [route, setRoute] = useState<Route>('new');
+  const [route, setRoute] = useState<Route>(() => initialGlobalUi.route);
   const [panel, setPanel] = useState<Panel>('none');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => initialGlobalUi.sidebarOpen);
+  const [workspacePanelDockOpen, setWorkspacePanelDockOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(() => storedNumber('ganymede.sidebarWidth', 248));
   const [sidePanelWidth, setSidePanelWidth] = useState(() => storedNumber('ganymede.sidePanelWidth', 420));
   const [browserPanelWidth, setBrowserPanelWidth] = useState(() => storedNumber('ganymede.browserPanelWidth', 640));
   const [terminalHeight, setTerminalHeight] = useState(() => storedNumber('ganymede.terminalHeight', 250));
+  const [bottomTerminalOpen, setBottomTerminalOpen] = useState(false);
+  const [railHeader, setRailHeader] = useState<WorkspaceRailHeaderSlot>();
   const [prompt, setPrompt] = useState('');
   const [attachments, setAttachments] = useState<readonly PromptAttachment[]>([]);
   const [references, setReferences] = useState<readonly PromptReference[]>([]);
   const [approval, setApproval] = useState<PendingApproval>();
+  const [selectedPlanPath, setSelectedPlanPath] = useState<string | undefined>(() =>
+    initialGlobalUi.activeProjectWorkDir === undefined
+      ? undefined
+      : readProjectUi(initialGlobalUi.activeProjectWorkDir).selectedPlanPath,
+  );
   const [question, setQuestion] = useState<PendingQuestion>();
+  const [debugVerification, setDebugVerification] = useState<PendingDebugVerification>();
+  const [composerQueue, setComposerQueue] = useState<readonly QueuedComposerItem[]>([]);
+  const [indexRiskPrompt, setIndexRiskPrompt] = useState<{
+    readonly assessment: IndexRiskAssessment;
+    readonly workDir: string;
+    readonly additionalDirs: readonly string[];
+  }>();
   const [error, setError] = useState<string>();
   const [commandOpen, setCommandOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [target, setTarget] = useState<'local' | 'worktree' | 'ssh'>('local');
   const [sshProfileId, setSshProfileId] = useState<string>();
   const [draftInteractionMode, setDraftInteractionMode] = useState<InteractionMode>('agent');
+  const [draftPermission, setDraftPermission] = useState<'manual' | 'auto' | 'yolo'>('manual');
   const [draftModel, setDraftModel] = useState<string>();
   const [draftThinking, setDraftThinking] = useState<string>();
+  const [composerMenuRequest, setComposerMenuRequest] = useState<ComposerMenuKind>();
   const [availableSkills, setAvailableSkills] = useState<readonly SkillView[]>([]);
   const [pluginCommands, setPluginCommands] = useState<readonly PluginCommandView[]>([]);
   const [renameTarget, setRenameTarget] = useState<{ readonly id: string; readonly title: string }>();
   const [removeProjectTarget, setRemoveProjectTarget] = useState<ProjectSummary>();
+  const [workspacePicker, setWorkspacePicker] = useState<{ readonly anchor: MenuAnchor }>();
+  const [browserPreviewUrl, setBrowserPreviewUrl] = useState<string>();
+  const [availableEditors, setAvailableEditors] = useState<readonly EditorPresetView[]>([]);
+  const [swarmRevision, setSwarmRevision] = useState(0);
+  const swarmRevisionRef = useRef(0);
+  const swarmRevisionSchedulerRef = useRef<FrameCommitScheduler<number> | undefined>(undefined);
+  if (swarmRevisionSchedulerRef.current === undefined) {
+    swarmRevisionSchedulerRef.current = createFrameCommitScheduler(setSwarmRevision, {
+      request: (callback) => window.requestAnimationFrame(callback),
+      cancel: (handle) => window.cancelAnimationFrame(handle),
+    });
+  }
+  const bumpSwarmRevision = useCallback((priority: 'frame' | 'immediate' = 'immediate'): void => {
+    swarmRevisionRef.current += 1;
+    if (priority === 'frame') {
+      swarmRevisionSchedulerRef.current?.schedule(swarmRevisionRef.current);
+    } else {
+      swarmRevisionSchedulerRef.current?.commitNow(swarmRevisionRef.current);
+    }
+  }, []);
+  const [swarmModeEntry, setSwarmModeEntry] = useState<SwarmModeEntry>();
+  const [swarmPermission, setSwarmPermission] = useState<{
+    readonly restoreText: string;
+    readonly onSelect: (choice: SwarmStartPermissionChoice) => Promise<void>;
+  }>();
+  const [sessionTodos, setSessionTodos] = useState<readonly TodoItem[]>([]);
+  const [boundPlanContent, setBoundPlanContent] = useState<string | undefined>();
+  const boundPlanContentRef = useRef<string | undefined>(undefined);
+  boundPlanContentRef.current = boundPlanContent;
+  const [plansRefreshToken, setPlansRefreshToken] = useState(0);
+  const [backgroundBadge, setBackgroundBadge] = useState<{
+    readonly agents: number;
+    readonly tasks: number;
+  }>({ agents: 0, tasks: 0 });
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
+  const [inboxAutomationFilter, setInboxAutomationFilter] = useState<string>();
   const activeSessionId = useRef<string | undefined>(undefined);
   const statusRef = useRef<SessionStatusView | undefined>(undefined);
+  const timelineRef = useRef<readonly TimelineEntry[]>([]);
+  const timelineSummaryRevisionRef = useRef(0);
+  const timelineSchedulerRef = useRef<FrameCommitScheduler<readonly TimelineEntry[]> | undefined>(
+    undefined,
+  );
+  if (timelineSchedulerRef.current === undefined) {
+    timelineSchedulerRef.current = createFrameCommitScheduler(setTimeline, {
+      request: (callback) => window.requestAnimationFrame(callback),
+      cancel: (handle) => window.cancelAnimationFrame(handle),
+    });
+  }
+  const updateTimeline = useCallback(
+    (update: TimelineUpdate, priority: 'frame' | 'immediate' = 'immediate'): void => {
+      const next = typeof update === 'function' ? update(timelineRef.current) : update;
+      if (next === timelineRef.current) return;
+      timelineRef.current = next;
+      if (priority === 'frame') timelineSchedulerRef.current?.schedule(next);
+      else timelineSchedulerRef.current?.commitNow(next);
+    },
+    [],
+  );
+  const composerQueueRef = useRef<readonly QueuedComposerItem[]>([]);
+  const queueDispatchPendingRef = useRef(false);
+  const childAgentRouterRef = useRef(new ChildAgentEventRouter());
+  const swarmModeEntryRef = useRef<SwarmModeEntry | undefined>(undefined);
+  swarmModeEntryRef.current = swarmModeEntry;
   statusRef.current = session?.status;
+  composerQueueRef.current = composerQueue;
+  const activeProjectWorkDirRef = useRef<string | undefined>(undefined);
+  activeProjectWorkDirRef.current = activeProject?.workDir;
+  const openPlanInPanelRef = useRef<(path?: string) => void>(() => undefined);
+  const swarmState = childAgentRouterRef.current.getSwarmController().getState();
+  const agentSubagents = childAgentRouterRef.current.getAgentController().getState();
+  void swarmRevision;
+  const sessionTurns = useStableSessionTurns(
+    timeline,
+    `${session?.id ?? 'draft'}:${String(timelineSummaryRevisionRef.current)}`,
+  );
+  const editsSummaryTurn = latestCompletedTurnWithEdits(
+    sessionTurns,
+    session?.status.running ?? false,
+  );
+  const timelineScrollRef = useRef<HTMLDivElement | null>(null);
+  const appShellRef = useRef<HTMLDivElement>(null);
+  const [requestedTurnId, setRequestedTurnId] = useState<string>();
+  const scrollToTurn = useCallback((turnId: string) => {
+    setRequestedTurnId(turnId);
+  }, []);
+  const handleRequestedTurnHandled = useCallback(() => {
+    setRequestedTurnId(undefined);
+  }, []);
+  const previewShellSize = useCallback((property: string, value: number): void => {
+    appShellRef.current?.style.setProperty(property, `${String(value)}px`);
+  }, []);
+  const previewRailContentWidth = useCallback((value: number): void => {
+    previewShellSize('--rail-content-width', value);
+    previewShellSize('--rail-width', RAIL_CHROME_WIDTH + value);
+  }, [previewShellSize]);
+
+  useEffect(() => () => {
+    timelineSchedulerRef.current?.cancel();
+    swarmRevisionSchedulerRef.current?.cancel();
+  }, []);
+
+  useEffect(() => {
+    writeGlobalUi({
+      sidebarOpen,
+      route,
+    });
+  }, [sidebarOpen, route]);
+
+  useEffect(() => {
+    writeGlobalUi({
+      activeProjectWorkDir: activeProject?.workDir ?? '',
+    });
+  }, [activeProject?.workDir]);
+
+  useEffect(() => {
+    writeGlobalUi({
+      activeSessionId: session?.id ?? '',
+    });
+  }, [session?.id]);
+
+  const selectPanel = useCallback((next: Panel | ((current: Panel) => Panel)) => {
+    const apply = (resolved: Panel, current: Panel): Panel => {
+      if (resolved === 'pulls' && activeProject === undefined) {
+        setError('请先选择一个 Git 项目。');
+        return current;
+      }
+      if (resolved !== 'inbox') setInboxAutomationFilter(undefined);
+      if (resolved !== 'none') {
+        setWorkspacePanelDockOpen(true);
+      }
+      return resolved;
+    };
+    if (typeof next === 'function') {
+      setPanel((current) => apply(next(current), current));
+      return;
+    }
+    setPanel((current) => apply(next, current));
+  }, [activeProject]);
+
+  const closeWorkspacePanel = useCallback(() => {
+    setPanel('none');
+  }, []);
+
+  const openPlanInPanel = useCallback((path?: string) => {
+    if (path !== undefined && path.length > 0) {
+      setSelectedPlanPath(path);
+      if (activeProject !== undefined) {
+        writeProjectUi(activeProject.workDir, { selectedPlanPath: path });
+      }
+    }
+    selectPanel('plans');
+  }, [activeProject, selectPanel]);
+  openPlanInPanelRef.current = openPlanInPanel;
+
+  const openPlanPathFromChat = useCallback(
+    (rawPath: string) => {
+      const workDir = activeProject?.workDir;
+      if (workDir === undefined) return;
+      const absolute = resolveWorkspaceAbsolutePath(workDir, rawPath);
+      openPlanInPanel(absolute);
+      setPlansRefreshToken((value) => value + 1);
+    },
+    [activeProject?.workDir, openPlanInPanel],
+  );
+
+  const activePlanPath = resolveActivePlanPath({
+    planFilePath: session?.status.planFilePath,
+    approvedPlanPath: session?.status.approvedPlanPath,
+  });
+  const unifiedTodos = useMemo(
+    () =>
+      resolveUnifiedTodos({
+        activePlanPath,
+        planContent: boundPlanContent,
+        sessionTodos,
+      }),
+    [activePlanPath, boundPlanContent, sessionTodos],
+  );
+
+  const reloadBoundPlan = useCallback(async (path: string | undefined) => {
+    if (path === undefined || path.length === 0) {
+      setBoundPlanContent(undefined);
+      return;
+    }
+    try {
+      const content = await api.readPlanFile({
+        path,
+        workDir: activeProjectWorkDirRef.current,
+      });
+      setBoundPlanContent(content);
+      setPlansRefreshToken((value) => value + 1);
+    } catch {
+      setBoundPlanContent(undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reloadBoundPlan(activePlanPath);
+  }, [activePlanPath, reloadBoundPlan, session?.id]);
+
+  const lastAutoOpenedPlanRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (activePlanPath === undefined) {
+      lastAutoOpenedPlanRef.current = undefined;
+      return;
+    }
+    if (lastAutoOpenedPlanRef.current === activePlanPath) return;
+    lastAutoOpenedPlanRef.current = activePlanPath;
+    openPlanInPanel(activePlanPath);
+  }, [activePlanPath, openPlanInPanel]);
+
+  const resolvePlanApproval = useCallback(
+    (resolution: ApprovalResolution) => {
+      const pending = approval;
+      void api.resolveApproval(resolution);
+      setApproval(undefined);
+      if (
+        resolution.decision === 'approved' &&
+        pending !== undefined &&
+        isPlanReviewApproval(pending)
+      ) {
+        const display = parsePlanReviewDisplay(pending.display);
+        const path = display?.path;
+        if (path !== undefined && path.length > 0) {
+          setSession((current) =>
+            current === undefined
+              ? current
+              : {
+                  ...current,
+                  status: { ...current.status, approvedPlanPath: path },
+                },
+          );
+          openPlanInPanel(path);
+          void reloadBoundPlan(path);
+        }
+      }
+    },
+    [approval, openPlanInPanel, reloadBoundPlan],
+  );
+
+  const openedPlanApprovalIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (approval === undefined || !isPlanReviewApproval(approval)) {
+      if (approval === undefined) openedPlanApprovalIdRef.current = undefined;
+      return;
+    }
+    if (openedPlanApprovalIdRef.current === approval.id) return;
+    openedPlanApprovalIdRef.current = approval.id;
+    const display = parsePlanReviewDisplay(approval.display);
+    openPlanInPanel(display?.path);
+  }, [approval, openPlanInPanel]);
+
+  useEffect(() => {
+    if (activeProject === undefined) {
+      setSelectedPlanPath(undefined);
+      return;
+    }
+    setSelectedPlanPath(readProjectUi(activeProject.workDir).selectedPlanPath);
+  }, [activeProject?.workDir]);
 
   useEffect(() => {
     let alive = true;
@@ -232,9 +690,109 @@ export function App(): ReactNode {
     activeSessionId.current = session?.id;
   }, [session?.id]);
 
+  useEffect(() => {
+    if (session === undefined) {
+      setBackgroundBadge({ agents: 0, tasks: 0 });
+      return;
+    }
+    let alive = true;
+    const refreshBadge = (): void => {
+      void api.listBackgroundTasks(session.id)
+        .then((tasks) => {
+          if (!alive) return;
+          let agents = 0;
+          let bash = 0;
+          for (const task of tasks) {
+            if (task.status !== 'running') continue;
+            if (task.kind === 'agent') agents += 1;
+            else bash += 1;
+          }
+          setBackgroundBadge({ agents, tasks: bash });
+        })
+        .catch(() => {
+          if (alive) setBackgroundBadge({ agents: 0, tasks: 0 });
+        });
+    };
+    refreshBadge();
+    const timer = window.setInterval(refreshBadge, 2_000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [session?.id, session?.status.running, swarmRevision]);
+
+  useEffect(() => {
+    let alive = true;
+    const refreshEditors = (): void => {
+      void api.listAvailableEditors().then((editors) => {
+        if (alive) setAvailableEditors(editors);
+      }).catch(() => {
+        if (alive) setAvailableEditors([]);
+      });
+    };
+    refreshEditors();
+    window.addEventListener('focus', refreshEditors);
+    return () => {
+      alive = false;
+      window.removeEventListener('focus', refreshEditors);
+    };
+  }, []);
+
+  const preferEditor = useCallback(async (command: string) => {
+    try {
+      const next = await api.setSettings({ editorCommand: command });
+      setSettings(next);
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }, []);
+
+  const openWorkspacePreview = useCallback(async (workDir: string, relativePath: string) => {
+    try {
+      const url = await api.previewWorkspaceFile(workDir, relativePath);
+      setBrowserPreviewUrl(url);
+      selectPanel('browser');
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }, []);
+
+  const openPathInEditor = useCallback(async (path: string, command?: string) => {
+    try {
+      await api.openInEditor(path, command);
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }, []);
+
+  const resolveWorkspacePath = useCallback((workDir: string | undefined, path: string): string => {
+    if (path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path)) return path;
+    if (workDir === undefined) return path;
+    return `${workDir.replace(/[/\\]$/, '')}/${path.replace(/^[/\\]+/, '')}`;
+  }, []);
+
+  const previewTimelineFile = useCallback((relativePath: string): void => {
+    const workDir = activeProjectWorkDirRef.current;
+    if (workDir === undefined) return;
+    void openWorkspacePreview(workDir, relativePath);
+  }, [openWorkspacePreview]);
+
+  const openTimelinePathInEditor = useCallback((path: string): void => {
+    void openPathInEditor(resolveWorkspacePath(activeProjectWorkDirRef.current, path));
+  }, [openPathInEditor, resolveWorkspacePath]);
+
   const refreshProjects = useCallback(async () => {
-    const next = await api.listProjects();
+    const [next, hidden] = await Promise.all([
+      api.listProjects(),
+      api.listHiddenProjects(),
+    ]);
     setProjects(next);
+    setArchivedProjects(hidden);
+    // isGitRepository is computed at list time, not persisted — keep activeProject in sync.
+    setActiveProject((current) => {
+      if (current === undefined) return current;
+      return next.find((project) => project.workDir === current.workDir) ?? current;
+    });
     return next;
   }, []);
 
@@ -252,30 +810,170 @@ export function App(): ReactNode {
     const unsubscribers = [
       api.onSessionEvent((event) => {
         if (!alive) return;
+        const statusEvent = event.event;
+        const statusType = String(statusEvent['type'] ?? '');
+        if (statusType === 'mcp.oauth.authorization_url') {
+          const url =
+            typeof statusEvent['url'] === 'string'
+              ? statusEvent['url']
+              : typeof statusEvent['authorizationUrl'] === 'string'
+                ? statusEvent['authorizationUrl']
+                : undefined;
+          if (url !== undefined) void api.openExternal(url);
+        }
         if (event.sessionId === activeSessionId.current) {
+          // Patch status first so turn.step.completed timing uses the mode after
+          // agent.status.updated in the same event stream (avoid stale statusRef).
+          const patchedStatus =
+            statusRef.current === undefined
+              ? undefined
+              : patchStatusFromEvent(statusRef.current, event.event);
+          if (patchedStatus !== undefined) {
+            statusRef.current = patchedStatus;
+          }
           const debugMode =
+            patchedStatus?.interactionMode === 'debug' ||
+            patchedStatus?.debugMode === true ||
             statusRef.current?.interactionMode === 'debug' ||
             statusRef.current?.debugMode === true;
-          setTimeline((entries) => reduceLiveEvent(entries, event, { debugMode }));
-          setSession((current) =>
-            current?.id === event.sessionId
-              ? {
-                  ...current,
-                  status: patchStatusFromEvent(current.status, event.event),
+          const consumed = childAgentRouterRef.current.routeEvent(event.event);
+          if (consumed) {
+            bumpSwarmRevision(isFrameBatchedTimelineEvent(event.event) ? 'frame' : 'immediate');
+          }
+          if (statusType === 'tool.result' || statusType === 'turn.ended') {
+            timelineSummaryRevisionRef.current += 1;
+          }
+          if (
+            statusType === 'tool.result' &&
+            statusEvent['isError'] !== true
+          ) {
+            const toolCallId = String(statusEvent['toolCallId'] ?? '');
+            const match = timelineRef.current.find(
+              (entry) => entry.toolCallId === toolCallId,
+            );
+            if (match?.title === 'TodoList') {
+              const nextTodos = todosFromTodoListArgs(match.toolArgs);
+              if (nextTodos !== undefined) {
+                const planPath = resolveActivePlanPath({
+                  planFilePath: statusRef.current?.planFilePath,
+                  approvedPlanPath: statusRef.current?.approvedPlanPath,
+                });
+                if (planPath !== undefined && activeSessionId.current !== undefined) {
+                  const existing = resolveUnifiedTodos({
+                    activePlanPath: planPath,
+                    planContent: boundPlanContentRef.current,
+                    sessionTodos: [],
+                  }).planTodos;
+                  void api
+                    .patchPlanTodos({
+                      sessionId: activeSessionId.current,
+                      path: planPath,
+                      todos: composerItemsToPlanTodos(nextTodos, existing),
+                    })
+                    .then((content) => {
+                      setBoundPlanContent(content);
+                      setPlansRefreshToken((value) => value + 1);
+                    })
+                    .catch(() => {
+                      setSessionTodos(nextTodos);
+                    });
+                } else {
+                  setSessionTodos(nextTodos);
                 }
-              : current,
-          );
+              }
+            } else if (
+              match !== undefined &&
+              (match.title === 'Write' || match.title === 'Edit')
+            ) {
+              const planPath = resolveActivePlanPath({
+                planFilePath: statusRef.current?.planFilePath,
+                approvedPlanPath: statusRef.current?.approvedPlanPath,
+              });
+              const written = toolArgsPath(match.toolArgs);
+              const workDir = activeProjectWorkDirRef.current;
+              if (
+                planPath !== undefined &&
+                written !== undefined &&
+                pathsEqual(written, planPath)
+              ) {
+                void api.readPlanFile({ path: planPath, workDir }).then((content) => {
+                  setBoundPlanContent(content);
+                  setPlansRefreshToken((value) => value + 1);
+                }).catch(() => undefined);
+              } else if (
+                written !== undefined
+                && workDir !== undefined
+                && isWorkspaceSpecPath(written, workDir)
+              ) {
+                const absolute = resolveWorkspaceAbsolutePath(workDir, written);
+                openPlanInPanelRef.current(absolute);
+                setPlansRefreshToken((value) => value + 1);
+              }
+            }
+          }
+          if (statusType === 'agent.status.updated') {
+            const swarmOff =
+              statusEvent['swarmMode'] === false ||
+              statusEvent['interactionMode'] === 'agent' ||
+              statusEvent['interactionMode'] === 'engineering' ||
+              statusEvent['interactionMode'] === 'plan' ||
+              statusEvent['interactionMode'] === 'ask' ||
+              statusEvent['interactionMode'] === 'debug';
+            if (swarmOff && swarmModeEntryRef.current === 'task') {
+              updateTimeline((entries) => appendSwarmMarker(
+                reduceLiveEvent(entries, event, {
+                  debugMode,
+                  suppressForegroundSubagents: true,
+                }),
+                'ended',
+              ));
+              setSwarmModeEntry(undefined);
+            } else {
+              if (swarmOff) setSwarmModeEntry(undefined);
+              updateTimeline((entries) => reduceLiveEvent(entries, event, {
+                debugMode,
+                suppressForegroundSubagents: true,
+              }));
+            }
+          } else {
+            updateTimeline(
+              (entries) => reduceLiveEvent(entries, event, {
+                debugMode,
+                suppressForegroundSubagents: true,
+              }),
+              isFrameBatchedTimelineEvent(event.event) ? 'frame' : 'immediate',
+            );
+          }
+          setSession((current) => {
+            if (current?.id !== event.sessionId) return current;
+            const nextStatus = patchStatusFromEvent(current.status, event.event);
+            return nextStatus === current.status ? current : { ...current, status: nextStatus };
+          });
         }
       }),
       api.onApproval((request) => {
-        if (alive) setApproval(request);
+        if (!alive) return;
+        timelineSchedulerRef.current?.flush();
+        swarmRevisionSchedulerRef.current?.flush();
+        setApproval(request);
       }),
       api.onQuestion((request) => {
-        if (alive) setQuestion(request);
+        if (!alive) return;
+        timelineSchedulerRef.current?.flush();
+        swarmRevisionSchedulerRef.current?.flush();
+        setQuestion(request);
+      }),
+      api.onDebugVerification((request) => {
+        if (!alive) return;
+        timelineSchedulerRef.current?.flush();
+        swarmRevisionSchedulerRef.current?.flush();
+        setDebugVerification(request);
       }),
       api.onAutomationState(() => {
-        // Individual pages refresh after their own mutations; this signal is
-        // retained for future badges without re-running application bootstrap.
+        void api.inboxUnreadCount().then(setInboxUnreadCount).catch(() => undefined);
+      }),
+      api.onInboxState(() => {
+        void api.inboxUnreadCount().then(setInboxUnreadCount).catch(() => undefined);
       }),
       api.onNavigate((next) => {
         if (!alive || !isRoute(next)) return;
@@ -296,12 +994,27 @@ export function App(): ReactNode {
         setDraftThinking(info.defaultThinking);
         applyTheme(info.settings);
         applyShellStyle(info.shellStyle);
+        void api.inboxUnreadCount().then(setInboxUnreadCount).catch(() => undefined);
         const listed = await refreshProjects();
         if (!alive) return;
-        const first = listed[0];
-        if (first !== undefined) {
-          setActiveProject(first);
-          await refreshTasks(first.workDir);
+        const restoredProject = listed.find((project) => project.workDir === initialGlobalUi.activeProjectWorkDir)
+          ?? listed[0];
+        if (restoredProject !== undefined) {
+          setActiveProject(restoredProject);
+          await Promise.all([
+            refreshTasks(restoredProject.workDir),
+            activateIndexForProject(restoredProject).catch(() => undefined),
+          ]);
+        }
+        if (!alive || initialGlobalUi.activeSessionId === undefined) return;
+        try {
+          const snapshot = await api.resumeSession(initialGlobalUi.activeSessionId);
+          if (!alive) return;
+          hydrateSessionSnapshot(snapshot);
+          const sessionProject = listed.find((project) => project.workDir === snapshot.workDir);
+          if (sessionProject !== undefined) setActiveProject(sessionProject);
+        } catch {
+          // Session may have been archived or removed.
         }
       })
       .catch((cause: unknown) => {
@@ -318,16 +1031,38 @@ export function App(): ReactNode {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'p')) {
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && event.key === 'k') {
         event.preventDefault();
         setCommandOpen(true);
-      } else if ((event.metaKey || event.ctrlKey) && event.key === 'b') {
+      } else if (mod && event.altKey && event.code === 'KeyB') {
+        event.preventDefault();
+        setWorkspacePanelDockOpen((value) => !value);
+      } else if (mod && !event.altKey && event.key === 'b') {
         event.preventDefault();
         setSidebarOpen((value) => !value);
-      } else if ((event.metaKey || event.ctrlKey) && event.key === 'j') {
+      } else if (mod && event.key === 'j') {
         event.preventDefault();
-        setPanel((value) => (value === 'terminal' ? 'none' : 'terminal'));
-      } else if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
+        setBottomTerminalOpen((value) => !value);
+      } else if (mod && !event.shiftKey && event.key === 'p') {
+        event.preventDefault();
+        selectPanel((value) => toggleWorkspacePanel(value, 'files'));
+      } else if (mod && !event.shiftKey && event.key === 't') {
+        event.preventDefault();
+        selectPanel((value) => toggleWorkspacePanel(value, 'browser'));
+      } else if (mod && event.shiftKey && event.key.toLowerCase() === 'g') {
+        event.preventDefault();
+        selectPanel((value) => toggleWorkspacePanel(value, 'review'));
+      } else if (mod && event.shiftKey && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        selectPanel((value) => toggleWorkspacePanel(value, 'plans'));
+      } else if (mod && event.shiftKey && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        selectPanel((value) => toggleWorkspacePanel(value, 'agents'));
+      } else if (mod && event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        selectPanel((value) => toggleWorkspacePanel(value, 'summary'));
+      } else if (mod && event.key === 'n') {
         event.preventDefault();
         void startNewTask();
       } else if (event.key === 'Escape') {
@@ -338,41 +1073,88 @@ export function App(): ReactNode {
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
+  async function activateIndexForProject(project: ProjectSummary): Promise<void> {
+    const outcome = await prepareProjectIndexActivation(
+      api,
+      project.workDir,
+      project.additionalDirs,
+    );
+    if (outcome.kind === 'needs_confirmation') {
+      setIndexRiskPrompt({
+        assessment: outcome.assessment,
+        workDir: outcome.workDir,
+        additionalDirs: outcome.additionalDirs,
+      });
+    }
+  }
+
   async function chooseProject(): Promise<void> {
     try {
       const project = await api.openProject();
       if (project === undefined) return;
       setActiveProject(project);
       setSession(undefined);
-      setTimeline([]);
+      activeSessionId.current = undefined;
+      updateTimeline([]);
+      setSessionTodos([]);
       setRoute('new');
-      await Promise.all([refreshProjects(), refreshTasks(project.workDir)]);
+      await Promise.all([
+        refreshProjects(),
+        refreshTasks(project.workDir),
+        activateIndexForProject(project).catch(() => undefined),
+      ]);
     } catch (cause) {
       setError(messageOf(cause));
     }
   }
 
   async function selectProject(project: ProjectSummary): Promise<void> {
-    setActiveProject(project);
+    const listed = await refreshProjects();
+    const fresh = listed.find((item) => item.workDir === project.workDir) ?? project;
+    setActiveProject(fresh);
     setSession(undefined);
-    setTimeline([]);
+    activeSessionId.current = undefined;
+    updateTimeline([]);
+    setSessionTodos([]);
     setRoute('new');
-    setPanel('none');
-    await refreshTasks(project.workDir);
+    await Promise.all([
+      refreshTasks(fresh.workDir),
+      activateIndexForProject(fresh).catch(() => undefined),
+    ]);
+  }
+
+  function addProjectDirectory(workDir: string, sessionId?: string): void {
+    void api.addProjectDirectory(workDir, sessionId).then(async (dirs) => {
+      const nextProject =
+        activeProject?.workDir === workDir
+          ? { ...activeProject, additionalDirs: dirs }
+          : undefined;
+      if (nextProject !== undefined) {
+        setActiveProject(nextProject);
+      }
+      if (sessionId !== undefined) {
+        setSession((current) =>
+          current === undefined || current.id !== sessionId
+            ? current
+            : { ...current, additionalDirs: dirs },
+        );
+      }
+      await refreshProjects();
+      if (nextProject !== undefined) {
+        await activateIndexForProject(nextProject).catch(() => undefined);
+      }
+    }).catch((cause) => setError(messageOf(cause)));
   }
 
   async function openTask(task: TaskSummary): Promise<void> {
     try {
       setLoading(true);
       const snapshot = await api.resumeSession(task.id);
-      setSession(snapshot);
+      hydrateSessionSnapshot(snapshot);
+      const listed = await refreshProjects();
       setActiveProject(
-        projects.find((project) => project.workDir === task.workDir) ?? activeProject,
+        listed.find((project) => project.workDir === task.workDir) ?? activeProject,
       );
-      setTimeline(replayTimeline(snapshot.replay, snapshot.liveEvents, {
-        debugMode: snapshot.status.interactionMode === 'debug',
-      }));
-      setDraftInteractionMode(snapshot.status.interactionMode);
       setRoute('new');
     } catch (cause) {
       setError(messageOf(cause));
@@ -381,9 +1163,43 @@ export function App(): ReactNode {
     }
   }
 
+  function hydrateSessionSnapshot(snapshot: SessionSnapshot): void {
+    childAgentRouterRef.current.reset();
+    for (const envelope of snapshot.liveEvents) {
+      childAgentRouterRef.current.routeEvent(envelope.event);
+    }
+    bumpSwarmRevision();
+    setSwarmModeEntry(undefined);
+    setSession(snapshot);
+    activeSessionId.current = snapshot.id;
+    setComposerQueue([]);
+    queueDispatchPendingRef.current = false;
+    setQuestion(undefined);
+    setDebugVerification(undefined);
+    timelineSummaryRevisionRef.current += 1;
+    updateTimeline(replayTimeline(snapshot.replay, snapshot.liveEvents, {
+      debugMode: snapshot.status.interactionMode === 'debug',
+      suppressForegroundSubagents: true,
+    }));
+    setSessionTodos(snapshot.todos ?? []);
+    setBoundPlanContent(undefined);
+    setDraftInteractionMode(snapshot.status.interactionMode);
+    setDraftPermission(snapshot.status.permission);
+  }
+
   async function startNewTask(mode: InteractionMode = 'agent'): Promise<void> {
     setSession(undefined);
-    setTimeline([]);
+    activeSessionId.current = undefined;
+    childAgentRouterRef.current.reset();
+    bumpSwarmRevision();
+    setSwarmModeEntry(undefined);
+    updateTimeline([]);
+    setSessionTodos([]);
+    setBoundPlanContent(undefined);
+    setComposerQueue([]);
+    queueDispatchPendingRef.current = false;
+    setQuestion(undefined);
+    setDebugVerification(undefined);
     setPrompt('');
     setAttachments([]);
     setReferences([]);
@@ -391,7 +1207,6 @@ export function App(): ReactNode {
     setDraftInteractionMode(mode);
     setDraftModel(boot?.defaultModel);
     setDraftThinking(boot?.defaultThinking);
-    setPanel('none');
   }
 
   async function ensureActiveSession(): Promise<SessionSnapshot | undefined> {
@@ -409,20 +1224,62 @@ export function App(): ReactNode {
       workDir,
       model: draftModel ?? boot?.defaultModel,
       thinking: draftThinking ?? boot?.defaultThinking,
-      permission: 'manual',
+      permission: draftPermission,
       interactionMode: draftInteractionMode,
       target,
       sshProfileId,
       additionalDirs: activeProject?.additionalDirs,
     });
-    setSession(current);
-    setDraftInteractionMode(current.status.interactionMode);
-    setTimeline(
-      replayTimeline(current.replay, current.liveEvents, {
-        debugMode: current.status.interactionMode === 'debug',
-      }),
-    );
+    hydrateSessionSnapshot(current);
+    if (draftInteractionMode === 'multitask') {
+      setSwarmModeEntry('manual');
+      updateTimeline((entries) => appendSwarmMarker(entries, 'active'));
+    }
     return current;
+  }
+
+  async function sendPromptNow(
+    sessionId: string,
+    text: string,
+    nextAttachments: readonly PromptAttachment[],
+    nextReferences: readonly PromptReference[],
+  ): Promise<void> {
+    const optimistic: TimelineEntry = {
+      id: `user:${Date.now().toString()}`,
+      kind: 'user',
+      content:
+        text ||
+        [...nextAttachments.map((item) => item.name), ...nextReferences.map(referenceLabel)].join(', '),
+    };
+    updateTimeline((entries) => [...entries, optimistic]);
+    await api.prompt({
+      sessionId,
+      text,
+      attachments: nextAttachments,
+      references: nextReferences,
+    });
+    setSession((value) =>
+      value === undefined ? value : { ...value, status: { ...value.status, running: true } },
+    );
+    await Promise.all([refreshProjects(), refreshTasks(activeProject?.workDir)]);
+  }
+
+  async function dispatchQueuedHead(sessionId: string): Promise<void> {
+    if (queueDispatchPendingRef.current || sending) return;
+    const { next, item } = shiftQueuedComposerItem(composerQueueRef.current);
+    if (item === undefined) return;
+    queueDispatchPendingRef.current = true;
+    setComposerQueue(next);
+    try {
+      setSending(true);
+      await sendPromptNow(sessionId, item.text, item.attachments, item.references);
+    } catch (cause) {
+      setComposerQueue((current) => [item, ...current]);
+      setError(messageOf(cause));
+    } finally {
+      setSending(false);
+      queueDispatchPendingRef.current = false;
+    }
   }
 
   async function submitPrompt(text = prompt): Promise<void> {
@@ -449,8 +1306,12 @@ export function App(): ReactNode {
           setError('一次只能激活一个 Skill，且不能同时附加文件、路径或历史任务。');
           return;
         }
+        if (current.status.running) {
+          setError('代理运行中时无法激活 Skill，请等待当前回合结束或先取消。');
+          return;
+        }
         const skill = skillReferences[0]!;
-        setTimeline((entries) => [
+        updateTimeline((entries) => [
           ...entries,
           {
             id: `user:${Date.now().toString()}`,
@@ -467,29 +1328,22 @@ export function App(): ReactNode {
         await Promise.all([refreshProjects(), refreshTasks(activeProject?.workDir)]);
         return;
       }
-      const optimistic: TimelineEntry = {
-        id: `user:${Date.now().toString()}`,
-        kind: 'user',
-        content:
-          trimmed ||
-          [...attachments.map((item) => item.name), ...references.map(referenceLabel)].join(', '),
-      };
-      setTimeline((entries) => [...entries, optimistic]);
-      setPrompt('');
       const toSend = attachments;
       const referencesToSend = references;
+      setPrompt('');
       setAttachments([]);
       setReferences([]);
-      await api.prompt({
-        sessionId: current.id,
-        text: trimmed,
-        attachments: toSend,
-        references: referencesToSend,
-      });
-      setSession((value) =>
-        value === undefined ? value : { ...value, status: { ...value.status, running: true } },
-      );
-      await Promise.all([refreshProjects(), refreshTasks(activeProject?.workDir)]);
+      if (current.status.running) {
+        setComposerQueue((queue) =>
+          enqueueComposerItem(queue, {
+            text: trimmed,
+            attachments: toSend,
+            references: referencesToSend,
+          }),
+        );
+        return;
+      }
+      await sendPromptNow(current.id, trimmed, toSend, referencesToSend);
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -497,20 +1351,119 @@ export function App(): ReactNode {
     }
   }
 
+  async function steerPrompt(
+    text = prompt,
+    options?: {
+      readonly attachments?: readonly PromptAttachment[];
+      readonly references?: readonly PromptReference[];
+      readonly clearComposer?: boolean;
+    },
+  ): Promise<void> {
+    const current = session;
+    if (current === undefined || !current.status.running) {
+      await submitPrompt(text);
+      return;
+    }
+    const trimmed = text.trim();
+    const nextAttachments = options?.attachments ?? attachments;
+    const nextReferences = options?.references ?? references;
+    if (trimmed.length === 0 && nextAttachments.length === 0 && nextReferences.length === 0) return;
+    try {
+      if (options?.clearComposer !== false) {
+        setPrompt('');
+        setAttachments([]);
+        setReferences([]);
+      }
+      await api.steer({
+        sessionId: current.id,
+        text: trimmed,
+        attachments: nextAttachments,
+        references: nextReferences,
+      });
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }
+
+  function editQueuedItem(item: QueuedComposerItem): void {
+    setComposerQueue((queue) => removeQueuedComposerItem(queue, item.id));
+    setPrompt(item.text);
+    setAttachments(item.attachments);
+    setReferences(item.references);
+    focusComposerTextarea();
+  }
+
+  async function steerQueuedItem(item: QueuedComposerItem): Promise<void> {
+    const current = session;
+    if (current === undefined || !current.status.running) return;
+    const taken = takeQueuedComposerItem(composerQueueRef.current, item.id);
+    setComposerQueue(taken.next);
+    if (taken.item === undefined) return;
+    try {
+      await api.steer({
+        sessionId: current.id,
+        text: taken.item.text,
+        attachments: taken.item.attachments,
+        references: taken.item.references,
+      });
+    } catch (cause) {
+      setComposerQueue((queue) => [taken.item!, ...queue]);
+      setError(messageOf(cause));
+    }
+  }
+
   async function changeRoute(next: Route): Promise<void> {
+    if (isUtilityRoute(next)) {
+      selectPanel(next);
+      return;
+    }
     setRoute(next);
     setPanel('none');
     if (next === 'new') await startNewTask();
     if (next === 'chat') await startNewTask('ask');
-    if (next === 'pulls' && activeProject === undefined) setError('请先选择一个 Git 项目。');
   }
 
+  function focusComposerTextarea(): void {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus();
+    });
+  }
+
+  useEffect(() => {
+    if (session === undefined || session.status.running || sending) return;
+    if (queueDispatchPendingRef.current) return;
+    if (composerQueue.length === 0) return;
+    void dispatchQueuedHead(session.id);
+  }, [session?.id, session?.status.running, sending, composerQueue.length]);
+
   async function pickAttachments(): Promise<void> {
-    const next = await api.pickAttachments();
-    setAttachments((current) => [
-      ...current,
-      ...next.filter((candidate) => current.every((item) => item.path !== candidate.path)),
-    ]);
+    try {
+      const next = await api.pickAttachments();
+      if (next.length === 0) return;
+      setAttachments((current) => mergeAttachments(current, next));
+      focusComposerTextarea();
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }
+
+  async function attachFiles(files: readonly File[]): Promise<void> {
+    if (files.length === 0) return;
+    const attachable = files.filter(canAttachFile);
+    if (attachable.length === 0) {
+      setError('无法附加该文件，请使用 + 菜单选择本地文件');
+      return;
+    }
+    if (attachable.length < files.length) {
+      setError('部分文件无法附加，请使用 + 菜单选择本地文件');
+    }
+    try {
+      const next = await Promise.all(attachable.map(fileToAttachment));
+      setAttachments((current) => mergeAttachments(current, next));
+      focusComposerTextarea();
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
   }
 
   function attachBrowserAnnotation(annotation: BrowserAnnotation): void {
@@ -525,30 +1478,126 @@ export function App(): ReactNode {
         browserAnnotation: annotation,
       },
     ]);
-    requestAnimationFrame(() => {
-      document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus();
-    });
+    focusComposerTextarea();
   }
 
-  async function applyInteractionMode(mode: InteractionMode): Promise<void> {
+  async function applyPermissionMode(mode: 'manual' | 'auto' | 'yolo'): Promise<void> {
+    setDraftPermission(mode);
+    if (session === undefined) return;
+    try {
+      const status = await api.configureSession(session.id, { permission: mode });
+      setSession((current) =>
+        current === undefined ? current : { ...current, status },
+      );
+      setDraftPermission(status.permission);
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }
+
+  async function applyInteractionMode(
+    mode: InteractionMode,
+    options: { readonly entry?: SwarmModeEntry; readonly skipMarker?: boolean } = {},
+  ): Promise<boolean> {
+    if (session?.status.running === true) {
+      setError('任务运行中无法切换工作模式，请先停止当前任务。');
+      return false;
+    }
     setDraftInteractionMode(mode);
     setRoute('new');
-    if (session === undefined) return;
+    if (session === undefined) {
+      if (mode === 'multitask') setSwarmModeEntry(options.entry ?? 'manual');
+      else setSwarmModeEntry(undefined);
+      return true;
+    }
     const status = await api.configureSession(session.id, { interactionMode: mode });
     setSession((current) =>
       current === undefined ? current : { ...current, status },
     );
     setDraftInteractionMode(status.interactionMode);
+    if (mode === 'multitask') {
+      setSwarmModeEntry(options.entry ?? 'manual');
+      if (options.skipMarker !== true) {
+        updateTimeline((entries) => appendSwarmMarker(entries, 'active'));
+      }
+    } else if (session.status.interactionMode === 'multitask') {
+      setSwarmModeEntry(undefined);
+      if (options.skipMarker !== true) {
+        updateTimeline((entries) => appendSwarmMarker(entries, 'inactive'));
+      }
+    }
+    return true;
+  }
+
+  function requestSwarmPermission(
+    restoreText: string,
+    onSelect: (choice: SwarmStartPermissionChoice) => Promise<void>,
+  ): void {
+    setSwarmPermission({ restoreText, onSelect });
+  }
+
+  async function handleSwarmCommand(args: string): Promise<void> {
+    const promptText = args.trim();
+    const mode =
+      promptText.toLowerCase() === 'on'
+        ? true
+        : promptText.toLowerCase() === 'off'
+          ? false
+          : undefined;
+
+    if (mode !== undefined || promptText.length === 0) {
+      const enable = mode ?? (session?.status.interactionMode !== 'multitask' &&
+        draftInteractionMode !== 'multitask');
+    const permission = session?.status.permission ?? draftPermission;
+    if (enable) {
+        if (permission === 'manual') {
+          requestSwarmPermission(promptText.length === 0 ? '/swarm' : `/swarm ${promptText}`, async (choice) => {
+            if (choice === 'auto' || choice === 'yolo') {
+              setDraftPermission(choice);
+              if (session !== undefined) {
+                const status = await api.configureSession(session.id, { permission: choice });
+                setSession((current) =>
+                  current === undefined ? current : { ...current, status },
+                );
+              }
+            }
+            await applyInteractionMode('multitask', { entry: 'manual' });
+          });
+          return;
+        }
+        await applyInteractionMode('multitask', { entry: 'manual' });
+        return;
+      }
+      await applyInteractionMode('agent');
+      return;
+    }
+
+    // /swarm <task>
+    const permission = session?.status.permission ?? draftPermission;
+    if (permission === 'manual') {
+      requestSwarmPermission(`/swarm ${promptText}`, async (choice) => {
+        if (choice === 'auto' || choice === 'yolo') {
+          setDraftPermission(choice);
+          if (session !== undefined) {
+            const status = await api.configureSession(session.id, { permission: choice });
+            setSession((current) =>
+              current === undefined ? current : { ...current, status },
+            );
+          }
+        }
+        const ok = await applyInteractionMode('multitask', { entry: 'task' });
+        if (ok) await submitPrompt(promptText);
+      });
+      return;
+    }
+    const ok = await applyInteractionMode('multitask', { entry: 'task' });
+    if (ok) await submitPrompt(promptText);
   }
 
   async function forkTask(id: string, workDir?: string): Promise<void> {
     try {
       const snapshot = await api.forkSession(id, workDir);
-      setSession(snapshot);
-      setTimeline(replayTimeline(snapshot.replay, snapshot.liveEvents, {
-        debugMode: snapshot.status.interactionMode === 'debug',
-      }));
-      setDraftInteractionMode(snapshot.status.interactionMode);
+      hydrateSessionSnapshot(snapshot);
       setRoute('new');
       await Promise.all([refreshProjects(), refreshTasks()]);
     } catch (cause) {
@@ -557,6 +1606,51 @@ export function App(): ReactNode {
   }
 
   async function runSlashCommand(text: string): Promise<boolean> {
+    const slashHost: SlashCommandHost = {
+      session,
+      draftPermission,
+      draftInteractionMode,
+      bootVersion: boot?.version,
+      workDir: activeProject?.workDir ?? session?.workDir,
+      showError: setError,
+      showNotice: (message) => {
+        updateTimeline((entries) => [
+          ...entries,
+          {
+            id: `status:${Date.now().toString()}`,
+            kind: 'status',
+            title: '提示',
+            content: message,
+          },
+        ]);
+      },
+      applyPermissionMode,
+      applyInteractionMode,
+      openComposerMenu: setComposerMenuRequest,
+      handleSwarmCommand,
+      compactSession: (sessionId, instruction) => api.compactSession(sessionId, instruction),
+      initSession: (sessionId) => api.initSession(sessionId),
+      getSessionUsage: (sessionId) => api.getSessionUsage(sessionId),
+      clearSessionPlan: (sessionId) => api.clearSessionPlan(sessionId),
+      appendStatus: (title, content) => {
+        updateTimeline((entries) => [
+          ...entries,
+          {
+            id: `status:${Date.now().toString()}`,
+            kind: 'status',
+            title,
+            content,
+          },
+        ]);
+      },
+    };
+    try {
+      if (await handleAlignedSlashCommand(slashHost, text)) return true;
+    } catch (cause) {
+      setError(messageOf(cause));
+      return true;
+    }
+
     const match = /^\/([a-z0-9][a-z0-9_:/.-]*)(?:\s+([\s\S]*))?$/iu.exec(text);
     const command = match?.[1]?.toLocaleLowerCase();
     const argument = match?.[2]?.trim() ?? '';
@@ -573,12 +1667,16 @@ export function App(): ReactNode {
     else if (command === 'memory') await changeRoute('memory');
     else if (command === 'files' || command === 'review' || command === 'terminal' || command === 'browser' || command === 'summary' || command === 'agents') {
       setRoute('new');
-      setPanel(command);
+      selectPanel(command);
     } else if (command === 'agent') await applyInteractionMode('agent');
+    else if (command === 'engineering' || command === 'gongcheng') {
+      await applyInteractionMode('engineering');
+    }
     else if (command === 'chat') await applyInteractionMode('ask');
-    else if (command === 'plan') await applyInteractionMode('plan');
     else if (command === 'debug') await applyInteractionMode('debug');
-    else if (command === 'multitask') await applyInteractionMode('multitask');
+    else if (command === 'multitask' || command === 'swarm') {
+      await handleSwarmCommand(argument);
+    }
     else if (command === 'title') {
       if (session === undefined) setError('请先打开一个任务。');
       else if (argument.length === 0) setRenameTarget({ id: session.id, title: session.title });
@@ -602,7 +1700,7 @@ export function App(): ReactNode {
         setSending(true);
         const current = await ensureActiveSession();
         if (current === undefined) return true;
-        setTimeline((entries) => [
+        updateTimeline((entries) => [
           ...entries,
           {
             id: `user:${Date.now().toString()}`,
@@ -632,38 +1730,40 @@ export function App(): ReactNode {
     return true;
   }
 
-  const filteredTasks = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    if (needle.length === 0) return tasks;
-    return tasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(needle) ||
-        task.lastPrompt?.toLowerCase().includes(needle),
-    );
-  }, [search, tasks]);
-
   const commands: readonly DesktopCommand[] = [
     { slash: 'new', label: '新建任务', description: '在当前项目中开始新任务', icon: <Plus />, shortcut: '⌘N', onSelect: () => void runSlashCommand('/new') },
     { slash: 'open', label: '打开项目', description: '从磁盘选择工作目录', icon: <FolderOpen />, shortcut: '⌘O', onSelect: () => void runSlashCommand('/open') },
     { slash: 'help', label: '命令面板', description: '查看 Ganymede 可用命令', icon: <Command />, shortcut: '⌘K', onSelect: () => void runSlashCommand('/help') },
+    { slash: 'permission', label: '权限模式', description: '选择手动 / Auto / YOLO', icon: <ShieldQuestion />, onSelect: () => void runSlashCommand('/permission') },
+    { slash: 'auto', label: 'Auto 模式', description: '切换 Auto：自动执行所有操作（含高风险）', icon: <ShieldCheck />, onSelect: () => void runSlashCommand('/auto') },
+    { slash: 'yolo', label: 'YOLO 模式', description: '切换 YOLO：AI 判断哪些操作需要批准', icon: <ShieldAlert />, onSelect: () => void runSlashCommand('/yolo') },
+    { slash: 'yes', label: 'YOLO 模式', description: '/yolo 的别名', icon: <ShieldAlert />, onSelect: () => void runSlashCommand('/yes') },
+    { slash: 'mode', label: '工作模式', description: '选择 agent / engineering / plan / debug / multitask / ask', icon: <SlidersHorizontal />, onSelect: () => void runSlashCommand('/mode') },
+    { slash: 'model', label: '切换模型', description: '打开模型选择器', icon: <Sparkles />, onSelect: () => void runSlashCommand('/model') },
+    { slash: 'plan', label: '计划模式', description: '切换计划模式，或 /plan clear 清除计划', icon: <ListTodo />, onSelect: () => void runSlashCommand('/plan') },
+    { slash: 'compact', label: '压缩上下文', description: '压缩当前对话上下文，可附带保留指令', icon: <Sparkles />, onSelect: () => void runSlashCommand('/compact') },
+    { slash: 'init', label: '初始化项目', description: '分析代码库并生成 AGENTS.md', icon: <FileCode2 />, onSelect: () => void runSlashCommand('/init') },
+    { slash: 'status', label: '会话状态', description: '显示版本、模型、权限与上下文占用', icon: <Sparkles />, onSelect: () => void runSlashCommand('/status') },
+    { slash: 'usage', label: '用量', description: '显示本会话 token 用量', icon: <Sparkles />, onSelect: () => void runSlashCommand('/usage') },
     { slash: 'settings', label: '设置', description: '模型、外观与本地环境', icon: <Settings />, shortcut: '⌘,', onSelect: () => void runSlashCommand('/settings') },
     { slash: 'skills', label: '技能与插件', description: '管理技能、插件和 MCP', icon: <WandSparkles />, onSelect: () => void runSlashCommand('/skills') },
     { slash: 'inbox', label: '收件箱', description: '查看自动化运行结果', icon: <Inbox />, onSelect: () => void runSlashCommand('/inbox') },
     { slash: 'scheduled', label: '已安排', description: '管理计划任务', icon: <Clock3 />, onSelect: () => void runSlashCommand('/scheduled') },
-    { slash: 'sites', label: 'Sites', description: '预览与托管本地站点', icon: <Globe2 />, onSelect: () => void runSlashCommand('/sites') },
+    { slash: 'sites', label: '本地站点', description: '预览与托管本地站点', icon: <Globe2 />, onSelect: () => void runSlashCommand('/sites') },
     { slash: 'pulls', label: '拉取请求', description: '查看当前项目的 PR', icon: <GitPullRequest />, onSelect: () => void runSlashCommand('/pulls') },
     { slash: 'memory', label: '记忆', description: '搜索项目记忆', icon: <Brain />, onSelect: () => void runSlashCommand('/memory') },
-    { slash: 'files', label: '文件', description: '打开文件面板', icon: <FileText />, onSelect: () => void runSlashCommand('/files') },
-    { slash: 'review', label: '审查', description: '打开代码审查面板', icon: <FileDiff />, onSelect: () => void runSlashCommand('/review') },
+    { slash: 'files', label: '文件', description: '打开文件面板', icon: <FileText />, shortcut: '⌘P', onSelect: () => void runSlashCommand('/files') },
+    { slash: 'review', label: '审查', description: '打开代码审查面板', icon: <FileDiff />, shortcut: '⌘⇧G', onSelect: () => void runSlashCommand('/review') },
     { slash: 'terminal', label: '终端', description: '切换底部终端', icon: <TerminalSquare />, shortcut: '⌘J', onSelect: () => void runSlashCommand('/terminal') },
-    { slash: 'browser', label: '浏览器', description: '打开应用内浏览器', icon: <Globe2 />, onSelect: () => void runSlashCommand('/browser') },
-    { slash: 'summary', label: '任务摘要', description: '查看当前任务信息', icon: <Sparkles />, onSelect: () => void runSlashCommand('/summary') },
-    { slash: 'agents', label: 'Agent 集群', description: '查看并控制并行 Agent 与后台任务', icon: <Boxes />, onSelect: () => void runSlashCommand('/agents') },
+    { slash: 'browser', label: '浏览器', description: '打开应用内浏览器', icon: <Globe2 />, shortcut: '⌘T', onSelect: () => void runSlashCommand('/browser') },
+    { slash: 'summary', label: '任务摘要', description: '查看当前任务信息', icon: <Sparkles />, shortcut: '⌘⇧S', onSelect: () => void runSlashCommand('/summary') },
+    { slash: 'agents', label: 'Agent 集群', description: '查看后台 Agent 与 Bash 任务（前台集群进度在主对话区）', icon: <Boxes />, shortcut: '⌘⇧A', onSelect: () => void runSlashCommand('/agents') },
     { slash: 'agent', label: '助理模式', description: '执行完整的软件开发任务', icon: <Bot />, onSelect: () => void runSlashCommand('/agent') },
+    { slash: 'engineering', label: '工程模式', description: 'KimiCodeBoost 系统化软件开发工作流', icon: <Hammer />, onSelect: () => void runSlashCommand('/engineering') },
     { slash: 'chat', label: '聊天模式', description: '围绕当前项目讨论与问答', icon: <MessageCircle />, onSelect: () => void runSlashCommand('/chat') },
-    { slash: 'plan', label: '计划模式', description: '先分析并制定实现方案', icon: <ListTodo />, onSelect: () => void runSlashCommand('/plan') },
     { slash: 'debug', label: '排障模式', description: '聚焦诊断问题和失败', icon: <Bug />, onSelect: () => void runSlashCommand('/debug') },
     { slash: 'multitask', label: '集群模式', description: '并行处理多个子任务', icon: <Boxes />, onSelect: () => void runSlashCommand('/multitask') },
+    { slash: 'swarm', label: '集群 /swarm', description: '切换集群模式，或 /swarm <任务> 一键启动', icon: <Boxes />, onSelect: () => void runSlashCommand('/swarm') },
     { slash: 'title', label: '重命名任务', description: '修改当前任务名称', icon: <FileText />, onSelect: () => void runSlashCommand('/title') },
     { slash: 'fork', label: '创建任务副本', description: '从当前上下文创建分支任务', icon: <Copy />, onSelect: () => void runSlashCommand('/fork') },
     ...availableSkills.map((skill) => ({
@@ -694,22 +1794,42 @@ export function App(): ReactNode {
 
   const taskSurface = route === 'new' || route === 'chat';
   const emptyTask = taskSurface && (session === undefined || timeline.length === 0);
+  const chatSurface = taskSurface && !emptyTask;
+  const railContentOpen = panel !== 'none';
+  const railContentWidth = panel === 'browser' ? browserPanelWidth : sidePanelWidth;
+  const railWidth = RAIL_CHROME_WIDTH + (railContentOpen ? railContentWidth : 0);
+  const terminalPlacement = panel === 'terminal'
+    ? 'rail'
+    : bottomTerminalOpen
+      ? 'bottom'
+      : null;
 
   return (
     <div
-      className={`app-shell${sidebarOpen ? '' : ' sidebar-collapsed'}`}
-      style={{ '--sidebar-width': `${String(sidebarWidth)}px` } as CSSProperties}
+      className={`app-shell${sidebarOpen ? '' : ' sidebar-collapsed'}${workspacePanelDockOpen ? '' : ' rail-collapsed'}`}
+      ref={appShellRef}
+      style={
+        {
+          '--sidebar-width': `${String(sidebarWidth)}px`,
+          '--rail-width': `${String(railWidth)}px`,
+          '--rail-content-width': `${String(railContentWidth)}px`,
+          '--rail-chrome-width': `${String(RAIL_CHROME_WIDTH)}px`,
+          '--terminal-height': `${String(terminalHeight)}px`,
+        } as CSSProperties
+      }
     >
       {sidebarOpen ? (
-        <Sidebar
+        <WorkspaceSidebar
           route={route}
           projects={projects}
-          tasks={filteredTasks}
+          archivedProjects={archivedProjects}
+          tasks={tasks}
           activeProject={activeProject}
           activeSessionId={session?.id}
-          search={search}
-          onSearch={setSearch}
-          onRoute={(next) => void changeRoute(next)}
+          activeSessionRunning={session?.status.running === true}
+          onRoute={(next) => {
+            void changeRoute(next);
+          }}
           onProject={(project) => void selectProject(project)}
           onTask={(task) => void openTask(task)}
           onArchive={(task) => {
@@ -736,35 +1856,49 @@ export function App(): ReactNode {
               .catch((cause) => setError(messageOf(cause)));
           }}
           onProjectTerminal={(project) => {
-            void selectProject(project).then(() => setPanel('terminal'));
+            void selectProject(project).then(() => selectPanel('terminal'));
           }}
           onProjectReveal={(project) => {
             void api.revealFile(project.workDir).catch((cause) => setError(messageOf(cause)));
           }}
           onProjectAddDir={(project) => {
-            void api.addProjectDirectory(project.workDir, session?.workDir === project.workDir ? session.id : undefined)
-              .then(async (dirs) => {
-                if (activeProject?.workDir === project.workDir) {
-                  setActiveProject((current) => current === undefined ? current : { ...current, additionalDirs: dirs });
-                }
+            addProjectDirectory(
+              project.workDir,
+              session?.workDir === project.workDir ? session.id : undefined,
+            );
+          }}
+          onProjectRemove={setRemoveProjectTarget}
+          onProjectRestore={(project) => {
+            void api.restoreProject(project.workDir)
+              .then(async (restored) => {
                 await refreshProjects();
+                await selectProject(restored);
               })
               .catch((cause) => setError(messageOf(cause)));
           }}
-          onProjectRemove={setRemoveProjectTarget}
-          onOpenProject={() => void chooseProject()}
+          onOpenWorkspacePicker={(anchor) => setWorkspacePicker({ anchor })}
           onNew={() => void startNewTask()}
           onCommand={() => setCommandOpen(true)}
+          onClose={() => setSidebarOpen(false)}
           onResizeStart={(clientX) => beginHorizontalResize(
             clientX,
             sidebarWidth,
             1,
             220,
             320,
+            (value) => previewShellSize('--sidebar-width', value),
             setSidebarWidth,
             'ganymede.sidebarWidth',
           )}
           userName={boot?.userName ?? 'G'}
+        />
+      ) : null}
+      {sidebarOpen ? (
+        <button
+          aria-label="关闭侧栏"
+          className="workspace-sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          type="button"
         />
       ) : null}
 
@@ -772,34 +1906,63 @@ export function App(): ReactNode {
         <TopBar
           project={activeProject}
           session={session}
-          panel={panel}
           sidebarOpen={sidebarOpen}
+          workspacePanelDockOpen={workspacePanelDockOpen}
+          settings={settings}
+          availableEditors={availableEditors}
+          platform={boot?.platform}
           onToggleSidebar={() => setSidebarOpen((value) => !value)}
-          onPanel={setPanel}
+          onToggleWorkspacePanelDock={() => {
+            setWorkspacePanelDockOpen((value) => !value);
+          }}
           onCommand={() => setCommandOpen(true)}
-          onCancel={() => session && void api.cancelSession(session.id)}
+          onCancel={() => {
+            if (!session) return;
+            setComposerQueue([]);
+            queueDispatchPendingRef.current = false;
+            void api.cancelSession(session.id);
+          }}
+          onOpenInEditor={(command) => {
+            if (activeProject === undefined) return;
+            void openPathInEditor(activeProject.workDir, command);
+          }}
+          onPreferEditor={(command) => {
+            void preferEditor(command);
+          }}
+          onOpenProjectFinder={() => {
+            if (activeProject === undefined) return;
+            void api.openFileExternal(activeProject.workDir).catch((cause) => setError(messageOf(cause)));
+          }}
+          onOpenProjectTerminal={() => {
+            if (activeProject === undefined) return;
+            void api.openInTerminal(activeProject.workDir).catch((cause) => setError(messageOf(cause)));
+          }}
+          onSettings={(next) => {
+            setSettings(next);
+            applyTheme(next);
+          }}
+          onRequestIndexRiskConfirm={() => {
+            if (activeProject === undefined) return;
+            void activateIndexForProject(activeProject).catch((cause) => setError(messageOf(cause)));
+          }}
         />
 
-        <div className={`workspace-body${panel === 'terminal' ? ' terminal-open' : ''}`}>
+        <div className="workspace-chrome">
+        <div className={`workspace-body${terminalPlacement === 'bottom' ? ' terminal-open' : ''}`}>
+          <div className="workspace-stage">
           <div className="workspace-main">
-          <section className={`primary-surface${emptyTask ? ' empty-surface' : ''}`}>
-            {route === 'new' || route === 'chat' ? (
-              session === undefined || timeline.length === 0 ? (
-                <Home
-                  project={activeProject}
-                  chat={route === 'chat'}
-                />
-              ) : (
-                <Timeline entries={timeline} running={session.status.running} />
-              )
-            ) : (
+          <section
+            className={`primary-surface${emptyTask ? ' empty-surface' : ''}${chatSurface ? ' primary-surface--chat' : ''}`}
+          >
+            {route === 'settings' ? (
               <RoutePage
-                route={route}
+                route="settings"
                 activeProject={activeProject}
                 session={session}
                 settings={settings}
                 logFile={boot?.logFile}
                 modelConfiguration={boot}
+                inboxAutomationFilter={inboxAutomationFilter}
                 onSettings={(next) => {
                   setSettings(next);
                   applyTheme(next);
@@ -815,11 +1978,101 @@ export function App(): ReactNode {
                 }}
                 onOpenTask={(id) => {
                   const task = tasks.find((item) => item.id === id);
-                  if (task !== undefined) void openTask(task);
+                  if (task !== undefined) {
+                    void openTask(task);
+                    return;
+                  }
+                  void (async () => {
+                    try {
+                      setLoading(true);
+                      const snapshot = await api.resumeSession(id);
+                      hydrateSessionSnapshot(snapshot);
+                      setRoute('new');
+                    } catch (cause) {
+                      setError(messageOf(cause));
+                    } finally {
+                      setLoading(false);
+                    }
+                  })();
+                }}
+                onViewInbox={(automationId) => {
+                  setInboxAutomationFilter(automationId);
+                  selectPanel('inbox');
+                }}
+                onOpenSettings={() => void changeRoute('settings')}
+                onPreviewSite={(url) => {
+                  setBrowserPreviewUrl(url);
+                  selectPanel('browser');
+                  void api.createBrowser(session?.id, url).catch((cause) => setError(messageOf(cause)));
                 }}
                 onError={setError}
+                onProjectUpdated={(project) => {
+                  setActiveProject(project);
+                  setProjects((prev) =>
+                    prev.map((item) => (item.workDir === project.workDir ? project : item)),
+                  );
+                }}
               />
-            )}
+            ) : route === 'new' || route === 'chat' ? (
+              session === undefined || timeline.length === 0 ? (
+                <Home
+                  project={activeProject}
+                  chat={route === 'chat'}
+                />
+              ) : (
+                <>
+                  <div className="timeline-stage">
+                    <Timeline
+                      key={session.id}
+                      scrollContainerRef={timelineScrollRef}
+                      entries={timeline}
+                      running={session.status.running}
+                      workDir={activeProject?.workDir}
+                      planMode={session.status.planMode}
+                      interactionMode={session.status.interactionMode}
+                      swarms={swarmState.swarms}
+                      agentSubagents={agentSubagents}
+                      swarmRevision={swarmRevision}
+                      pendingPlanReview={
+                        approval !== undefined && isPlanReviewApproval(approval)
+                          ? parsePlanReviewDisplay(approval.display)
+                          : undefined
+                      }
+                      approvalToolCallId={
+                        approval !== undefined && isPlanReviewApproval(approval)
+                          ? approval.toolCallId
+                          : undefined
+                      }
+                      requestedTurnId={requestedTurnId}
+                      onRequestedTurnHandled={handleRequestedTurnHandled}
+                      onPreviewFile={previewTimelineFile}
+                      onOpenPlanPath={openPlanPathFromChat}
+                      onOpenInEditor={openTimelinePathInEditor}
+                      onOpenPlanInPanel={openPlanInPanel}
+                    />
+                    <ComposerQueueBar
+                      items={composerQueue}
+                      canSteer={session.status.running}
+                      platform={boot?.platform}
+                      onEdit={editQueuedItem}
+                      onPromote={(id) =>
+                        setComposerQueue((queue) => promoteQueuedComposerItem(queue, id))
+                      }
+                      onRemove={(id) =>
+                        setComposerQueue((queue) => removeQueuedComposerItem(queue, id))
+                      }
+                      onSteer={(item) => void steerQueuedItem(item)}
+                    />
+                  </div>
+                  {sessionTurns.length > 0 ? (
+                    <TimelineTurnRail
+                      turns={sessionTurns}
+                      onScrollToTurn={scrollToTurn}
+                    />
+                  ) : null}
+                </>
+              )
+            ) : null}
             {(route === 'new' || route === 'chat') && (
               <Composer
                 value={prompt}
@@ -827,6 +2080,7 @@ export function App(): ReactNode {
                 attachments={attachments}
                 references={references}
                 onPickAttachments={() => void pickAttachments()}
+                onAttachFiles={(files) => void attachFiles(files)}
                 onRemoveAttachment={(path) =>
                   setAttachments((items) => items.filter((item) => item.path !== path))
                 }
@@ -841,14 +2095,32 @@ export function App(): ReactNode {
                 onRemoveReference={(reference) =>
                   setReferences((current) => current.filter((item) => referenceKey(item) !== referenceKey(reference)))
                 }
-                onSubmit={() => void submitPrompt()}
-                onCancel={() => session && void api.cancelSession(session.id)}
+                onSubmit={(text) => void submitPrompt(text)}
+                onSteer={(text) => void steerPrompt(text)}
+                onCancel={() => {
+                  if (!session) return;
+                  setComposerQueue([]);
+                  queueDispatchPendingRef.current = false;
+                  childAgentRouterRef.current.markActiveCancelled();
+                  bumpSwarmRevision();
+                  void api.cancelSession(session.id);
+                }}
+                question={question}
+                onResolveQuestion={(resolution) => {
+                  void api.resolveQuestion(resolution);
+                  setQuestion(undefined);
+                }}
+                debugVerification={debugVerification}
+                onResolveDebugVerification={(resolution) => {
+                  void api.resolveDebugVerification(resolution);
+                  setDebugVerification(undefined);
+                }}
                 running={session?.status.running ?? false}
                 sending={sending}
                 model={session?.status.model ?? draftModel ?? boot?.defaultModel}
                 thinking={session?.status.thinkingEffort ?? draftThinking ?? boot?.defaultThinking}
                 models={boot?.models ?? []}
-                permission={session?.status.permission ?? 'manual'}
+                permission={session?.status.permission ?? draftPermission}
                 interactionMode={session?.status.interactionMode ?? draftInteractionMode}
                 project={activeProject}
                 projects={projects}
@@ -862,18 +2134,21 @@ export function App(): ReactNode {
                   setTarget(next);
                   setSshProfileId(profileId);
                 }}
-                onAddDir={() => {
-                  if (activeProject === undefined) return;
-                  void api.addProjectDirectory(activeProject.workDir, session?.id).then((dirs) => {
-                    setActiveProject((project) => project === undefined ? project : { ...project, additionalDirs: dirs });
-                    setSession((current) => current === undefined ? current : { ...current, additionalDirs: dirs });
-                  }).catch((cause) => setError(messageOf(cause)));
-                }}
-                onProject={(project) => void selectProject(project)}
-                onOpenProject={() => void chooseProject()}
+                onOpenWorkspacePicker={(anchor) => setWorkspacePicker({ anchor })}
+                menuRequest={composerMenuRequest}
+                onMenuRequestHandled={() => setComposerMenuRequest(undefined)}
                 onConfigure={(config) => {
                   if (config.interactionMode !== undefined) {
-                    setDraftInteractionMode(config.interactionMode);
+                    if (config.interactionMode === 'multitask') {
+                      void handleSwarmCommand('on');
+                      return;
+                    }
+                    void applyInteractionMode(config.interactionMode);
+                    return;
+                  }
+                  if (config.permission !== undefined) {
+                    void applyPermissionMode(config.permission);
+                    return;
                   }
                   if (session === undefined) {
                     if (config.model !== undefined) setDraftModel(config.model);
@@ -885,50 +2160,37 @@ export function App(): ReactNode {
                       current === undefined ? current : { ...current, status },
                     );
                     setDraftInteractionMode(status.interactionMode);
-                  });
+                    setDraftPermission(status.permission);
+                  }).catch((cause) => setError(messageOf(cause)));
                 }}
+                swarmActive={childAgentRouterRef.current.hasActiveSwarm()}
+                backgroundAgents={backgroundBadge.agents}
+                backgroundTasks={backgroundBadge.tasks}
+                todos={unifiedTodos.todos}
+                todosFromPlan={unifiedTodos.fromPlan}
+                onOpenPlanTodos={() => {
+                  if (activePlanPath !== undefined) openPlanInPanel(activePlanPath);
+                  else selectPanel('plans');
+                }}
+                planApproval={
+                  approval !== undefined && isPlanReviewApproval(approval)
+                    ? approval
+                    : undefined
+                }
+                onResolvePlanApproval={resolvePlanApproval}
+                editsSummaryTurn={editsSummaryTurn}
+                onOpenReview={() => selectPanel('review')}
+                onPreviewEditedFile={(relativePath) => {
+                  if (activeProject === undefined) return;
+                  void openWorkspacePreview(activeProject.workDir, relativePath);
+                }}
+                onEditsError={setError}
+                platform={boot?.platform}
               />
             )}
           </section>
-
-          {panel !== 'none' && panel !== 'terminal' ? (
-            <SidePanel
-              panel={panel}
-              project={activeProject}
-              session={session}
-              settings={settings}
-              timeline={timeline}
-              size={panel === 'browser' ? browserPanelWidth : sidePanelWidth}
-              onResizeStart={(clientX) => {
-                if (panel === 'browser') {
-                  beginHorizontalResize(
-                    clientX,
-                    browserPanelWidth,
-                    -1,
-                    460,
-                    960,
-                    setBrowserPanelWidth,
-                    'ganymede.browserPanelWidth',
-                  );
-                  return;
-                }
-                beginHorizontalResize(
-                  clientX,
-                  sidePanelWidth,
-                  -1,
-                  330,
-                  620,
-                  setSidePanelWidth,
-                  'ganymede.sidePanelWidth',
-                );
-              }}
-              onClose={() => setPanel('none')}
-              onError={setError}
-              onBrowserAnnotation={attachBrowserAnnotation}
-            />
-          ) : null}
           </div>
-          {panel === 'terminal' ? (
+          {workspacePanelDockOpen && terminalPlacement === 'bottom' ? (
             <SidePanel
               panel="terminal"
               project={activeProject}
@@ -941,18 +2203,209 @@ export function App(): ReactNode {
                 terminalHeight,
                 150,
                 520,
+                (value) => previewShellSize('--terminal-height', value),
                 setTerminalHeight,
                 'ganymede.terminalHeight',
               )}
-              onClose={() => setPanel('none')}
+              onClose={() => setBottomTerminalOpen(false)}
               onError={setError}
+              onProjectUpdated={(project) => {
+                setActiveProject(project);
+                setProjects((prev) =>
+                  prev.map((item) => (item.workDir === project.workDir ? project : item)),
+                );
+              }}
               onBrowserAnnotation={attachBrowserAnnotation}
+              browserPreviewUrl={browserPreviewUrl}
+              onBrowserPreviewUrlConsumed={() => setBrowserPreviewUrl(undefined)}
+              onPreviewFile={previewTimelineFile}
+              availableEditors={availableEditors}
+              onOpenInEditor={(path, command) => {
+                void openPathInEditor(resolveWorkspacePath(activeProject?.workDir, path), command);
+              }}
+              onPreferEditor={(command) => {
+                void preferEditor(command);
+              }}
+              terminalChrome="bottom"
             />
           ) : null}
+          <WorkspaceBottomBar
+            project={activeProject}
+            session={session}
+            models={boot?.models ?? []}
+            terminalOpen={bottomTerminalOpen}
+            onToggleTerminal={() => setBottomTerminalOpen((value) => !value)}
+          />
+          </div>
+        </div>
         </div>
       </main>
 
-      {approval !== undefined ? (
+      {workspacePanelDockOpen ? (
+        <WorkspaceRail
+          panel={panel}
+          inboxUnreadCount={inboxUnreadCount}
+          onPanel={selectPanel}
+          resizable={railContentOpen}
+          header={railHeader?.node}
+          headerMode={railHeader?.mode}
+          onResizeStart={
+            railContentOpen
+              ? (clientX) => {
+                  if (panel === 'browser') {
+                    beginHorizontalResize(
+                      clientX,
+                      browserPanelWidth,
+                      -1,
+                      460,
+                      960,
+                      previewRailContentWidth,
+                      setBrowserPanelWidth,
+                      'ganymede.browserPanelWidth',
+                    );
+                    return;
+                  }
+                  beginHorizontalResize(
+                    clientX,
+                    sidePanelWidth,
+                    -1,
+                    330,
+                    620,
+                    previewRailContentWidth,
+                    setSidePanelWidth,
+                    'ganymede.sidePanelWidth',
+                  );
+                }
+              : undefined
+          }
+        >
+          <WorkspaceRailChromeProvider onHeader={setRailHeader}>
+          {panel !== 'none' ? (
+            isUtilityPanel(panel) ? (
+              <div className="utility-rail-panel">
+                <RoutePage
+                  route={panel}
+                  activeProject={activeProject}
+                  session={session}
+                  settings={settings}
+                  logFile={boot?.logFile}
+                  modelConfiguration={boot}
+                  inboxAutomationFilter={inboxAutomationFilter}
+                  onSettings={(next) => {
+                    setSettings(next);
+                    applyTheme(next);
+                  }}
+                  onModelConfiguration={(configuration) => {
+                    setBoot((current) =>
+                      current === undefined ? current : { ...current, ...configuration },
+                    );
+                    if (session === undefined) {
+                      setDraftModel(configuration.defaultModel);
+                      setDraftThinking(configuration.defaultThinking);
+                    }
+                  }}
+                  onOpenTask={(id) => {
+                    const task = tasks.find((item) => item.id === id);
+                    if (task !== undefined) {
+                      void openTask(task);
+                      return;
+                    }
+                    void (async () => {
+                      try {
+                        setLoading(true);
+                        const snapshot = await api.resumeSession(id);
+                        hydrateSessionSnapshot(snapshot);
+                        setRoute('new');
+                        setPanel('none');
+                      } catch (cause) {
+                        setError(messageOf(cause));
+                      } finally {
+                        setLoading(false);
+                      }
+                    })();
+                  }}
+                  onViewInbox={(automationId) => {
+                    setInboxAutomationFilter(automationId);
+                    selectPanel('inbox');
+                  }}
+                  onOpenSettings={() => void changeRoute('settings')}
+                  onPreviewSite={(url) => {
+                    setBrowserPreviewUrl(url);
+                    selectPanel('browser');
+                    void api.createBrowser(session?.id, url).catch((cause) => setError(messageOf(cause)));
+                  }}
+                  onError={setError}
+                  onProjectUpdated={(project) => {
+                    setActiveProject(project);
+                    setProjects((prev) =>
+                      prev.map((item) => (item.workDir === project.workDir ? project : item)),
+                    );
+                  }}
+                />
+              </div>
+            ) : (
+            <SidePanel
+              panel={panel}
+              project={activeProject}
+              session={session}
+              settings={settings}
+              timeline={timeline}
+              size={railContentWidth}
+              embedded
+              onResizeStart={() => undefined}
+              onClose={closeWorkspacePanel}
+              onError={setError}
+              onProjectUpdated={(project) => {
+                setActiveProject(project);
+                setProjects((prev) =>
+                  prev.map((item) => (item.workDir === project.workDir ? project : item)),
+                );
+              }}
+              onBrowserAnnotation={attachBrowserAnnotation}
+              browserPreviewUrl={browserPreviewUrl}
+              onBrowserPreviewUrlConsumed={() => setBrowserPreviewUrl(undefined)}
+              onPreviewFile={previewTimelineFile}
+              availableEditors={availableEditors}
+              selectedPlanPath={selectedPlanPath}
+              onSelectedPlanPathChange={setSelectedPlanPath}
+              plansRefreshToken={plansRefreshToken}
+              onOpenInEditor={(path, command) => {
+                void openPathInEditor(resolveWorkspacePath(activeProject?.workDir, path), command);
+              }}
+              onPreferEditor={(command) => {
+                void preferEditor(command);
+              }}
+              planApproval={
+                approval !== undefined && isPlanReviewApproval(approval)
+                  ? approval
+                  : undefined
+              }
+              models={boot?.models ?? []}
+              model={session?.status.model ?? draftModel ?? boot?.defaultModel}
+              thinking={session?.status.thinkingEffort ?? draftThinking ?? boot?.defaultThinking}
+              platform={boot?.platform}
+              onConfigureModel={(config) => {
+                if (session === undefined) {
+                  if (config.model !== undefined) setDraftModel(config.model);
+                  if (config.thinking !== undefined) setDraftThinking(config.thinking);
+                  return;
+                }
+                void api.configureSession(session.id, config).then((status) => {
+                  setSession((current) =>
+                    current === undefined ? current : { ...current, status },
+                  );
+                }).catch((cause) => setError(messageOf(cause)));
+              }}
+              onResolvePlanApproval={resolvePlanApproval}
+              terminalChrome="rail"
+            />
+            )
+          ) : null}
+          </WorkspaceRailChromeProvider>
+        </WorkspaceRail>
+      ) : null}
+
+      {approval !== undefined && !isPlanReviewApproval(approval) ? (
         <ApprovalModal
           request={approval}
           onResolve={(resolution) => {
@@ -961,19 +2414,69 @@ export function App(): ReactNode {
           }}
         />
       ) : null}
-      {question !== undefined ? (
-        <QuestionModal
-          request={question}
-          onResolve={(resolution) => {
-            void api.resolveQuestion(resolution);
-            setQuestion(undefined);
+      {swarmPermission !== undefined ? (
+        <SwarmStartPermissionModal
+          onCancel={() => {
+            setPrompt(swarmPermission.restoreText);
+            setSwarmPermission(undefined);
+          }}
+          onSelect={(choice) => {
+            const pending = swarmPermission;
+            setSwarmPermission(undefined);
+            void pending.onSelect(choice).catch((cause) => setError(messageOf(cause)));
+          }}
+        />
+      ) : null}
+      {indexRiskPrompt !== undefined ? (
+        <IndexRiskModal
+          assessment={indexRiskPrompt.assessment}
+          onCancel={() => {
+            void api.deactivateProjectIndex(indexRiskPrompt.workDir).catch(() => undefined);
+            setIndexRiskPrompt(undefined);
+          }}
+          onDisableIndex={() => {
+            void api
+              .setSettings({ indexEnabled: false })
+              .then((next) => {
+                setSettings(next);
+                applyTheme(next);
+                setIndexRiskPrompt(undefined);
+              })
+              .catch((cause) => setError(messageOf(cause)));
+          }}
+          onForceIndex={() => {
+            const pending = indexRiskPrompt;
+            setIndexRiskPrompt(undefined);
+            void forceActivateProjectIndex(api, pending.workDir, pending.additionalDirs).catch(
+              (cause) => setError(messageOf(cause)),
+            );
+          }}
+          onOptOut={() => {
+            const pending = indexRiskPrompt;
+            setIndexRiskPrompt(undefined);
+            void optOutProjectIndex(
+              api,
+              pending.assessment.root,
+              settings?.indexOptOutRoots ?? [],
+            )
+              .then(async () => {
+                const next = await api.getSettings();
+                setSettings(next);
+              })
+              .catch((cause) => setError(messageOf(cause)));
           }}
         />
       ) : null}
       {commandOpen ? (
         <CommandPalette
           commands={commands}
+          projects={projects}
+          tasks={referenceTasks}
           onClose={() => setCommandOpen(false)}
+          onTask={(task) => {
+            void openTask(task);
+            setCommandOpen(false);
+          }}
         />
       ) : null}
       {renameTarget !== undefined ? (
@@ -995,8 +2498,8 @@ export function App(): ReactNode {
       ) : null}
       {removeProjectTarget !== undefined ? (
         <ConfirmSheet
-          body={`“${removeProjectTarget.name}”只会从侧栏隐藏，项目目录和历史任务不会被删除。`}
-          confirmLabel="从侧栏移除"
+          body={`“${removeProjectTarget.name}”会移入归档列表，项目目录和历史任务不会被删除。可随时从「归档」恢复。`}
+          confirmLabel="归档项目"
           danger
           onClose={() => setRemoveProjectTarget(undefined)}
           onConfirm={() => {
@@ -1011,7 +2514,24 @@ export function App(): ReactNode {
               })
               .catch((cause) => setError(messageOf(cause)));
           }}
-          title="移除项目？"
+          title="归档项目？"
+        />
+      ) : null}
+      {workspacePicker !== undefined ? (
+        <WorkspacePickerPopover
+          anchor={workspacePicker.anchor}
+          items={buildWorkspacePickerItems({
+            projects,
+            activeProject,
+            additionalDirs: session?.additionalDirs ?? activeProject?.additionalDirs,
+            onSelectProject: (project) => void selectProject(project),
+            onOpenFromDisk: () => void chooseProject(),
+            onAddAdditionalDir: () => {
+              if (activeProject === undefined) return;
+              addProjectDirectory(activeProject.workDir, session?.id);
+            },
+          })}
+          onClose={() => setWorkspacePicker(undefined)}
         />
       ) : null}
       {error !== undefined ? <Toast message={error} onClose={() => setError(undefined)} /> : null}
@@ -1019,287 +2539,35 @@ export function App(): ReactNode {
   );
 }
 
-function Sidebar(props: {
-  readonly route: Route;
-  readonly projects: readonly ProjectSummary[];
-  readonly tasks: readonly TaskSummary[];
-  readonly activeProject?: ProjectSummary;
-  readonly activeSessionId?: string;
-  readonly search: string;
-  readonly onSearch: (value: string) => void;
-  readonly onRoute: (route: Route) => void;
-  readonly onProject: (project: ProjectSummary) => void;
-  readonly onTask: (task: TaskSummary) => void;
-  readonly onArchive: (task: TaskSummary) => void;
-  readonly onPin: (task: TaskSummary) => void;
-  readonly onRename: (task: TaskSummary) => void;
-  readonly onFork: (task: TaskSummary) => void;
-  readonly onProjectNew: (project: ProjectSummary, target: 'local' | 'worktree') => void;
-  readonly onProjectPin: (project: ProjectSummary) => void;
-  readonly onProjectTerminal: (project: ProjectSummary) => void;
-  readonly onProjectReveal: (project: ProjectSummary) => void;
-  readonly onProjectAddDir: (project: ProjectSummary) => void;
-  readonly onProjectRemove: (project: ProjectSummary) => void;
-  readonly onOpenProject: () => void;
-  readonly onNew: () => void;
-  readonly onCommand: () => void;
-  readonly onResizeStart: (clientX: number) => void;
-  readonly userName: string;
-}): ReactNode {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [nativeNavOpen, setNativeNavOpen] = useState(true);
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
-    new Set(props.activeProject === undefined ? [] : [props.activeProject.workDir]),
-  );
-  const [menu, setMenu] = useState<{
-    readonly anchor: MenuAnchor;
-    readonly project: ProjectSummary;
-    readonly task?: TaskSummary;
-  }>();
-  useEffect(() => {
-    if (props.activeProject === undefined) return;
-    setExpanded((current) => new Set([...current, props.activeProject!.workDir]));
-  }, [props.activeProject?.workDir]);
-
-  const toggleProject = (workDir: string): void => {
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (next.has(workDir)) next.delete(workDir);
-      else next.add(workDir);
-      return next;
-    });
-  };
-
-  const menuItems = menu === undefined
-    ? []
-    : menu.task === undefined
-      ? projectMenuItems(menu.project, props)
-      : taskMenuItems(menu.task, props);
-  return (
-    <aside className="sidebar">
-      <div className="titlebar-drag" />
-      <div className="brand-row">
-        <button className="brand-lockup" onClick={props.onNew} title="伽利略 Code · GANYMEDE">
-          <GanymedeMark size={24} />
-          <span className="brand-wordmark">
-            <strong className="brand-name"><span>伽利略</span> <span>Code</span></strong>
-            <span className="brand-subtitle">GANYMEDE</span>
-          </span>
-        </button>
-        <button aria-label="搜索与命令" className="icon-button brand-search" title="搜索与命令 ⌘K" onClick={props.onCommand}><Search size={18} /></button>
-      </div>
-      {searchOpen ? (
-        <div className="sidebar-search">
-          <Search size={14} />
-          <input
-            autoFocus
-            value={props.search}
-            onChange={(event) => props.onSearch(event.target.value)}
-            placeholder="搜索任务"
-          />
-        </div>
-      ) : null}
-      <nav className="primary-nav">
-        <NavButton active={props.route === 'new'} icon={<MessageSquare />} label="新建任务" shortcut="⌘ N" onClick={props.onNew} />
-        <NavButton active={searchOpen} icon={<Search />} label="搜索" shortcut="⌘ K" onClick={() => setSearchOpen((value) => !value)} />
-        <NavButton active={props.route === 'plugins'} icon={<WandSparkles />} label="技能与插件" onClick={() => props.onRoute('plugins')} />
-      </nav>
-      <button
-        aria-controls="native-nav"
-        aria-expanded={nativeNavOpen}
-        className="native-nav-label"
-        onClick={() => setNativeNavOpen((value) => !value)}
-        title={nativeNavOpen ? '折叠更多功能' : '展开更多功能'}
-        type="button"
-      >
-        {nativeNavOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span>更多功能</span>
-      </button>
-      {nativeNavOpen ? (
-        <nav className="native-nav" id="native-nav" aria-label="更多功能">
-          <NavButton active={props.route === 'inbox'} icon={<Inbox />} label="收件箱" onClick={() => props.onRoute('inbox')} />
-          <NavButton active={props.route === 'scheduled'} icon={<Clock3 />} label="已安排" onClick={() => props.onRoute('scheduled')} />
-          <NavButton active={props.route === 'sites'} icon={<Globe2 />} label="Sites" onClick={() => props.onRoute('sites')} />
-          <NavButton active={props.route === 'pulls'} icon={<GitPullRequest />} label="拉取请求" onClick={() => props.onRoute('pulls')} />
-          <NavButton active={props.route === 'memory'} icon={<Brain />} label="记忆" onClick={() => props.onRoute('memory')} />
-        </nav>
-      ) : null}
-      <div className="sidebar-section-head">
-        <span><Folder size={12} /> 项目</span>
-        <button title="打开项目" aria-label="打开项目" onClick={props.onOpenProject}><FolderPlus size={14} /></button>
-      </div>
-      <div className="project-list">
-        {props.projects.map((project) => {
-          const active = project.workDir === props.activeProject?.workDir;
-          const projectTasks = props.tasks.filter((task) => task.workDir === project.workDir);
-          const open = expanded.has(project.workDir);
-          return (
-            <div key={project.workDir} className="project-group">
-              <div
-                className={`project-row${active ? ' active' : ''}`}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  setMenu({ anchor: { kind: 'point', x: event.clientX, y: event.clientY }, project });
-                }}
-              >
-                <button className="project-disclosure" aria-label={open ? '折叠项目' : '展开项目'} onClick={() => toggleProject(project.workDir)} title={open ? '折叠项目' : '展开项目'}>
-                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </button>
-                <button className="project-select" onClick={() => {
-                  props.onProject(project);
-                  setExpanded((current) => new Set([...current, project.workDir]));
-                }} title={project.workDir}>
-                  <FolderGit2 size={15} />
-                  <span>{project.name}</span>
-                  {project.pinned ? <Pin className="project-pin" size={11} /> : null}
-                  <span className="project-count">{project.sessionCount}</span>
-                </button>
-                <button
-                  aria-label={`管理项目 ${project.name}`}
-                  className="project-more"
-                  onClick={(event) => setMenu({ anchor: anchorFromElement(event.currentTarget), project })}
-                  title="项目菜单"
-                ><MoreHorizontal size={14} /></button>
-              </div>
-              {open ? (
-                <div className="task-list">
-                  {projectTasks.map((task) => (
-                    <div
-                      className="task-entry"
-                      key={task.id}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        setMenu({ anchor: { kind: 'point', x: event.clientX, y: event.clientY }, project, task });
-                      }}
-                    >
-                      <button
-                        className={`task-row${task.id === props.activeSessionId ? ' active' : ''}`}
-                        onClick={() => props.onTask(task)}
-                      >
-                        <span className={`task-state${task.unread ? ' unread' : ''}`} />
-                        <span>
-                          <strong>{task.title}</strong>
-                          <small>{task.lastPrompt ?? formatRelative(task.updatedAt)}</small>
-                        </span>
-                      </button>
-                      <button
-                        aria-label={`管理任务 ${task.title}`}
-                        className="task-more"
-                        onClick={(event) => setMenu({ anchor: anchorFromElement(event.currentTarget), project, task })}
-                        title="任务菜单"
-                      ><MoreHorizontal size={13} /></button>
-                    </div>
-                  ))}
-                  {projectTasks.length === 0 ? <small className="empty-task-list">暂无任务</small> : null}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-        {props.projects.length === 0 ? (
-          <button className="empty-project" onClick={props.onOpenProject}>
-            <Folder size={20} />
-            <span>打开第一个项目</span>
-          </button>
-        ) : null}
-      </div>
-      <div className="sidebar-footer">
-        <button className="account-button">
-          <span className="avatar">{props.userName.slice(0, 1).toUpperCase()}</span>
-          <span><strong>{props.userName}</strong><small>本地工作区</small></span>
-        </button>
-        <button aria-label="设置" className="icon-button" onClick={() => props.onRoute('settings')} title="设置">
-          <Settings size={16} />
-        </button>
-      </div>
-      {menu !== undefined ? (
-        <AppMenuPopover
-          anchor={menu.anchor}
-          ariaLabel={menu.task === undefined ? '项目菜单' : '任务菜单'}
-          items={menuItems}
-          onClose={() => setMenu(undefined)}
-          placement="bottom-start"
-        />
-      ) : null}
-      <div
-        aria-hidden="true"
-        className="sidebar-resize-handle"
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          props.onResizeStart(event.clientX);
-        }}
-      />
-    </aside>
-  );
-}
-
-function projectMenuItems(
-  project: ProjectSummary,
-  props: Parameters<typeof Sidebar>[0],
-): readonly AppMenuItem[] {
-  return [
-    { id: 'new', label: '新建任务', icon: <Plus />, onSelect: () => props.onProjectNew(project, 'local') },
-    { id: 'worktree', label: '新建 Worktree 任务', icon: <GitBranch />, onSelect: () => props.onProjectNew(project, 'worktree') },
-    { id: 'project-separator-1', separator: true },
-    { id: 'pin', label: project.pinned ? '取消置顶' : '置顶项目', icon: <Pin />, onSelect: () => props.onProjectPin(project) },
-    { id: 'terminal', label: '在终端中打开', icon: <TerminalSquare />, onSelect: () => props.onProjectTerminal(project) },
-    { id: 'reveal', label: '在 Finder 中显示', icon: <FolderOpen />, onSelect: () => props.onProjectReveal(project) },
-    { id: 'add-dir', label: '添加工作目录', icon: <FolderPlus />, onSelect: () => props.onProjectAddDir(project) },
-    { id: 'project-separator-2', separator: true },
-    { id: 'remove', label: '从侧栏移除…', icon: <Trash2 />, danger: true, onSelect: () => props.onProjectRemove(project) },
-  ];
-}
-
-function taskMenuItems(
-  task: TaskSummary,
-  props: Parameters<typeof Sidebar>[0],
-): readonly AppMenuItem[] {
-  return [
-    { id: 'open', label: '打开任务', icon: <MessageSquare />, onSelect: () => props.onTask(task) },
-    { id: 'rename', label: '重命名…', icon: <FileText />, onSelect: () => props.onRename(task) },
-    { id: 'fork', label: '创建副本', icon: <Copy />, onSelect: () => props.onFork(task) },
-    { id: 'task-separator-1', separator: true },
-    { id: 'pin', label: task.pinned ? '取消置顶' : '置顶任务', icon: <Pin />, onSelect: () => props.onPin(task) },
-    { id: 'archive', label: '归档任务', icon: <Archive />, onSelect: () => props.onArchive(task) },
-  ];
-}
-
-function NavButton(props: {
-  readonly active: boolean;
-  readonly icon: ReactNode;
-  readonly label: string;
-  readonly shortcut?: string;
-  readonly onClick: () => void;
-}): ReactNode {
-  return (
-    <button className={`nav-button${props.active ? ' active' : ''}`} onClick={props.onClick}>
-      <span>{props.icon}</span>
-      {props.label}
-      {props.shortcut !== undefined ? <kbd>{props.shortcut}</kbd> : null}
-    </button>
-  );
-}
-
 function TopBar(props: {
   readonly project?: ProjectSummary;
   readonly session?: SessionSnapshot;
-  readonly panel: Panel;
   readonly sidebarOpen: boolean;
+  readonly workspacePanelDockOpen: boolean;
+  readonly settings?: AppSettings;
+  readonly availableEditors: readonly EditorPresetView[];
+  readonly platform?: NodeJS.Platform;
   readonly onToggleSidebar: () => void;
-  readonly onPanel: (panel: Panel) => void;
+  readonly onToggleWorkspacePanelDock: () => void;
   readonly onCommand: () => void;
   readonly onCancel: () => void;
+  readonly onOpenInEditor: (command: string) => void;
+  readonly onPreferEditor: (command: string) => void;
+  readonly onOpenProjectFinder: () => void;
+  readonly onOpenProjectTerminal: () => void;
+  readonly onSettings?: (settings: AppSettings) => void;
+  readonly onRequestIndexRiskConfirm?: () => void;
 }): ReactNode {
   return (
     <header className="topbar">
       <div className="topbar-left">
         <button aria-label="切换侧栏" className="icon-button" onClick={props.onToggleSidebar} title="切换侧栏 ⌘B">
-          <PanelRight size={16} className={props.sidebarOpen ? '' : 'flip'} />
+          <PanelLeft size={16} className={props.sidebarOpen ? '' : 'flip'} />
         </button>
         {props.session !== undefined ? (
           <div className="breadcrumbs">
             <span>{props.session.title}</span>
-            {props.project?.branch !== undefined ? (
+            {props.project?.isGitRepository === true && props.project.branch !== undefined ? (
             <>
               <span className="slash">/</span>
               <GitBranch size={13} />
@@ -1308,13 +2576,30 @@ function TopBar(props: {
             ) : null}
           </div>
         ) : null}
+        {props.project !== undefined && !props.project.isGitRepository ? (
+          <span className="topbar-git-status" title="此项目不是 Git 仓库">
+            <Folder size={11} />
+            <span>非 Git</span>
+          </span>
+        ) : null}
+        <TopbarIndexStatus
+          additionalDirs={props.project?.additionalDirs}
+          onRequestRiskConfirm={props.onRequestIndexRiskConfirm}
+          onSettings={props.onSettings}
+          workDir={props.project?.workDir}
+        />
       </div>
       <div className="topbar-center">
-        {props.session?.status.running === true ? (
-          <span className="run-state"><span className="pulse" /> 正在工作</span>
-        ) : props.session !== undefined ? (
-          <span className="run-state quiet"><Check size={13} /> 已就绪</span>
-        ) : null}
+        <EditorShortcuts
+          workDir={props.project?.workDir}
+          editorCommand={props.settings?.editorCommand}
+          available={props.availableEditors}
+          platform={props.platform}
+          onOpen={props.onOpenInEditor}
+          onPrefer={props.onPreferEditor}
+          onOpenFinder={props.onOpenProjectFinder}
+          onOpenTerminal={props.onOpenProjectTerminal}
+        />
       </div>
       <div className="topbar-actions">
         {props.session?.status.running === true ? (
@@ -1322,35 +2607,19 @@ function TopBar(props: {
             <CircleStop size={16} />
           </button>
         ) : null}
+        <button
+          aria-label="切换右侧栏"
+          className={`icon-button${props.workspacePanelDockOpen ? ' active' : ''}`}
+          onClick={props.onToggleWorkspacePanelDock}
+          title="切换右侧栏 ⌘⌥B"
+        >
+          <PanelRight size={16} className={props.workspacePanelDockOpen ? '' : 'flip'} />
+        </button>
         <button aria-label="命令面板" className="icon-button" onClick={props.onCommand} title="命令面板 ⌘K">
           <Command size={16} />
         </button>
-        <PanelButton panel="files" current={props.panel} icon={<FileText />} onClick={props.onPanel} />
-        <PanelButton panel="review" current={props.panel} icon={<FileDiff />} onClick={props.onPanel} />
-        <PanelButton panel="terminal" current={props.panel} icon={<TerminalSquare />} onClick={props.onPanel} />
-        <PanelButton panel="browser" current={props.panel} icon={<Globe2 />} onClick={props.onPanel} />
-        <PanelButton panel="agents" current={props.panel} icon={<Boxes />} onClick={props.onPanel} />
-        <PanelButton panel="summary" current={props.panel} icon={<Sparkles />} onClick={props.onPanel} />
       </div>
     </header>
-  );
-}
-
-function PanelButton(props: {
-  readonly panel: Exclude<Panel, 'none'>;
-  readonly current: Panel;
-  readonly icon: ReactNode;
-  readonly onClick: (panel: Panel) => void;
-}): ReactNode {
-  return (
-    <button
-      className={`icon-button${props.current === props.panel ? ' active' : ''}`}
-      onClick={() => props.onClick(props.current === props.panel ? 'none' : props.panel)}
-      title={panelLabel(props.panel)}
-      aria-label={panelLabel(props.panel)}
-    >
-      {props.icon}
-    </button>
   );
 }
 
@@ -1366,59 +2635,356 @@ function Home(props: {
   );
 }
 
-function Timeline(props: {
+function useStableSessionTurns(
+  entries: readonly TimelineEntry[],
+  semanticRevision: string,
+): readonly SessionTurn[] {
+  const cache = useRef<{
+    readonly entryCount: number;
+    readonly semanticRevision: string;
+    readonly turns: readonly SessionTurn[];
+  }>({
+    entryCount: -1,
+    semanticRevision: '',
+    turns: [],
+  });
+  if (
+    cache.current.entryCount !== entries.length ||
+    cache.current.semanticRevision !== semanticRevision
+  ) {
+    cache.current = {
+      entryCount: entries.length,
+      semanticRevision,
+      turns: buildSessionTurns(entries),
+    };
+  }
+  return cache.current.turns;
+}
+
+const Timeline = memo(function Timeline(props: {
   readonly entries: readonly TimelineEntry[];
   readonly running: boolean;
+  readonly workDir?: string;
+  readonly planMode?: boolean;
+  readonly interactionMode?: InteractionMode;
+  readonly swarms?: ReadonlyMap<string, SwarmProgressView>;
+  readonly agentSubagents?: ReadonlyMap<string, AgentSubagentView>;
+  readonly swarmRevision?: number;
+  readonly pendingPlanReview?: ReturnType<typeof parsePlanReviewDisplay>;
+  readonly approvalToolCallId?: string;
+  readonly requestedTurnId?: string;
+  readonly onRequestedTurnHandled?: () => void;
+  readonly scrollContainerRef?: RefObject<HTMLDivElement | null>;
+  readonly onPreviewFile?: (relativePath: string) => void;
+  readonly onOpenPlanPath?: (path: string) => void;
+  readonly onOpenInEditor?: (path: string) => void;
+  readonly onOpenPlanInPanel?: (path?: string) => void;
 }): ReactNode {
-  const bottom = useRef<HTMLDivElement>(null);
+  const localContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = props.scrollContainerRef ?? localContainerRef;
+  const pinnedRef = useRef(true);
+  const previousLengthRef = useRef(0);
+  const scrollFrameRef = useRef<number | undefined>(undefined);
+  const historySentinelRef = useRef<HTMLDivElement>(null);
+  const prependSnapshotRef = useRef<
+    { readonly height: number; readonly top: number } | undefined
+  >(undefined);
+  const [visibleStart, setVisibleStart] = useState(() =>
+    stagedTimelineWindowStart(props.entries.length),
+  );
+  const initialWindowStart = initialTimelineWindowStart(props.entries.length);
+  const latestExitPlan = latestExitPlanEntry(props.entries);
+  const visibleEntries = props.entries.slice(visibleStart);
+
+  const scheduleScrollToBottom = useCallback(() => {
+    if (scrollFrameRef.current !== undefined) return;
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      scrollFrameRef.current = undefined;
+      const element = containerRef.current;
+      if (element === null || !pinnedRef.current) return;
+      scrollTimelineToBottom(element);
+    });
+  }, [containerRef]);
+
+  useEffect(() => () => {
+    if (scrollFrameRef.current !== undefined) {
+      window.cancelAnimationFrame(scrollFrameRef.current);
+    }
+  }, []);
+
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' });
-  }, [props.entries]);
+    if (visibleStart <= initialWindowStart) return;
+    const frame = window.requestAnimationFrame(() => {
+      setVisibleStart((current) =>
+        Math.max(initialWindowStart, current - TIMELINE_INITIAL_RENDER_SLICE));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialWindowStart, visibleStart]);
+
+  const handleScroll = useCallback(() => {
+    const element = containerRef.current;
+    if (element === null) return;
+    pinnedRef.current = isTimelineNearBottom(element);
+  }, [containerRef]);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    const inner = element?.querySelector('.timeline-inner');
+    if (element === null || !(inner instanceof HTMLElement)) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!pinnedRef.current) return;
+      scheduleScrollToBottom();
+    });
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [containerRef, scheduleScrollToBottom]);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (element === null) return;
+
+    const previousLength = previousLengthRef.current;
+    const currentLength = props.entries.length;
+    const lastEntry = props.entries.at(-1);
+    const shouldScroll = shouldTimelineAutoScroll({
+      pinnedToBottom: pinnedRef.current,
+      previousLength,
+      currentLength,
+      lastEntryKind: lastEntry?.kind,
+    });
+    previousLengthRef.current = currentLength;
+
+    if (!shouldScroll) return;
+    pinnedRef.current = true;
+    scheduleScrollToBottom();
+  }, [containerRef, props.entries, props.swarmRevision, scheduleScrollToBottom]);
+
+  const loadOlder = useCallback(() => {
+    if (visibleStart <= 0) return;
+    const element = containerRef.current;
+    if (element === null) return;
+    prependSnapshotRef.current = {
+      height: element.scrollHeight,
+      top: element.scrollTop,
+    };
+    pinnedRef.current = false;
+    setVisibleStart((current) => previousTimelineWindowStart(current));
+  }, [containerRef, visibleStart]);
+
+  useLayoutEffect(() => {
+    const snapshot = prependSnapshotRef.current;
+    const element = containerRef.current;
+    if (snapshot === undefined || element === null) return;
+    prependSnapshotRef.current = undefined;
+    element.scrollTop = snapshot.top + (element.scrollHeight - snapshot.height);
+  }, [containerRef, visibleStart]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    const sentinel = historySentinelRef.current;
+    if (visibleStart <= 0 || root === null || sentinel === null) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadOlder();
+      },
+      { root, rootMargin: '400px 0px 0px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [containerRef, loadOlder, visibleStart]);
+
+  useEffect(() => {
+    const requestedTurnId = props.requestedTurnId;
+    if (requestedTurnId === undefined) return;
+    const index = props.entries.findIndex((entry) => entry.id === requestedTurnId);
+    if (index < 0) {
+      props.onRequestedTurnHandled?.();
+      return;
+    }
+    const nextStart = timelineWindowStartForIndex(index, visibleStart);
+    if (nextStart !== visibleStart) {
+      setVisibleStart(nextStart);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const element = containerRef.current;
+      const target = document.getElementById(turnAnchorId(requestedTurnId));
+      if (element !== null && target !== null) {
+        pinnedRef.current = false;
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        scrollTimelineToElement(element, target, {
+          behavior: reducedMotion ? 'auto' : 'smooth',
+          offset: 12,
+        });
+      }
+      props.onRequestedTurnHandled?.();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    containerRef,
+    props.entries,
+    props.onRequestedTurnHandled,
+    props.requestedTurnId,
+    visibleStart,
+  ]);
+
   return (
-    <div className="timeline">
+    <div className="timeline" ref={containerRef} onScroll={handleScroll}>
       <div className="timeline-inner">
-        {props.entries.map((entry) => <TimelineBlock key={entry.id} entry={entry} />)}
+        {visibleStart > 0 ? (
+          <div className="timeline-history-sentinel" ref={historySentinelRef}>
+            <button type="button" onClick={loadOlder}>加载更早记录</button>
+          </div>
+        ) : null}
+        {visibleEntries.map((entry) => (
+          <div className={`timeline-entry timeline-entry--${entry.kind}`} key={entry.id}>
+            <TimelineBlock
+              entry={entry}
+              workDir={props.workDir}
+              planMode={props.planMode}
+              interactionMode={props.interactionMode}
+              pendingPlanReview={pendingPlanReviewForTimelineEntry(
+                entry,
+                props.pendingPlanReview,
+                props.approvalToolCallId,
+                latestExitPlan?.id === entry.id,
+              )}
+              showPlanHint={latestExitPlan?.id === entry.id}
+              swarm={
+                entry.kind === 'tool' && entry.title === 'AgentSwarm' && entry.toolCallId !== undefined
+                  ? props.swarms?.get(entry.toolCallId)
+                  : undefined
+              }
+              subagent={
+                entry.kind === 'tool' && entry.title === 'Agent' && entry.toolCallId !== undefined
+                  ? props.agentSubagents?.get(entry.toolCallId)
+                  : undefined
+              }
+              onPreviewFile={props.onPreviewFile}
+              onOpenPlanPath={props.onOpenPlanPath}
+              onOpenInEditor={props.onOpenInEditor}
+              onOpenPlanInPanel={props.onOpenPlanInPanel}
+            />
+          </div>
+        ))}
         {props.running ? (
           <div className="working-row">
             <span className="orb-loader"><i /><i /><i /></span>
             <span>Ganymede 正在推进任务</span>
           </div>
         ) : null}
-        <div ref={bottom} />
       </div>
     </div>
   );
-}
+});
 
-function TimelineBlock({ entry }: { readonly entry: TimelineEntry }): ReactNode {
-  if (entry.kind === 'user') return <div className="message user-message">{entry.content}</div>;
-  if (entry.kind === 'assistant') {
+const TimelineBlock = memo(function TimelineBlock(props: {
+  readonly entry: TimelineEntry;
+  readonly workDir?: string;
+  readonly planMode?: boolean;
+  readonly interactionMode?: InteractionMode;
+  readonly swarm?: SwarmProgressView;
+  readonly subagent?: AgentSubagentView;
+  readonly pendingPlanReview?: ReturnType<typeof parsePlanReviewDisplay>;
+  readonly showPlanHint?: boolean;
+  readonly onPreviewFile?: (relativePath: string) => void;
+  readonly onOpenPlanPath?: (path: string) => void;
+  readonly onOpenInEditor?: (path: string) => void;
+  readonly onOpenPlanInPanel?: (path?: string) => void;
+}): ReactNode {
+  const { entry } = props;
+  if (entry.kind === 'user') {
     return (
-      <article className="message assistant-message">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.content}</ReactMarkdown>
-        {entry.streaming ? <span className="cursor" /> : null}
-      </article>
+      <div className="message user-message" id={turnAnchorId(entry.id)}>
+        {entry.content}
+      </div>
+    );
+  }
+  if (entry.kind === 'assistant') {
+    if (
+      shouldSuppressPlanAssistantStream({
+        interactionMode: props.interactionMode,
+        planMode: props.planMode,
+        streaming: entry.streaming,
+      })
+    ) {
+      return <div className="plan-writing-hint">正在撰写计划…</div>;
+    }
+    return (
+      <StreamingAssistantMessage
+        content={entry.content}
+        streaming={entry.streaming === true}
+        workDir={props.workDir}
+        onPreviewFile={props.onPreviewFile}
+        onOpenPlanPath={props.onOpenPlanPath}
+        onOpenExternal={openExternalFromTimeline}
+      />
     );
   }
   if (entry.kind === 'thinking') {
+    const thinkingStreaming = entry.streaming === true;
     return (
-      <details className="thinking-block">
+      <details
+        className={`thinking-block${thinkingStreaming ? ' is-streaming' : ''}`}
+        open={thinkingStreaming ? true : undefined}
+      >
         <summary><Brain size={14} /> 思考过程</summary>
-        <div>{entry.content}</div>
+        <StreamingThinkingBody content={entry.content} streaming={thinkingStreaming} />
+      </details>
+    );
+  }
+  if (entry.kind === 'swarm-marker') {
+    return (
+      <div className={`swarm-marker ${entry.swarmMarker ?? 'active'}`}>
+        <Boxes size={14} />
+        <span>{entry.title ?? '集群模式'}</span>
+      </div>
+    );
+  }
+  if (entry.kind === 'tool' && entry.title === 'ExitPlanMode') {
+    if (props.showPlanHint !== true) return null;
+    return (
+      <PlanBoxView
+        entry={entry}
+        pendingReview={props.pendingPlanReview}
+        onOpenInPanel={props.onOpenPlanInPanel}
+      />
+    );
+  }
+  if (entry.kind === 'tool' && entry.title === 'AgentSwarm') {
+    if (props.swarm !== undefined) {
+      return <AgentSwarmProgressView swarm={props.swarm} />;
+    }
+    return (
+      <details className={`tool-block agent-swarm-progress${entry.error ? ' error' : ''}`}>
+        <summary>
+          <Bot size={14} />
+          <strong>AgentSwarm</strong>
+          <span className={`tool-status ${entry.error ? 'failed' : 'completed'}`}>
+            {entry.error ? '失败' : entry.content || '完成'}
+          </span>
+          <ChevronDown size={14} />
+        </summary>
+        {entry.content.length > 0 ? (
+          <div className="agent-swarm-body">
+            <div className="agent-swarm-summary">{entry.content}</div>
+          </div>
+        ) : null}
       </details>
     );
   }
   if (entry.kind === 'tool') {
     return (
-      <details className={`tool-block${entry.error ? ' error' : ''}`} open={entry.streaming}>
-        <summary>
-          {entry.streaming ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />}
-          <strong>{entry.title ?? '工具'}</strong>
-          <span>{entry.streaming ? '运行中' : entry.error ? '失败' : '完成'}</span>
-          <ChevronDown size={14} />
-        </summary>
-        {entry.content.length > 0 ? <pre>{entry.content}</pre> : null}
-      </details>
+      <ToolBlockView
+        entry={entry}
+        workDir={props.workDir}
+        subagent={props.subagent}
+        onPreviewFile={props.onPreviewFile}
+        onOpenInEditor={props.onOpenInEditor}
+      />
     );
   }
   return (
@@ -1428,7 +2994,7 @@ function TimelineBlock({ entry }: { readonly entry: TimelineEntry }): ReactNode 
       {entry.title !== undefined && entry.content.length > 0 ? <small>{entry.content}</small> : null}
     </div>
   );
-}
+});
 
 function Composer(props: {
   readonly value: string;
@@ -1436,10 +3002,12 @@ function Composer(props: {
   readonly attachments: readonly PromptAttachment[];
   readonly references: readonly PromptReference[];
   readonly onPickAttachments: () => void;
+  readonly onAttachFiles: (files: readonly File[]) => void;
   readonly onRemoveAttachment: (path: string) => void;
   readonly onAddReference: (reference: PromptReference) => void;
   readonly onRemoveReference: (reference: PromptReference) => void;
-  readonly onSubmit: () => void;
+  readonly onSubmit: (text?: string) => void;
+  readonly onSteer: (text?: string) => void;
   readonly onCancel: () => void;
   readonly running: boolean;
   readonly sending: boolean;
@@ -1457,25 +3025,173 @@ function Composer(props: {
   readonly sshProfiles: AppSettings['sshProfiles'];
   readonly sshProfileId?: string;
   readonly onTarget: (target: 'local' | 'worktree' | 'ssh', profileId?: string) => void;
-  readonly onAddDir: () => void;
-  readonly onProject: (project: ProjectSummary) => void;
-  readonly onOpenProject: () => void;
+  readonly onOpenWorkspacePicker: (anchor: MenuAnchor) => void;
   readonly onConfigure: (config: SessionConfigurationInput) => void;
+  readonly menuRequest?: ComposerMenuKind;
+  readonly onMenuRequestHandled?: () => void;
+  readonly swarmActive?: boolean;
+  readonly backgroundAgents?: number;
+  readonly backgroundTasks?: number;
+  readonly todos?: readonly TodoItem[];
+  readonly todosFromPlan?: boolean;
+  readonly onOpenPlanTodos?: () => void;
+  readonly planApproval?: PendingApproval;
+  readonly onResolvePlanApproval?: (resolution: ApprovalResolution) => void;
+  readonly question?: PendingQuestion;
+  readonly onResolveQuestion?: (resolution: QuestionResolution) => void;
+  readonly debugVerification?: PendingDebugVerification;
+  readonly onResolveDebugVerification?: (resolution: DebugVerificationResolution) => void;
+  readonly editsSummaryTurn?: ReturnType<typeof latestCompletedTurnWithEdits>;
+  readonly onOpenReview?: () => void;
+  readonly onPreviewEditedFile?: (relativePath: string) => void;
+  readonly onEditsError?: (message: string) => void;
+  readonly platform?: NodeJS.Platform;
 }): ReactNode {
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const permissionButton = useRef<HTMLButtonElement>(null);
+  const modeButton = useRef<HTMLButtonElement>(null);
+  const modelButton = useRef<HTMLButtonElement>(null);
+  const dragDepth = useRef(0);
   const [menu, setMenu] = useState<{
-    readonly kind: 'plus' | 'project' | 'permission' | 'target' | 'model';
+    readonly kind: 'plus' | 'permission' | 'target' | 'model' | 'mode';
     readonly anchor: MenuAnchor;
   }>();
   const [trigger, setTrigger] = useState<TriggerContext>();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [paths, setPaths] = useState<readonly PathSuggestion[]>([]);
   const [skills, setSkills] = useState<readonly SkillView[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [contextUsageOpen, setContextUsageOpen] = useState<{
+    readonly anchor: MenuAnchor;
+  }>();
+  const [contextUsage, setContextUsage] = useState<ContextUsageSnapshot>();
+  const [contextUsageLoading, setContextUsageLoading] = useState(false);
+  const [indexContextPreview, setIndexContextPreview] = useState<IndexContextPreview>();
+  const [indexContextLoading, setIndexContextLoading] = useState(false);
+  const codebaseReferenceKey = props.references
+    .filter((reference): reference is Extract<PromptReference, { readonly kind: 'codebase' }> =>
+      reference.kind === 'codebase')
+    .map((reference) => `${reference.query}:${String(reference.limit ?? 8)}`)
+    .join('|');
+  const contextTokens = props.session?.status.contextTokens ?? 0;
+  const maxContextTokens = props.session?.status.maxContextTokens ?? 0;
+  const contextRingAvailable = props.session !== undefined && maxContextTokens > 0;
+  const contextDisplay = resolveContextUsageDisplay({
+    contextTokens,
+    maxContextTokens,
+    categories: contextUsage?.categories,
+  });
+  const sessionIndexTokens = estimateTokensFromCharCount(
+    estimateReplayIndexContextChars(props.session?.replay ?? []),
+  );
+
+  const syncTriggerFromCaret = (): void => {
+    const element = textarea.current;
+    if (element === null) return;
+    setTrigger(composerTriggerAt(element.value, element.selectionStart));
+  };
+
+  useEffect(() => {
+    if (props.menuRequest === undefined) return;
+    const button =
+      props.menuRequest === 'permission'
+        ? permissionButton.current
+        : props.menuRequest === 'mode'
+          ? modeButton.current
+          : modelButton.current;
+    if (button !== null && button !== undefined) {
+      setMenu({ kind: props.menuRequest, anchor: anchorFromElement(button) });
+    }
+    props.onMenuRequestHandled?.();
+  }, [props.menuRequest, props.onMenuRequestHandled]);
+
   useEffect(() => {
     if (textarea.current === null) return;
     textarea.current.style.height = 'auto';
     textarea.current.style.height = `${String(Math.min(textarea.current.scrollHeight, 180))}px`;
   }, [props.value]);
+
+  useEffect(() => {
+    if (!contextRingAvailable || props.session === undefined) return;
+    let alive = true;
+    if (contextUsageOpen !== undefined) setContextUsageLoading(true);
+    void api
+      .contextUsageSnapshot({ sessionId: props.session.id })
+      .then((snapshot) => {
+        if (alive) setContextUsage(snapshot);
+      })
+      .catch(() => {
+        if (alive) setContextUsage(undefined);
+      })
+      .finally(() => {
+        if (alive) setContextUsageLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [
+    contextRingAvailable,
+    contextUsageOpen,
+    props.session?.id,
+    props.session?.status.contextTokens,
+    props.session?.status.maxContextTokens,
+  ]);
+
+  useEffect(() => {
+    if (props.session === undefined) {
+      setContextUsageOpen(undefined);
+      setContextUsage(undefined);
+      setIndexContextPreview(undefined);
+    }
+  }, [props.session?.id]);
+
+  useEffect(() => {
+    if (contextUsageOpen === undefined) {
+      setIndexContextPreview(undefined);
+      setIndexContextLoading(false);
+      return;
+    }
+    const project = props.project;
+    if (project === undefined || codebaseReferenceKey.length === 0) {
+      setIndexContextPreview(undefined);
+      setIndexContextLoading(false);
+      return;
+    }
+    let alive = true;
+    setIndexContextLoading(true);
+    const additionalDirs = props.session?.additionalDirs ?? project.additionalDirs;
+    const references = props.references.filter(
+      (reference): reference is Extract<PromptReference, { readonly kind: 'codebase' }> =>
+        reference.kind === 'codebase',
+    );
+    const timer = window.setTimeout(() => {
+      void api
+        .previewIndexContext({
+          workDir: project.workDir,
+          additionalDirs,
+          references,
+        })
+        .then((preview) => {
+          if (alive) setIndexContextPreview(preview);
+        })
+        .catch(() => {
+          if (alive) setIndexContextPreview(undefined);
+        })
+        .finally(() => {
+          if (alive) setIndexContextLoading(false);
+        });
+    }, 300);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [
+    props.project?.workDir,
+    props.project?.additionalDirs,
+    props.session?.additionalDirs,
+    codebaseReferenceKey,
+    props.references,
+  ]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -1557,22 +3273,43 @@ function Composer(props: {
     setTrigger(undefined);
   };
 
+  const codebaseQuery = trigger?.trigger === '@' ? trigger.query.replace(/^codebase\s*/i, '').trim() : '';
+  const showCodebaseSuggestion =
+    trigger?.trigger === '@' &&
+    props.project !== undefined &&
+    (trigger.query.trim().length === 0 ||
+      'codebase'.startsWith(trigger.query.trim().toLocaleLowerCase()) ||
+      trigger.query.trim().toLocaleLowerCase().startsWith('codebase'));
   const suggestions: readonly ComposerSuggestion[] = trigger === undefined
     ? []
     : trigger.trigger === '@'
-      ? paths.map((item) => ({
-          id: `${item.root}:${item.path}`,
-          label: item.path,
-          detail: item.root === props.project?.workDir ? props.project.name : item.root.split('/').at(-1),
-          icon: item.kind === 'directory' ? <Folder size={14} /> : <FileText size={14} />,
-          onSelect: () => selectReference({
-            kind: 'path',
-            root: item.root,
-            path: item.path,
-            name: item.name,
-            pathKind: item.kind,
-          }),
-        }))
+      ? [
+          ...(showCodebaseSuggestion
+            ? [{
+                id: 'codebase',
+                label: codebaseQuery.length > 0 ? `@codebase ${codebaseQuery}` : '@codebase',
+                detail: '搜索整个代码库并注入相关片段',
+                icon: <Search size={14} />,
+                onSelect: () => selectReference({
+                  kind: 'codebase',
+                  query: codebaseQuery.length > 0 ? codebaseQuery : (props.value.trim() || 'project overview'),
+                }),
+              } satisfies ComposerSuggestion]
+            : []),
+          ...paths.map((item) => ({
+            id: `${item.root}:${item.path}`,
+            label: item.path,
+            detail: item.root === props.project?.workDir ? props.project.name : item.root.split('/').at(-1),
+            icon: item.kind === 'directory' ? <Folder size={14} /> : <FileText size={14} />,
+            onSelect: () => selectReference({
+              kind: 'path',
+              root: item.root,
+              path: item.path,
+              name: item.name,
+              pathKind: item.kind,
+            }),
+          })),
+        ]
       : trigger.trigger === '$'
         ? skills
             .filter((skill) => skill.userActivatable)
@@ -1609,7 +3346,7 @@ function Composer(props: {
 
   const visibleSuggestions = suggestions.slice(0, 12);
   const activeSuggestion = visibleSuggestions[Math.min(selectedIndex, Math.max(0, visibleSuggestions.length - 1))];
-  const modeChildren = interactionModeMenuItems(props.interactionMode, props.onConfigure);
+  const modeChildren = interactionModeMenuItems(props.interactionMode, props.onConfigure, props.running);
   const plusItems: readonly AppMenuItem[] = [
     { id: 'attachment', label: '添加附件', icon: <Paperclip />, onSelect: props.onPickAttachments },
     { id: 'mention', label: '插入 @ 提及', icon: <AtSign />, onSelect: () => insertTrigger('@') },
@@ -1618,18 +3355,6 @@ function Composer(props: {
     { id: 'session', label: '插入 # 会话', icon: <Hash />, onSelect: () => insertTrigger('#') },
     { id: 'composer-separator', separator: true },
     { id: 'mode', label: '工作模式', description: INTERACTION_MODE_LABELS[props.interactionMode], icon: <SlidersHorizontal />, children: modeChildren },
-  ];
-  const projectItems: readonly AppMenuItem[] = [
-    ...props.projects.map((project) => ({
-      id: project.workDir,
-      label: project.name,
-      description: project.branch,
-      icon: <FolderGit2 />,
-      checked: project.workDir === props.project?.workDir,
-      onSelect: () => props.onProject(project),
-    })),
-    { id: 'project-separator', separator: true },
-    { id: 'open-project', label: '打开其他项目…', icon: <FolderOpen />, onSelect: props.onOpenProject },
   ];
   const permissionItems = permissionMenuItems(props.permission, props.onConfigure);
   const targetItems = targetMenuItems(props.target, props.sshProfileId, props.sshProfiles, props.onTarget);
@@ -1641,22 +3366,113 @@ function Composer(props: {
   );
   const activeMenuItems = menu?.kind === 'plus'
     ? plusItems
-    : menu?.kind === 'project'
-      ? projectItems
-      : menu?.kind === 'permission'
-        ? permissionItems
-        : menu?.kind === 'target'
-          ? targetItems
+    : menu?.kind === 'permission'
+      ? permissionItems
+      : menu?.kind === 'target'
+        ? targetItems
+        : menu?.kind === 'mode'
+          ? modeChildren
           : modelItems;
+  const suggestionEmptyMessage =
+    trigger?.trigger === '@' && props.project === undefined
+      ? '请先选择项目'
+      : undefined;
+  const steerShortcut = props.platform === 'darwin' ? '⌘↵' : 'Ctrl+Enter';
+  const modelFullLabel = modelLabel(props.model, props.thinking, props.models);
+  const modelThinkingEffort =
+    props.thinking
+    ?? props.models.find((candidate) => candidate.id === props.model)?.defaultThinking;
+  const targetToolbarLabel = targetLabel(props.target, props.sshProfileId, props.sshProfiles);
+  const modeHint = composerModeHint(props.interactionMode, {
+    running: props.running,
+    planApprovalPending: props.planApproval !== undefined,
+  });
   return (
     <div className="composer-dock">
-      <div className={`composer${props.running ? ' running' : ''} mode-${props.interactionMode}`}>
+      {props.question !== undefined && props.onResolveQuestion !== undefined ? (
+        <QuestionBar request={props.question} onResolve={props.onResolveQuestion} />
+      ) : null}
+      {props.todos !== undefined && !shouldHideTodoBar(props.todos) ? (
+        <ComposerTodoBar
+          todos={props.todos}
+          fromPlan={props.todosFromPlan}
+          onOpenPlan={props.onOpenPlanTodos}
+        />
+      ) : null}
+      {props.debugVerification !== undefined && props.onResolveDebugVerification !== undefined ? (
+        <DebugVerificationBar
+          request={props.debugVerification}
+          onResolve={props.onResolveDebugVerification}
+        />
+      ) : null}
+      {props.planApproval !== undefined && props.onResolvePlanApproval !== undefined ? (
+        <div className="composer-plan-build-bar">
+          <PlanBuildControls
+            variant="dock"
+            request={props.planApproval}
+            models={props.models}
+            model={props.model}
+            thinking={props.thinking}
+            platform={props.platform}
+            onConfigureModel={props.onConfigure}
+            onResolve={props.onResolvePlanApproval}
+          />
+        </div>
+      ) : null}
+      {modeHint ? (
+        <div className={`composer-mode-hint ${interactionModeClassName(props.interactionMode)}`}>
+          {modeHint}
+        </div>
+      ) : null}
+      {props.editsSummaryTurn !== undefined
+        && !props.running
+        && props.onOpenReview !== undefined
+        && props.onEditsError !== undefined ? (
+        <TurnEditsSummaryBar
+          turn={props.editsSummaryTurn}
+          workDir={props.project?.workDir}
+          isGitRepository={props.project?.isGitRepository}
+          onOpenReview={props.onOpenReview}
+          onPreviewFile={props.onPreviewEditedFile}
+          onError={props.onEditsError}
+        />
+      ) : null}
+      <div
+        className={`composer${props.running ? ' running' : ''} mode-${props.interactionMode}${dragOver ? ' composer-drag-over' : ''}`}
+        onDragEnter={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return;
+          event.preventDefault();
+          dragDepth.current += 1;
+          setDragOver(true);
+        }}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+        }}
+        onDragLeave={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return;
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragOver(false);
+        }}
+        onDrop={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return;
+          event.preventDefault();
+          dragDepth.current = 0;
+          setDragOver(false);
+          props.onAttachFiles(filesFromDataTransfer(event.dataTransfer));
+        }}
+      >
         <div className="composer-context">
-          <button className="composer-project" onClick={(event) => setMenu({ kind: 'project', anchor: anchorFromElement(event.currentTarget) })}>
+          <button
+            className="composer-project"
+            onClick={(event) => props.onOpenWorkspacePicker(anchorFromElement(event.currentTarget))}
+          >
             <Folder size={14} /> {props.project?.name ?? '选择项目'} <ChevronDown size={12} />
           </button>
-          {props.session?.additionalDirs.map((dir) => <span className="extra-context" key={dir}><Plus size={11} /> {dir.split('/').at(-1)}</span>)}
-          <button className="add-context" onClick={props.onAddDir}><Plus size={11} /> 添加目录</button>
+          {(props.session?.additionalDirs ?? props.project?.additionalDirs ?? []).map((dir) => (
+            <span className="extra-context" key={dir}><Plus size={11} /> {dir.split('/').at(-1)}</span>
+          ))}
         </div>
         {props.attachments.length > 0 || props.references.length > 0 ? (
           <div className="attachment-row">
@@ -1696,6 +3512,15 @@ function Composer(props: {
             props.onChange(event.target.value);
             setTrigger(composerTriggerAt(event.target.value, event.target.selectionStart));
           }}
+          onClick={syncTriggerFromCaret}
+          onKeyUp={syncTriggerFromCaret}
+          onSelect={syncTriggerFromCaret}
+          onPaste={(event) => {
+            const images = imageFilesFromClipboard(event.clipboardData);
+            if (images.length === 0) return;
+            event.preventDefault();
+            props.onAttachFiles(images);
+          }}
           onKeyDown={(event) => {
             if (trigger !== undefined) {
               if (event.key === 'ArrowDown') {
@@ -1706,6 +3531,17 @@ function Composer(props: {
               if (event.key === 'ArrowUp') {
                 event.preventDefault();
                 setSelectedIndex((index) => Math.max(index - 1, 0));
+                return;
+              }
+              if (event.key === 'Enter' && !event.shiftKey && trigger.trigger === '/') {
+                event.preventDefault();
+                const selectedSlash =
+                  activeSuggestion !== undefined && !activeSuggestion.disabled
+                    ? activeSuggestion.id
+                    : undefined;
+                const text = resolveSlashSubmitText(props.value, trigger, selectedSlash);
+                setTrigger(undefined);
+                props.onSubmit(text);
                 return;
               }
               if ((event.key === 'Enter' || event.key === 'Tab') && activeSuggestion !== undefined && !activeSuggestion.disabled) {
@@ -1719,16 +3555,41 @@ function Composer(props: {
                 return;
               }
             }
+            if (event.shiftKey && event.key === 'Tab') {
+              event.preventDefault();
+              props.onConfigure({
+                interactionMode: nextShiftTabInteractionMode(props.interactionMode),
+              });
+              return;
+            }
+            if ((event.metaKey || event.ctrlKey) && event.key === '.') {
+              event.preventDefault();
+              const button = modeButton.current;
+              if (button !== null) {
+                setMenu({ kind: 'mode', anchor: anchorFromElement(button) });
+              }
+              return;
+            }
+            if (event.key === 'Enter' && !event.shiftKey && (event.metaKey || event.ctrlKey)) {
+              event.preventDefault();
+              if (props.running) props.onSteer();
+              else props.onSubmit();
+              return;
+            }
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();
               props.onSubmit();
             }
           }}
-          placeholder={props.running ? '输入后续指示以调整当前任务…' : '向 Ganymede 提问，@ 提及文件，/ 使用命令，$ 使用技能，# 关联会话'}
+          placeholder={composerPlaceholder(props.interactionMode, {
+            running: props.running,
+            steerShortcut,
+          })}
           rows={1}
         />
         {trigger !== undefined ? (
           <ComposerSuggestions
+            emptyMessage={suggestionEmptyMessage}
             items={visibleSuggestions}
             onSelect={(index) => visibleSuggestions[index]?.onSelect()}
             selectedIndex={selectedIndex}
@@ -1746,25 +3607,83 @@ function Composer(props: {
               <Plus size={17} />
             </button>
             <button
-              aria-label="设备端听写"
-              className="circle-action secondary-action"
-              title="设备端听写"
-              onClick={() => startDictation((text) => props.onChange(`${props.value}${props.value ? ' ' : ''}${text}`))}
+              ref={modeButton}
+              aria-label="切换工作模式"
+              className={`composer-menu-button composer-mode-status ${interactionModeClassName(props.interactionMode)}`}
+              title="切换工作模式"
+              onClick={(event) => setMenu({ kind: 'mode', anchor: anchorFromElement(event.currentTarget) })}
             >
-              <Mic size={15} />
+              {interactionModeIcon(props.interactionMode)}
+              <span className="composer-toolbar-label">{INTERACTION_MODE_LABELS[props.interactionMode]}</span>
+              <ChevronDown className="composer-toolbar-chevron" size={11} />
             </button>
-            <button className="composer-menu-button" onClick={(event) => setMenu({ kind: 'permission', anchor: anchorFromElement(event.currentTarget) })}>
-              {permissionIcon(props.permission)} {permissionLabel(props.permission)} <ChevronDown size={11} />
+            <button
+              ref={permissionButton}
+              aria-label="切换权限模式"
+              className={`composer-menu-button${props.permission === 'yolo' ? ' composer-permission-yolo' : ''}`}
+              title="切换权限模式"
+              onClick={(event) => setMenu({ kind: 'permission', anchor: anchorFromElement(event.currentTarget) })}
+            >
+              {permissionIcon(props.permission)}
+              <span className="composer-toolbar-label">{permissionToolbarLabel(props.permission)}</span>
+              <ChevronDown className="composer-toolbar-chevron" size={11} />
             </button>
-            <span className="composer-mode-status">{interactionModeIcon(props.interactionMode)} {INTERACTION_MODE_LABELS[props.interactionMode]}</span>
-            <button className="composer-menu-button" onClick={(event) => setMenu({ kind: 'target', anchor: anchorFromElement(event.currentTarget) })}>
-              {targetIcon(props.target)} {targetLabel(props.target, props.sshProfileId, props.sshProfiles)} <ChevronDown size={11} />
+            {props.swarmActive === true ? (
+              <span className="composer-swarm-badge"><Boxes size={11} /> 集群运行中</span>
+            ) : null}
+            {(props.backgroundAgents ?? 0) > 0 || (props.backgroundTasks ?? 0) > 0 ? (
+              <span className="composer-bg-badge">
+                <Bot size={11} />
+                {(props.backgroundAgents ?? 0) > 0
+                  ? `${String(props.backgroundAgents)} Agent`
+                  : null}
+                {(props.backgroundAgents ?? 0) > 0 && (props.backgroundTasks ?? 0) > 0 ? ' · ' : null}
+                {(props.backgroundTasks ?? 0) > 0
+                  ? `${String(props.backgroundTasks)} 任务`
+                  : null}
+              </span>
+            ) : null}
+            <button
+              aria-label={`运行目标：${targetToolbarLabel}`}
+              className="composer-menu-button"
+              title={`运行目标：${targetToolbarLabel}`}
+              onClick={(event) => setMenu({ kind: 'target', anchor: anchorFromElement(event.currentTarget) })}
+            >
+              {targetIcon(props.target)}
+              <span className="composer-toolbar-label">{targetToolbarLabel}</span>
+              <ChevronDown className="composer-toolbar-chevron" size={11} />
             </button>
           </div>
           <div>
-            <button className="model-label" onClick={(event) => setMenu({ kind: 'model', anchor: anchorFromElement(event.currentTarget) })}>
-              <Sparkles size={13} /> {modelLabel(props.model, props.thinking, props.models)} <ChevronDown size={11} />
-            </button>
+            <div className="model-label-group">
+              <button
+                ref={modelButton}
+                aria-label={modelFullLabel}
+                className="model-label"
+                title={modelFullLabel}
+                onClick={(event) => {
+                  setContextUsageOpen(undefined);
+                  setMenu({ kind: 'model', anchor: anchorFromElement(event.currentTarget) });
+                }}
+              >
+                {modelProviderIcon(props.model, props.models, 13)}
+                <span className="composer-toolbar-label">{modelShortLabel(props.model, props.models)}</span>
+                {modelThinkingEffort !== undefined ? (
+                  <span className="composer-toolbar-thinking"> · {thinkingLabel(modelThinkingEffort)}</span>
+                ) : null}
+                <ChevronDown className="composer-toolbar-chevron" size={11} />
+              </button>
+              {contextRingAvailable ? (
+                <ContextUsageRing
+                  contextTokens={contextDisplay.displayTokens}
+                  maxContextTokens={maxContextTokens}
+                  onClick={(event) => {
+                    setMenu(undefined);
+                    setContextUsageOpen({ anchor: anchorFromElement(event.currentTarget) });
+                  }}
+                />
+              ) : null}
+            </div>
             {props.running ? (
               <button aria-label="停止任务" className="send-button stop" onClick={props.onCancel} title="停止任务"><CircleStop size={16} /></button>
             ) : (
@@ -1773,7 +3692,7 @@ function Composer(props: {
                 aria-label="发送"
                 title="发送"
                 disabled={props.sending || (props.value.trim().length === 0 && props.attachments.length === 0 && props.references.length === 0)}
-                onClick={props.onSubmit}
+                onClick={() => props.onSubmit()}
               >
                 {props.sending ? <LoaderCircle className="spin" size={16} /> : <ArrowUp size={17} />}
               </button>
@@ -1781,7 +3700,15 @@ function Composer(props: {
           </div>
         </div>
       </div>
-      <small className="composer-hint"><TerminalSquare size={11} /> {props.target === 'worktree' ? 'Worktree' : props.target === 'ssh' ? '远程 SSH' : '本地工作区'} · Enter 发送</small>
+      <small className="composer-hint">
+        <TerminalSquare size={11} />{' '}
+        {composerFooterHint({
+          target: props.target,
+          running: props.running,
+          steerShortcut,
+          platform: props.platform,
+        })}
+      </small>
       {menu !== undefined ? (
         <AppMenuPopover
           anchor={menu.anchor}
@@ -1789,12 +3716,30 @@ function Composer(props: {
           items={activeMenuItems}
           onClose={() => setMenu(undefined)}
           placement={menu.kind === 'plus' ? 'top-start' : 'bottom-start'}
-          searchPlaceholder={
-            menu.kind === 'model'
-              ? '搜索模型或服务商'
-              : menu.kind === 'project'
-                ? '搜索最近项目…'
-                : undefined
+          searchPlaceholder={menu.kind === 'model' ? '搜索模型或服务商' : undefined}
+        />
+      ) : null}
+      {contextUsageOpen !== undefined ? (
+        <ContextUsagePopover
+          anchor={contextUsageOpen.anchor}
+          loading={contextUsageLoading}
+          onClose={() => setContextUsageOpen(undefined)}
+          pendingIndexLoading={indexContextLoading}
+          pendingIndexPreview={indexContextPreview}
+          sessionIndexTokens={sessionIndexTokens}
+          snapshot={
+            contextUsage ?? {
+              contextTokens,
+              maxContextTokens,
+              categories: {
+                systemPrompt: 0,
+                toolDefinitions: 0,
+                rules: 0,
+                skills: 0,
+                subagentDefinitions: 0,
+                conversation: contextTokens,
+              },
+            }
           }
         />
       ) : null}
@@ -1815,16 +3760,30 @@ function ComposerSuggestions(props: {
   readonly items: readonly ComposerSuggestion[];
   readonly selectedIndex: number;
   readonly trigger: ComposerTrigger;
+  readonly emptyMessage?: string;
   readonly onSelect: (index: number) => void;
 }): ReactNode {
+  const listRef = useRef<HTMLDivElement>(null);
+  const activeIndex = Math.min(props.selectedIndex, Math.max(props.items.length - 1, 0));
+
+  useEffect(() => {
+    const container = listRef.current;
+    if (container === null) return;
+    const buttons = container.querySelectorAll<HTMLButtonElement>('button[role="option"]');
+    buttons[activeIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
+
   return (
     <div className="composer-suggestions" role="listbox" aria-label={`${props.trigger} 联想`}>
-      <header><span>{triggerTitle(props.trigger)}</span><kbd>↑↓ 选择 · ↵ 确认</kbd></header>
-      <div>
+      <header>
+        <span>{triggerTitle(props.trigger)}</span>
+        <kbd>{props.trigger === '/' ? '↑↓ 选择 · ↵ 执行' : '↑↓ 选择 · ↵ 确认'}</kbd>
+      </header>
+      <div ref={listRef}>
         {props.items.slice(0, 12).map((item, index) => (
           <button
-            aria-selected={index === props.selectedIndex}
-            className={index === props.selectedIndex ? 'active' : undefined}
+            aria-selected={index === activeIndex}
+            className={index === activeIndex ? 'active' : undefined}
             disabled={item.disabled}
             key={item.id}
             onMouseDown={(event) => event.preventDefault()}
@@ -1836,7 +3795,7 @@ function ComposerSuggestions(props: {
             <span><strong>{item.label}</strong>{item.detail !== undefined ? <small>{item.detail}</small> : null}</span>
           </button>
         ))}
-        {props.items.length === 0 ? <p>没有匹配项</p> : null}
+        {props.items.length === 0 ? <p>{props.emptyMessage ?? '没有匹配项'}</p> : null}
       </div>
     </div>
   );
@@ -1845,16 +3804,28 @@ function ComposerSuggestions(props: {
 function interactionModeMenuItems(
   current: InteractionMode,
   onConfigure: (config: SessionConfigurationInput) => void,
+  running = false,
 ): readonly AppMenuItem[] {
-  const modes: readonly InteractionMode[] = ['agent', 'ask', 'plan', 'debug', 'multitask'];
-  return modes.map((mode) => ({
-    id: mode,
-    label: INTERACTION_MODE_LABELS[mode],
-    description: interactionModeDescription(mode),
-    icon: interactionModeIcon(mode),
-    checked: current === mode,
-    onSelect: () => onConfigure({ interactionMode: mode }),
-  }));
+  const items: AppMenuItem[] = [];
+  for (const mode of INTERACTION_MODE_MENU_ORDER) {
+    if (mode === 'engineering') {
+      items.push({ id: 'mode-extension-separator', separator: true });
+    }
+    items.push({
+      id: mode,
+      label: INTERACTION_MODE_LABELS[mode],
+      description: interactionModeMenuDescription(
+        mode,
+        interactionModeDescription(mode),
+        running,
+      ),
+      icon: interactionModeIcon(mode),
+      checked: current === mode,
+      disabled: running,
+      onSelect: () => onConfigure({ interactionMode: mode }),
+    });
+  }
+  return items;
 }
 
 function permissionMenuItems(
@@ -1863,7 +3834,8 @@ function permissionMenuItems(
 ): readonly AppMenuItem[] {
   return (['manual', 'auto', 'yolo'] as const).map((permission) => ({
     id: permission,
-    label: permissionLabel(permission),
+    label: permissionToolbarLabel(permission),
+    description: permissionDescription(permission),
     icon: permissionIcon(permission),
     checked: current === permission,
     danger: permission === 'yolo',
@@ -1892,37 +3864,9 @@ function targetMenuItems(
   ];
 }
 
-function modelMenuItems(
-  current: string | undefined,
-  currentThinking: string | undefined,
-  models: readonly ModelOption[],
-  onConfigure: (config: SessionConfigurationInput) => void,
-): readonly AppMenuItem[] {
-  if (models.length === 0) return [{ id: 'missing-model', label: '未配置可用模型', icon: <ShieldAlert />, disabled: true }];
-  return models.map((model) => ({
-    id: model.id,
-    label: model.label,
-    description: `${model.provider} · 思考默认 ${thinkingLabel(model.defaultThinking)}`,
-    icon: <Sparkles />,
-    checked: model.id === current,
-    children: model.thinkingEfforts.length > 1
-      ? model.thinkingEfforts.map((thinking) => ({
-          id: `${model.id}:${thinking}`,
-          label: `思考 ${thinkingLabel(thinking)}`,
-          description: thinking === model.defaultThinking ? '模型默认' : undefined,
-          checked: model.id === current && thinking === currentThinking,
-          icon: <Brain size={13} />,
-          onSelect: () => onConfigure({ model: model.id, thinking }),
-        }))
-      : undefined,
-    onSelect: model.thinkingEfforts.length === 1
-      ? () => onConfigure({ model: model.id, thinking: model.thinkingEfforts[0] })
-      : undefined,
-  }));
-}
-
 function interactionModeIcon(mode: InteractionMode): ReactNode {
   if (mode === 'agent') return <Bot size={13} />;
+  if (mode === 'engineering') return <Hammer size={13} />;
   if (mode === 'ask') return <MessageCircle size={13} />;
   if (mode === 'plan') return <ListTodo size={13} />;
   if (mode === 'debug') return <Bug size={13} />;
@@ -1931,8 +3875,11 @@ function interactionModeIcon(mode: InteractionMode): ReactNode {
 
 function interactionModeDescription(mode: InteractionMode): string {
   if (mode === 'agent') return '执行完整的软件开发任务';
+  if (mode === 'engineering') {
+    return 'KimiCodeBoost 驱动的系统化软件开发工作流（设计 → 计划 → TDD → 子代理执行 → 评审 → 收尾）';
+  }
   if (mode === 'ask') return '围绕当前项目讨论与问答';
-  if (mode === 'plan') return '先分析并制定实现方案';
+  if (mode === 'plan') return '先探索并生成可审阅的实现计划，确认后再构建';
   if (mode === 'debug') return '聚焦诊断问题和失败';
   return '并行处理多个子任务';
 }
@@ -1941,12 +3888,6 @@ function permissionIcon(permission: 'manual' | 'auto' | 'yolo'): ReactNode {
   if (permission === 'manual') return <ShieldQuestion size={13} />;
   if (permission === 'auto') return <ShieldCheck size={13} />;
   return <ShieldAlert size={13} />;
-}
-
-function permissionLabel(permission: 'manual' | 'auto' | 'yolo'): string {
-  if (permission === 'manual') return '请求批准';
-  if (permission === 'auto') return '自动安全操作';
-  return '完全访问';
 }
 
 function targetIcon(target: 'local' | 'worktree' | 'ssh'): ReactNode {
@@ -1965,26 +3906,8 @@ function targetLabel(
   return profiles.find((profile) => profile.id === profileId)?.label ?? 'SSH';
 }
 
-function modelLabel(
-  model: string | undefined,
-  thinking: string | undefined,
-  models: readonly ModelOption[],
-): string {
-  if (model === undefined) return '未配置模型';
-  const option = models.find((candidate) => candidate.id === model);
-  const label = option?.label ?? model;
-  const effort = thinking ?? option?.defaultThinking;
-  return effort === undefined ? label : `${label} · ${thinkingLabel(effort)}`;
-}
-
-function thinkingLabel(effort: string): string {
-  if (effort === 'off') return '关闭';
-  if (effort === 'on') return '开启';
-  return effort.charAt(0).toUpperCase() + effort.slice(1);
-}
-
 function triggerTitle(trigger: ComposerTrigger): string {
-  if (trigger === '@') return '文件与文件夹';
+  if (trigger === '@') return '文件、文件夹与代码库';
   if (trigger === '/') return '命令';
   if (trigger === '$') return '技能';
   return '关联会话';
@@ -1993,12 +3916,16 @@ function triggerTitle(trigger: ComposerTrigger): string {
 function referenceKey(reference: PromptReference): string {
   if (reference.kind === 'path') return `path:${reference.root}:${reference.path}`;
   if (reference.kind === 'skill') return `skill:${reference.name}`;
+  if (reference.kind === 'codebase') return `codebase:${reference.query}`;
   return `session:${reference.sessionId}`;
 }
 
 function referenceLabel(reference: PromptReference): string {
   if (reference.kind === 'path') return reference.path;
   if (reference.kind === 'skill') return `$${reference.name}`;
+  if (reference.kind === 'codebase') {
+    return reference.query.trim().length === 0 ? '@codebase' : `@codebase ${reference.query}`;
+  }
   return reference.title;
 }
 
@@ -2007,6 +3934,7 @@ function referenceIcon(reference: PromptReference): ReactNode {
     return reference.pathKind === 'directory' ? <Folder size={12} /> : <AtSign size={12} />;
   }
   if (reference.kind === 'skill') return <WandSparkles size={12} />;
+  if (reference.kind === 'codebase') return <Search size={12} />;
   return <Hash size={12} />;
 }
 
@@ -2020,52 +3948,119 @@ type SessionConfigurationInput = {
 };
 
 function SidePanel(props: {
-  readonly panel: Exclude<Panel, 'none'>;
+  readonly panel: WorkspaceToolPanel;
   readonly project?: ProjectSummary;
   readonly session?: SessionSnapshot;
   readonly settings?: AppSettings;
   readonly timeline: readonly TimelineEntry[];
   readonly size: number;
+  readonly embedded?: boolean;
   readonly onResizeStart: (coordinate: number) => void;
   readonly onClose: () => void;
   readonly onError: (message: string) => void;
+  readonly onProjectUpdated: (project: ProjectSummary) => void;
   readonly onBrowserAnnotation: (annotation: BrowserAnnotation) => void;
+  readonly browserPreviewUrl?: string;
+  readonly onBrowserPreviewUrlConsumed?: () => void;
+  readonly onPreviewFile?: (relativePath: string) => void;
+  readonly onOpenInEditor?: (path: string, command?: string) => void;
+  readonly availableEditors: readonly EditorPresetView[];
+  readonly selectedPlanPath?: string;
+  readonly onSelectedPlanPathChange?: (path: string | undefined) => void;
+  readonly plansRefreshToken?: number;
+  readonly onPreferEditor?: (command: string) => void;
+  readonly planApproval?: PendingApproval;
+  readonly models?: readonly ModelOption[];
+  readonly model?: string;
+  readonly thinking?: string;
+  readonly platform?: NodeJS.Platform;
+  readonly onConfigureModel?: (config: SessionConfigurationInput) => void;
+  readonly onResolvePlanApproval?: (resolution: ApprovalResolution) => void;
+  readonly terminalChrome?: 'rail' | 'bottom';
 }): ReactNode {
   return (
     <aside
-      className={`side-panel ${props.panel}`}
-      style={props.panel === 'terminal' ? { height: props.size } : { width: props.size }}
+      className={`side-panel ${props.panel}${props.embedded === true ? ' embedded' : ''}`}
+      style={
+        props.embedded === true
+          ? undefined
+          : props.panel === 'terminal'
+            ? { height: 'var(--terminal-height)' }
+            : { width: props.size }
+      }
     >
-      <div
-        aria-hidden="true"
-        className={`panel-resize-handle ${props.panel === 'terminal' ? 'vertical' : 'horizontal'}`}
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          props.onResizeStart(props.panel === 'terminal' ? event.clientY : event.clientX);
-        }}
-      />
-      {props.panel === 'terminal' || props.panel === 'browser' ? null : (
-        <div className="panel-head">
-          <strong>{panelLabel(props.panel)}</strong>
-          <button aria-label={`关闭${panelLabel(props.panel)}面板`} className="icon-button" onClick={props.onClose} title="关闭面板"><X size={15} /></button>
-        </div>
+      {props.embedded === true ? null : (
+        <div
+          aria-hidden="true"
+          className={`panel-resize-handle ${props.panel === 'terminal' ? 'vertical' : 'horizontal'}`}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            props.onResizeStart(props.panel === 'terminal' ? event.clientY : event.clientX);
+          }}
+        />
       )}
-      {props.panel === 'summary' ? <SummaryPanel session={props.session} timeline={props.timeline} /> : null}
-      {props.panel === 'review' ? <ReviewPanel project={props.project} onError={props.onError} /> : null}
-      {props.panel === 'files' ? <FilesPanel project={props.project} onError={props.onError} /> : null}
+      {props.panel === 'summary' ? (
+        <SummaryPanel
+          session={props.session}
+          timeline={props.timeline}
+          workDir={props.project?.workDir}
+          onError={props.onError}
+          onPreviewFile={props.onPreviewFile}
+        />
+      ) : null}
+      {props.panel === 'review' ? (
+        <ReviewPanel
+          project={props.project}
+          onError={props.onError}
+          onProjectUpdated={props.onProjectUpdated}
+        />
+      ) : null}
+      {props.panel === 'plans' ? (
+        <PlansPanel
+          project={props.project}
+          selectedPath={props.selectedPlanPath}
+          onSelectedPathChange={props.onSelectedPlanPathChange}
+          onError={props.onError}
+          onPreviewFile={props.onPreviewFile}
+          planApproval={props.planApproval}
+          models={props.models ?? []}
+          model={props.model}
+          thinking={props.thinking}
+          platform={props.platform}
+          onConfigureModel={props.onConfigureModel}
+          onResolvePlanApproval={props.onResolvePlanApproval}
+          refreshToken={props.plansRefreshToken}
+        />
+      ) : null}
+      {props.panel === 'files' ? (
+        <FilesPanel
+          project={props.project}
+          availableEditors={props.availableEditors}
+          editorCommand={props.settings?.editorCommand}
+          onError={props.onError}
+          onPreviewFile={props.onPreviewFile}
+          onOpenInEditor={props.onOpenInEditor}
+          onPreferEditor={props.onPreferEditor}
+        />
+      ) : null}
       {props.panel === 'agents' ? <AgentsPanel session={props.session} onError={props.onError} /> : null}
       {props.panel === 'terminal' ? (
         <TerminalPanel
           project={props.project}
           session={props.session}
           settings={props.settings}
+          chrome={props.terminalChrome ?? 'bottom'}
           onClose={props.onClose}
           onError={props.onError}
         />
       ) : null}
       {props.panel === 'browser' ? (
         <BrowserPanel
+          embedded={props.embedded === true}
+          projectWorkDir={props.project?.workDir}
           session={props.session}
+          pendingUrl={props.browserPreviewUrl}
+          onPendingUrlConsumed={props.onBrowserPreviewUrlConsumed}
           onAnnotation={props.onBrowserAnnotation}
           onClose={props.onClose}
           onError={props.onError}
@@ -2078,11 +4073,49 @@ function SidePanel(props: {
 function SummaryPanel(props: {
   readonly session?: SessionSnapshot;
   readonly timeline: readonly TimelineEntry[];
+  readonly workDir?: string;
+  readonly onError: (message: string) => void;
+  readonly onPreviewFile?: (relativePath: string) => void;
 }): ReactNode {
   const tools = props.timeline.filter((entry) => entry.kind === 'tool');
   const errors = props.timeline.filter((entry) => entry.kind === 'error');
   const assistants = props.timeline.filter((entry) => entry.kind === 'assistant');
   const last = assistants.at(-1);
+  const [billing, setBilling] = useState<DeepSeekBillingSnapshot>();
+  const [billingLoading, setBillingLoading] = useState(false);
+  const billingRefreshKey = `${props.timeline.length}:${props.session?.status.running === true ? 1 : 0}`;
+
+  const refreshBilling = useCallback(
+    (refreshBalance = false) => {
+      if (props.session === undefined) {
+        setBilling(undefined);
+        return;
+      }
+      setBillingLoading(true);
+      void api
+        .deepSeekBillingSnapshot({
+          sessionId: props.session.id,
+          refreshBalance,
+        })
+        .then(setBilling)
+        .catch((cause) => props.onError(messageOf(cause)))
+        .finally(() => setBillingLoading(false));
+    },
+    [props.session?.id, props.onError],
+  );
+
+  useEffect(() => {
+    refreshBilling(true);
+    if (props.session === undefined) return;
+    const timer = window.setInterval(() => refreshBilling(false), 30_000);
+    return () => window.clearInterval(timer);
+  }, [refreshBilling, props.session?.id]);
+
+  useEffect(() => {
+    if (props.session === undefined) return;
+    refreshBilling(false);
+  }, [billingRefreshKey, props.session?.id, refreshBilling]);
+
   return (
     <div className="panel-content">
       <div className="metric-grid">
@@ -2091,16 +4124,134 @@ function SummaryPanel(props: {
         <Metric label="上下文" value={`${Math.round(((props.session?.status.contextTokens ?? 0) / Math.max(1, props.session?.status.maxContextTokens ?? 1)) * 100)}%`} />
         <Metric label="模式" value={INTERACTION_MODE_LABELS[props.session?.status.interactionMode ?? 'agent']} />
       </div>
+      {billing?.enabled === true ? (
+        <section className="summary-section billing-section">
+          <div className="billing-head">
+            <h3>DeepSeek 计费</h3>
+            <button
+              className="billing-refresh"
+              disabled={billingLoading}
+              onClick={() => refreshBilling(true)}
+              type="button"
+            >
+              <RefreshCw size={12} /> {billingLoading ? '刷新中' : '刷新'}
+            </button>
+          </div>
+          <div className="billing-grid">
+            <Metric
+              label="余额"
+              value={
+                billing.balanceError !== undefined
+                  ? '—'
+                  : billing.balanceAvailable
+                    ? formatBalanceDisplay(billing.balanceCny)
+                    : '余额不足'
+              }
+            />
+            <Metric
+              label={billing.isPeakNow ? '会话预估 (高峰)' : '会话预估'}
+              value={formatCnyDisplay(billing.estimatedCostCny)}
+            />
+            <Metric
+              label="输入 Token"
+              value={formatTokenShort(billing.sessionInput)}
+            />
+            <Metric
+              label="输出 Token"
+              value={formatTokenShort(billing.sessionOutput)}
+            />
+          </div>
+          {billing.sessionInput > 0 || billing.sessionOutput > 0 ? (
+            <div className="billing-breakdown">
+              <span>
+                缓存命中 {formatTokenShort(billing.sessionCacheHit)}
+                {billing.sessionCacheHitPct !== null ? ` (${billing.sessionCacheHitPct}%)` : ''}
+              </span>
+              <span>缓存未命中 {formatTokenShort(billing.sessionCacheMiss)}</span>
+            </div>
+          ) : (
+            <p className="muted billing-note">暂无 Token 用量数据，发送消息后更新</p>
+          )}
+          {billing.balanceError !== undefined ? (
+            <p className="muted billing-note">{billing.balanceError}</p>
+          ) : billing.balanceCny !== null ? (
+            <p className="muted billing-note">
+              赠额 ¥{billing.grantedCny ?? '0'} · 充值 ¥{billing.toppedUpCny ?? billing.balanceCny}
+            </p>
+          ) : null}
+          <p className="billing-peak">
+            {billing.isPeakNow
+              ? '当前：高峰时段（北京时间 9:00–12:00 / 14:00–18:00，单价 ×2）'
+              : '当前：非高峰（高峰为北京时间 9:00–12:00 / 14:00–18:00）'}
+          </p>
+          {billing.rates !== null && billing.peakRates !== null ? (
+            <table className="billing-price-table">
+              <caption>
+                {billing.modelId ?? '模型'} 单价（¥ / 1M tokens）
+              </caption>
+              <thead>
+                <tr>
+                  <th>类型</th>
+                  <th>非高峰</th>
+                  <th>高峰</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>缓存命中</td>
+                  <td>{billing.rates.hit}</td>
+                  <td>{billing.peakRates.hit}</td>
+                </tr>
+                <tr>
+                  <td>缓存未命中</td>
+                  <td>{billing.rates.miss}</td>
+                  <td>{billing.peakRates.miss}</td>
+                </tr>
+                <tr>
+                  <td>输出</td>
+                  <td>{billing.rates.out}</td>
+                  <td>{billing.peakRates.out}</td>
+                </tr>
+              </tbody>
+            </table>
+          ) : null}
+        </section>
+      ) : null}
       <section className="summary-section">
         <h3>当前任务</h3>
         <p>{props.session?.title ?? '尚未开始任务'}</p>
       </section>
       <section className="summary-section">
         <h3>最新结果</h3>
-        {last !== undefined ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{last.content.slice(0, 2_000)}</ReactMarkdown> : <p className="muted">暂无结果</p>}
+        {last !== undefined ? (
+          <MarkdownMessage
+            content={last.content.slice(0, 2_000)}
+            workDir={props.workDir}
+            onPreviewFile={props.onPreviewFile}
+            onOpenExternal={openExternalFromTimeline}
+          />
+        ) : <p className="muted">暂无结果</p>}
       </section>
     </div>
   );
+}
+
+function formatBalanceDisplay(value: string | null): string {
+  if (value === null) return '—';
+  const trimmed = value.trim();
+  return trimmed.startsWith('¥') ? trimmed : `¥${trimmed}`;
+}
+
+function formatCnyDisplay(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) return '¥0.00';
+  if (amount >= 0.01) return `¥${amount.toFixed(2)}`;
+  return `¥${amount.toFixed(4)}`;
+}
+
+function formatTokenShort(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}k`;
+  return String(count);
 }
 
 function AgentsPanel(props: {
@@ -2125,6 +4276,17 @@ function AgentsPanel(props: {
     return () => window.clearInterval(timer);
   }, [refresh]);
   useEffect(() => {
+    if (props.session?.id === undefined) {
+      setSelectedId(undefined);
+      return;
+    }
+    setSelectedId(readSessionUi(props.session.id).agentsSelectedTaskId);
+  }, [props.session?.id]);
+  useEffect(() => {
+    if (props.session?.id === undefined) return;
+    writeSessionUi(props.session.id, { agentsSelectedTaskId: selectedId });
+  }, [props.session?.id, selectedId]);
+  useEffect(() => {
     if (props.session === undefined || selectedId === undefined) {
       setOutput('');
       return;
@@ -2145,7 +4307,15 @@ function AgentsPanel(props: {
         <button onClick={refresh}><RefreshCw size={12} /> 刷新</button>
       </div>
       {tasks.length === 0 ? (
-        <EmptyPanel icon={<Bot />} text="当前还没有后台 Agent 或任务" />
+        <EmptyPanel
+          icon={<Bot />}
+          text={
+            props.session?.status.interactionMode === 'multitask' ||
+            props.session?.status.swarmMode === true
+              ? '暂无后台任务。集群子 Agent 的进度显示在主对话区的 AgentSwarm 块中。'
+              : '当前还没有后台 Agent 或任务'
+          }
+        />
       ) : (
         <div className="agent-task-list">
           {tasks.map((task) => (
@@ -2186,113 +4356,155 @@ function Metric({ label, value }: { readonly label: string; readonly value: Reac
   return <div className="metric"><strong>{value}</strong><span>{label}</span></div>;
 }
 
-function ReviewPanel(props: {
-  readonly project?: ProjectSummary;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [status, setStatus] = useState<GitStatus>();
-  const [diff, setDiff] = useState('');
-  const [staged, setStaged] = useState(false);
-  const [commit, setCommit] = useState('');
-  const refresh = useCallback(async () => {
-    if (props.project === undefined) return;
-    try {
-      const [nextStatus, nextDiff] = await Promise.all([
-        api.gitStatus(props.project.workDir),
-        api.gitDiff(props.project.workDir, staged),
-      ]);
-      setStatus(nextStatus);
-      setDiff(nextDiff.text);
-    } catch (cause) {
-      props.onError(messageOf(cause));
-    }
-  }, [props.project, props.onError, staged]);
-  useEffect(() => { void refresh(); }, [refresh]);
-  if (props.project === undefined) return <EmptyPanel icon={<FileDiff />} text="选择 Git 项目后查看改动" />;
-  return (
-    <div className="panel-content review-panel">
-      <div className="review-summary">
-        <span><GitBranch size={13} /> {status?.branch ?? '—'}</span>
-        <span>{status?.files.length ?? 0} 个文件</span>
-        <button aria-label="刷新改动" onClick={() => void refresh()} title="刷新改动"><RefreshCw size={13} /></button>
-      </div>
-      <div className="segmented">
-        <button className={!staged ? 'active' : ''} onClick={() => setStaged(false)}>未暂存</button>
-        <button className={staged ? 'active' : ''} onClick={() => setStaged(true)}>已暂存</button>
-      </div>
-      <div className="changed-files">
-        {status?.files.map((file) => (
-          <div key={file.path}>
-            <FileCode2 size={13} />
-            <span>{file.path}</span>
-            <code>{file.index}{file.worktree}</code>
-            <button onClick={() => void (staged ? api.gitUnstage(props.project!.workDir, [file.path]) : api.gitStage(props.project!.workDir, [file.path])).then(refresh)}>{staged ? '取消' : '暂存'}</button>
-          </div>
-        ))}
-      </div>
-      <pre className="diff-view">{diff || '没有可显示的改动。'}</pre>
-      <div className="commit-box">
-        <input value={commit} onChange={(event) => setCommit(event.target.value)} placeholder="提交说明" />
-        <button disabled={commit.trim().length === 0} onClick={() => void api.gitCommit(props.project!.workDir, commit).then(() => { setCommit(''); void refresh(); }).catch((cause) => props.onError(messageOf(cause)))}><GitCommit size={14} /> 提交</button>
-        <button onClick={() => void api.gitPush(props.project!.workDir).catch((cause) => props.onError(messageOf(cause)))}>推送</button>
-      </div>
-    </div>
-  );
-}
-
 function FilesPanel(props: {
   readonly project?: ProjectSummary;
+  readonly availableEditors: readonly EditorPresetView[];
+  readonly editorCommand?: string;
   readonly onError: (message: string) => void;
+  readonly onPreviewFile?: (relativePath: string) => void;
+  readonly onOpenInEditor?: (path: string, command?: string) => void;
+  readonly onPreferEditor?: (command: string) => void;
 }): ReactNode {
   const [entries, setEntries] = useState<readonly FileEntry[]>([]);
   const [selected, setSelected] = useState<FileContent>();
-  const [editing, setEditing] = useState('');
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
-    if (props.project === undefined) return;
-    void api.listFiles(props.project.workDir).then(setEntries).catch((cause) => props.onError(messageOf(cause)));
+    if (props.project === undefined) {
+      setEntries([]);
+      setSelected(undefined);
+      setLoading(false);
+      return;
+    }
+    let alive = true;
+    const savedSelectedPath = readProjectUi(props.project.workDir).filesSelectedPath;
+    setEntries([]);
+    setSelected(undefined);
+    setLoading(true);
+    void api.listFiles(props.project.workDir)
+      .then(async (items) => {
+        if (!alive) return;
+        setEntries(items);
+        if (savedSelectedPath === undefined) return;
+        try {
+          const content = await api.readFile(props.project!.workDir, savedSelectedPath);
+          if (alive) setSelected(content);
+        } catch {
+          // Saved file may have been removed.
+        }
+      })
+      .catch((cause) => props.onError(messageOf(cause)))
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => { alive = false; };
   }, [props.project, props.onError]);
+  useEffect(() => {
+    if (props.project === undefined || selected === undefined) return;
+    writeProjectUi(props.project.workDir, { filesSelectedPath: selected.path });
+  }, [props.project?.workDir, selected?.path]);
   async function open(path: string): Promise<void> {
     if (props.project === undefined) return;
     try {
       const content = await api.readFile(props.project.workDir, path);
       setSelected(content);
-      setEditing(content.content ?? '');
     } catch (cause) {
       props.onError(messageOf(cause));
     }
   }
   if (props.project === undefined) return <EmptyPanel icon={<FileText />} text="选择项目后浏览文件" />;
+  const selectedRelative =
+    selected === undefined
+      ? undefined
+      : selected.path.startsWith(props.project.workDir)
+        ? selected.path.slice(props.project.workDir.length).replace(/^[/\\]+/, '')
+        : selected.path;
+  const canPreview =
+    selected !== undefined &&
+    selectedRelative !== undefined &&
+    isHtmlPath(selected.name);
   return (
     <div className="files-layout">
-      <div className="file-tree"><FileTree entries={entries} onOpen={(path) => void open(path)} /></div>
+      <div className="file-tree">
+        {loading ? (
+          <div className="file-tree-state"><LoaderCircle className="spin" size={15} /> 正在读取文件…</div>
+        ) : entries.length === 0 ? (
+          <div className="file-tree-state"><Folder size={15} /> 此项目暂无文件</div>
+        ) : (
+          <FileTree entries={entries} selectedPath={selected?.path} onOpen={(path) => void open(path)} />
+        )}
+      </div>
       {selected !== undefined ? (
         <div className="file-preview">
           <div className="file-preview-head">
             <strong>{selected.name}</strong>
-            <button aria-label="在外部应用打开" onClick={() => void api.openFileExternal(selected.path)} title="在外部应用打开"><Maximize2 size={13} /></button>
+            <div className="file-preview-actions">
+              {canPreview ? (
+                <button
+                  aria-label="在内置浏览器预览"
+                  title="在内置浏览器预览"
+                  type="button"
+                  onClick={() => {
+                    if (selectedRelative !== undefined) props.onPreviewFile?.(selectedRelative);
+                  }}
+                >
+                  <Globe2 size={13} />
+                </button>
+              ) : null}
+              {props.onOpenInEditor !== undefined ? (
+                <EditorShortcuts
+                  workDir={props.project.workDir}
+                  editorCommand={props.editorCommand}
+                  available={props.availableEditors}
+                  scope="file"
+                  onOpen={(command) => props.onOpenInEditor?.(selected.path, command)}
+                  onPrefer={(command) => props.onPreferEditor?.(command)}
+                  onOpenSystem={() => void api.openFileExternal(selected.path)}
+                />
+              ) : null}
+              <button
+                aria-label="在外部应用打开"
+                title="在外部应用打开"
+                type="button"
+                onClick={() => void api.openFileExternal(selected.path)}
+              >
+                <Maximize2 size={13} />
+              </button>
+            </div>
           </div>
           {selected.kind === 'text' ? (
-            <>
-              <textarea value={editing} onChange={(event) => setEditing(event.target.value)} spellCheck={false} />
-              <button className="save-file" onClick={() => void api.writeFile(props.project!.workDir, selected.path, editing)}>保存</button>
-            </>
+            <CodeSurface
+              value={selected.content ?? ''}
+              language={languageFromPath(selected.name)}
+              readOnly
+              className="file-code"
+            />
           ) : selected.dataUrl !== undefined ? (
             selected.kind === 'image' ? <img src={selected.dataUrl} /> : <embed src={selected.dataUrl} />
           ) : <div className="binary-file">无法在应用内预览该文件。</div>}
         </div>
-      ) : null}
+      ) : (
+        <div className="file-preview file-preview-empty">
+          <EmptyPanel icon={<FileCode2 />} text="从左侧文件树选择文件进行预览" />
+        </div>
+      )}
     </div>
   );
 }
 
 function FileTree(props: {
   readonly entries: readonly FileEntry[];
+  readonly selectedPath?: string;
   readonly onOpen: (path: string) => void;
 }): ReactNode {
   return (
     <>
       {props.entries.map((entry) => (
-        <FileNode key={entry.path} entry={entry} onOpen={props.onOpen} />
+        <FileNode
+          key={entry.path}
+          entry={entry}
+          selectedPath={props.selectedPath}
+          onOpen={props.onOpen}
+        />
       ))}
     </>
   );
@@ -2300,6 +4512,7 @@ function FileTree(props: {
 
 function FileNode(props: {
   readonly entry: FileEntry;
+  readonly selectedPath?: string;
   readonly onOpen: (path: string) => void;
 }): ReactNode {
   const [open, setOpen] = useState(false);
@@ -2307,18 +4520,64 @@ function FileNode(props: {
     return (
       <div className="file-node directory">
         <button onClick={() => setOpen((value) => !value)}>
-          {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}<Folder size={13} />{props.entry.name}
+          {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <Folder size={13} />
+          <span>{props.entry.name}</span>
         </button>
-        {open && props.entry.children !== undefined ? <div className="file-children"><FileTree entries={props.entry.children} onOpen={props.onOpen} /></div> : null}
+        {open && props.entry.children !== undefined ? (
+          <div className="file-children">
+            <FileTree
+              entries={props.entry.children}
+              selectedPath={props.selectedPath}
+              onOpen={props.onOpen}
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
-  return <button className="file-node file" onClick={() => props.onOpen(props.entry.path)}><FileCode2 size={13} />{props.entry.name}</button>;
+  const selected = props.entry.path === props.selectedPath;
+  return (
+    <button
+      aria-current={selected ? 'page' : undefined}
+      className={`file-node file${selected ? ' active' : ''}`}
+      onClick={() => props.onOpen(props.entry.path)}
+      type="button"
+    >
+      <FileCode2 size={13} />
+      <span>{props.entry.name}</span>
+    </button>
+  );
 }
 
 function readMonoFontCssVar(): string {
   if (typeof document === 'undefined') return '';
   return getComputedStyle(document.documentElement).getPropertyValue('--font-mono');
+}
+
+function readXtermCellHeight(xterm: XTerm): number | undefined {
+  const core = (xterm as XTerm & {
+    readonly _core?: {
+      readonly _renderService?: {
+        readonly dimensions?: { readonly css: { readonly cell: { readonly height: number } } };
+      };
+    };
+  })._core;
+  const cellHeight = core?._renderService?.dimensions?.css.cell.height;
+  if (cellHeight === undefined || cellHeight <= 0) return undefined;
+  return cellHeight;
+}
+
+/** FitAddon sizes to whole rows; shrink the xterm element so no viewport gap remains. */
+function clampTerminalVisualHeight(fitAddon: FitAddon, xterm: XTerm): void {
+  const element = xterm.element;
+  if (element === undefined) return;
+  const proposed = fitAddon.proposeDimensions();
+  const cellHeight = readXtermCellHeight(xterm);
+  if (proposed === undefined || cellHeight === undefined) return;
+  const height = Math.ceil(proposed.rows * cellHeight);
+  element.style.height = `${height}px`;
+  element.style.flex = '0 0 auto';
 }
 
 function scheduleTerminalFit(
@@ -2335,6 +4594,7 @@ function scheduleTerminalFit(
       if (fitAddon === undefined || xterm === undefined) return;
       try {
         fitAddon.fit();
+        clampTerminalVisualHeight(fitAddon, xterm);
       } catch {
         return;
       }
@@ -2370,6 +4630,7 @@ function TerminalPanel(props: {
   readonly project?: ProjectSummary;
   readonly session?: SessionSnapshot;
   readonly settings?: AppSettings;
+  readonly chrome: 'rail' | 'bottom';
   readonly onClose: () => void;
   readonly onError: (message: string) => void;
 }): ReactNode {
@@ -2506,24 +4767,35 @@ function TerminalPanel(props: {
     setActiveId(undefined);
     buffers.current.clear();
     exitedIds.current.clear();
-    // Capture session id once when the project opens; do not recreate on session changes.
     const sessionId = props.session?.id;
-    void api.createTerminal(props.project.workDir, sessionId)
-      .then((tab) => {
-        if (!alive) {
-          void api.closeTerminal(tab.id);
-          return;
+    const snapshot = readProjectRuntime(props.project.workDir);
+    const tabCount = Math.max(1, snapshot.terminalTabCount);
+    const activeIndex = Math.min(Math.max(0, snapshot.activeTerminalIndex), tabCount - 1);
+    void (async () => {
+      try {
+        const created: TerminalInfo[] = [];
+        for (let index = 0; index < tabCount; index += 1) {
+          if (!alive) break;
+          const tab = await api.createTerminal(props.project!.workDir, sessionId);
+          if (!alive) {
+            void api.closeTerminal(tab.id);
+            return;
+          }
+          if (!buffers.current.has(tab.id)) buffers.current.set(tab.id, '');
+          exitedIds.current.delete(tab.id);
+          created.push(tab);
         }
-        // Preserve any early PTY output already buffered under this id.
-        if (!buffers.current.has(tab.id)) buffers.current.set(tab.id, '');
-        setTabs([tab]);
-        activeIdRef.current = tab.id;
-        setActiveId(tab.id);
-        showTabBuffer(tab.id);
-      })
-      .catch((cause: unknown) => {
+        if (!alive) return;
+        setTabs(created);
+        const active = created[activeIndex] ?? created[0];
+        if (active === undefined) return;
+        activeIdRef.current = active.id;
+        setActiveId(active.id);
+        showTabBuffer(active.id);
+      } catch (cause) {
         if (alive) props.onError(messageOf(cause));
-      });
+      }
+    })();
     return () => {
       alive = false;
       panelAlive.current = false;
@@ -2535,13 +4807,22 @@ function TerminalPanel(props: {
   }, [props.project, props.onError, showTabBuffer]);
 
   useEffect(() => {
+    if (props.project === undefined || tabs.length === 0) return;
+    const activeIndex = tabs.findIndex((tab) => tab.id === activeId);
+    writeProjectRuntime(props.project.workDir, {
+      terminalTabCount: tabs.length,
+      activeTerminalIndex: activeIndex < 0 ? 0 : activeIndex,
+    });
+  }, [props.project?.workDir, tabs, activeId]);
+
+  useEffect(() => {
     if (terminal.current === undefined) return;
     terminal.current.options.fontFamily = fontFamily;
     terminal.current.options.fontSize = fontSize;
     terminal.current.options.theme = readTerminalThemeFromDocument();
     terminal.current.refresh(0, Math.max(0, terminal.current.rows - 1));
     scheduleFit();
-  }, [fontFamily, fontSize, props.settings?.theme, props.settings?.accent, scheduleFit]);
+  }, [fontFamily, fontSize, props.settings?.theme, props.settings?.accentDark, props.settings?.accentLight, scheduleFit]);
 
   const clearActive = useCallback(() => {
     if (activeId === undefined) return;
@@ -2563,44 +4844,71 @@ function TerminalPanel(props: {
   }, [props.onError]);
 
   if (props.project === undefined) return <EmptyPanel icon={<TerminalSquare />} text="选择项目后打开终端" />;
-  return (
-    <div className="terminal-panel">
-      <div className="terminal-tabs">
-        {tabs.map((tab, index) => (
-          <button
-            className={tab.id === activeId ? 'active' : ''}
-            key={tab.id}
-            onClick={() => {
-              activeIdRef.current = tab.id;
-              setActiveId(tab.id);
-              showTabBuffer(tab.id);
-            }}
-          >
-            <TerminalSquare size={12} /> {tab.title} {index + 1}
-            <X size={11} onClick={(event) => {
-              event.stopPropagation();
-              void api.closeTerminal(tab.id);
-              buffers.current.delete(tab.id);
-              exitedIds.current.delete(tab.id);
-              const remaining = tabs.filter((item) => item.id !== tab.id);
-              setTabs(remaining);
-              const next = remaining.at(-1)?.id;
-              activeIdRef.current = next;
-              setActiveId(next);
-              if (next !== undefined) showTabBuffer(next);
-              else terminal.current?.reset();
-            }} />
-          </button>
-        ))}
-        <button aria-label="新建终端标签" onClick={() => void createTab()} title="新建终端标签"><Plus size={12} /></button>
-        <div className="terminal-tab-actions">
-          <button aria-label="复制选中内容" onClick={copySelection} title="复制选中内容"><Copy size={12} /></button>
-          <button aria-label="清屏" onClick={clearActive} title="清屏"><Eraser size={12} /></button>
-          <button aria-label="关闭终端面板" className="terminal-panel-close" title="关闭终端面板" onClick={props.onClose}><X size={12} /></button>
-        </div>
+
+  const tabBar = useMemo(() => (
+    <div className="workspace-rail-tab-bar terminal-tabs">
+      {tabs.map((tab, index) => (
+        <button
+          aria-selected={tab.id === activeId}
+          className={tab.id === activeId ? 'active' : ''}
+          key={tab.id}
+          onClick={() => {
+            activeIdRef.current = tab.id;
+            setActiveId(tab.id);
+            showTabBuffer(tab.id);
+          }}
+          role="tab"
+          title={tab.title}
+          type="button"
+        >
+          <TerminalSquare size={12} />
+          <span>{tab.title} {index + 1}</span>
+          <X size={11} onClick={(event) => {
+            event.stopPropagation();
+            void api.closeTerminal(tab.id);
+            buffers.current.delete(tab.id);
+            exitedIds.current.delete(tab.id);
+            const remaining = tabs.filter((item) => item.id !== tab.id);
+            setTabs(remaining);
+            const next = remaining.at(-1)?.id;
+            activeIdRef.current = next;
+            setActiveId(next);
+            if (next !== undefined) showTabBuffer(next);
+            else terminal.current?.reset();
+          }} />
+        </button>
+      ))}
+      <button aria-label="新建终端标签" onClick={() => void createTab()} title="新建终端标签" type="button">
+        <Plus size={12} />
+      </button>
+      <div className="workspace-rail-tab-bar__actions terminal-tab-actions">
+        <button aria-label="复制选中内容" onClick={copySelection} title="复制选中内容" type="button">
+          <Copy size={12} />
+        </button>
+        <button aria-label="清屏" onClick={clearActive} title="清屏" type="button">
+          <Eraser size={12} />
+        </button>
+        <button
+          aria-label="关闭终端面板"
+          className="terminal-panel-close"
+          onClick={props.onClose}
+          title="关闭终端面板"
+          type="button"
+        >
+          <X size={12} />
+        </button>
       </div>
-      <div className="terminal-host" ref={host} />
     </div>
+  ), [activeId, clearActive, copySelection, createTab, props.onClose, showTabBuffer, tabs]);
+
+  return (
+    <>
+      {props.chrome === 'rail' ? <WorkspaceRailChromeSlot>{tabBar}</WorkspaceRailChromeSlot> : null}
+      <div className={`terminal-panel${props.chrome === 'rail' ? ' terminal-panel--rail' : ''}`}>
+        {props.chrome === 'bottom' ? tabBar : null}
+        <div className="terminal-host" ref={host} />
+      </div>
+    </>
   );
 }
 
@@ -2611,11 +4919,33 @@ interface BrowserBookmarkItem {
 }
 
 function BrowserPanel(props: {
+  readonly embedded?: boolean;
+  readonly projectWorkDir?: string;
   readonly session?: SessionSnapshot;
+  readonly pendingUrl?: string;
+  readonly onPendingUrlConsumed?: () => void;
   readonly onAnnotation: (annotation: BrowserAnnotation) => void;
   readonly onClose: () => void;
   readonly onError: (message: string) => void;
 }): ReactNode {
+  const initialBrowserUi = useMemo(() => {
+    const sessionSnapshot = props.session?.id === undefined
+      ? undefined
+      : readSessionRuntime(props.session.id);
+    const projectSnapshot = props.projectWorkDir === undefined
+      ? undefined
+      : readProjectRuntime(props.projectWorkDir);
+    const browserTabs = browserTabsToRestore(
+      sessionSnapshot?.browserTabs ?? projectSnapshot?.browserTabs,
+    );
+    return {
+      browserTabs,
+      browserTabsRestoreKey: browserTabsRestoreKey(browserTabs),
+      bookmarksOpen: sessionSnapshot?.browserBookmarksOpen
+        ?? projectSnapshot?.browserBookmarksOpen
+        ?? true,
+    };
+  }, [props.projectWorkDir, props.session?.id]);
   const [tabs, setTabs] = useState<readonly BrowserTab[]>([]);
   const tabsRef = useRef<readonly BrowserTab[]>([]);
   const [activeId, setActiveId] = useState<string>();
@@ -2623,7 +4953,8 @@ function BrowserPanel(props: {
   const [url, setUrl] = useState('about:blank');
   const [annotating, setAnnotating] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [bookmarksOpen, setBookmarksOpen] = useState(true);
+  const [bookmarksOpen, setBookmarksOpen] = useState(initialBrowserUi.bookmarksOpen);
+  const [browserMenuAnchor, setBrowserMenuAnchor] = useState<MenuAnchor>();
   const [bookmarks, setBookmarks] = useState<readonly BrowserBookmarkItem[]>(readBrowserBookmarks);
   const viewport = useRef<HTMLDivElement>(null);
   const activeTab = tabs.find((tab) => tab.id === activeId);
@@ -2647,9 +4978,15 @@ function BrowserPanel(props: {
   }, [props.session?.id, props.onError]);
 
   useEffect(() => {
+    setBookmarksOpen(initialBrowserUi.bookmarksOpen);
+  }, [initialBrowserUi.bookmarksOpen]);
+
+  useEffect(() => {
     let alive = true;
+    const pendingTabIds: string[] = [];
     setTabs([]);
     setActiveId(undefined);
+    const { urls, activeIndex } = initialBrowserUi.browserTabs;
     const unsubscribe = api.onBrowserState((next) => {
       if (!alive) return;
       setTabs((current) => {
@@ -2661,26 +4998,68 @@ function BrowserPanel(props: {
       });
       if (next.id === activeIdRef.current) setUrl(next.url);
     });
-    void api.createBrowser(props.session?.id, 'about:blank')
-      .then((tab) => {
+    void (async () => {
+      try {
+        const created: BrowserTab[] = [];
+        for (const initialUrl of urls) {
+          if (!alive) break;
+          const tab = await api.createBrowser(props.session?.id, initialUrl);
+          if (!alive) {
+            void api.closeBrowser(tab.id);
+            return;
+          }
+          pendingTabIds.push(tab.id);
+          created.push(tab);
+        }
         if (!alive) {
-          void api.closeBrowser(tab.id);
+          for (const id of pendingTabIds) void api.closeBrowser(id);
           return;
         }
-        setTabs([tab]);
-        setActiveId(tab.id);
-        setUrl(tab.url);
-      })
-      .catch((cause: unknown) => {
+        setTabs(created);
+        const active = created[activeIndex] ?? created[0];
+        if (active === undefined) return;
+        activeIdRef.current = active.id;
+        setActiveId(active.id);
+        setUrl(active.url);
+      } catch (cause: unknown) {
         if (alive) props.onError(messageOf(cause));
-      });
+      }
+    })();
     return () => {
       alive = false;
       unsubscribe();
+      for (const id of pendingTabIds) void api.closeBrowser(id);
       for (const tab of tabsRef.current) void api.closeBrowser(tab.id);
       tabsRef.current = [];
     };
-  }, [props.session?.id, props.onError]);
+  }, [initialBrowserUi.browserTabsRestoreKey, props.onError, props.projectWorkDir, props.session?.id]);
+
+  useEffect(() => {
+    if (tabs.length === 0) return;
+    const browserTabs = snapshotFromBrowserTabs(tabs, activeId);
+    if (props.session?.id !== undefined) {
+      writeSessionRuntime(props.session.id, {
+        browserTabs,
+        browserBookmarksOpen: bookmarksOpen,
+      });
+      return;
+    }
+    if (props.projectWorkDir !== undefined) {
+      writeProjectRuntime(props.projectWorkDir, {
+        browserTabs,
+        browserBookmarksOpen: bookmarksOpen,
+      });
+    }
+  }, [tabs, activeId, bookmarksOpen, props.projectWorkDir, props.session?.id]);
+
+  useEffect(() => {
+    if (props.pendingUrl === undefined || activeId === undefined) return;
+    const target = props.pendingUrl;
+    setUrl(target);
+    void api.browserNavigate(activeId, target)
+      .then(() => props.onPendingUrlConsumed?.())
+      .catch((cause) => props.onError(messageOf(cause)));
+  }, [props.pendingUrl, activeId, props.onPendingUrlConsumed, props.onError]);
 
   useEffect(() => {
     if (activeTab === undefined || viewport.current === null) return;
@@ -2711,7 +5090,7 @@ function BrowserPanel(props: {
     };
   }, [activeTab?.id]);
 
-  const closeTab = (id: string): void => {
+  const closeTab = useCallback((id: string): void => {
     const index = tabs.findIndex((tab) => tab.id === id);
     const remaining = tabs.filter((tab) => tab.id !== id);
     setTabs(remaining);
@@ -2726,7 +5105,7 @@ function BrowserPanel(props: {
     }
     setActiveId(next.id);
     setUrl(next.url);
-  };
+  }, [activeId, createTab, tabs]);
 
   const saveBookmarks = (next: readonly BrowserBookmarkItem[]): void => {
     setBookmarks(next);
@@ -2770,70 +5149,226 @@ function BrowserPanel(props: {
   const bookmarked = activeTab !== undefined && bookmarks.some((item) => item.url === activeTab.url);
   const zoomLabel = `${String(Math.round((activeTab?.zoomFactor ?? 1) * 100))}%`;
 
-  return (
-    <div className="browser-panel">
-      <div className="browser-tabs">
-        {tabs.map((tab, index) => (
-          <div className={`browser-tab${tab.id === activeId ? ' active' : ''}`} key={tab.id}>
-            <button className="browser-tab-select" onClick={() => {
-              setActiveId(tab.id);
-              setUrl(tab.url);
-            }} title={tab.title || tab.url}>
-              <Globe2 size={11} /> <span>{tab.title || `Tab ${String(index + 1)}`}</span>
-            </button>
-            <button aria-label={`关闭标签 ${tab.title || String(index + 1)}`} className="browser-tab-close" onClick={() => closeTab(tab.id)} title="关闭标签"><X size={10} /></button>
-          </div>
-        ))}
-        <button aria-label="新建浏览器标签" onClick={() => void createTab()} title="新建浏览器标签"><Plus size={12} /></button>
-        <button aria-label="关闭浏览器面板" className="browser-panel-close" onClick={props.onClose} title="关闭浏览器面板"><X size={12} /></button>
-      </div>
-      <div className="browser-toolbar">
-        <div className="browser-location-row">
-          <div className="browser-nav-actions">
-            <button aria-label="后退" disabled={!activeTab?.canGoBack} onClick={() => activeTab && void api.browserAction(activeTab.id, 'back')} title="后退"><ArrowLeft size={14} /></button>
-            <button aria-label="前进" disabled={!activeTab?.canGoForward} onClick={() => activeTab && void api.browserAction(activeTab.id, 'forward')} title="前进"><ArrowRight size={14} /></button>
-            <button aria-label="重新载入" disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, activeTab.loading ? 'stop' : 'reload')} title={activeTab?.loading ? '停止载入' : '重新载入'}><RefreshCw className={activeTab?.loading ? 'spin' : ''} size={14} /></button>
-          </div>
-          <form onSubmit={(event) => {
-            event.preventDefault();
-            if (activeTab) void api.browserNavigate(activeTab.id, url).catch((cause: unknown) => props.onError(messageOf(cause)));
-          }}>
-            <Globe2 size={13} />
-            <input aria-label="浏览器地址" value={url} onChange={(event) => setUrl(event.target.value)} />
-          </form>
-          <button aria-label={bookmarked ? '移除当前书签' : '收藏当前页面'} className={bookmarked ? 'active' : ''} disabled={activeTab === undefined || activeTab.url === 'about:blank'} onClick={bookmarkActive} title={bookmarked ? '移除当前书签' : '收藏当前页面'}><Star fill={bookmarked ? 'currentColor' : 'none'} size={14} /></button>
-          <button aria-label="显示或隐藏书签栏" className={bookmarksOpen ? 'active' : ''} onClick={() => setBookmarksOpen((value) => !value)} title="显示或隐藏书签栏"><Bookmark size={14} /></button>
-        </div>
-        <div className="browser-action-row">
-          <div className="browser-zoom-actions">
-            <button aria-label="缩小页面" disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, 'zoom-out')} title="缩小页面"><ZoomOut size={14} /></button>
-            <button aria-label="重置为百分之百" className="browser-zoom-label" disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, 'zoom-reset')} title="重置为 100%">{zoomLabel}</button>
-            <button aria-label="放大页面" disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, 'zoom-in')} title="放大页面"><ZoomIn size={14} /></button>
-            <button aria-label="适合面板宽度" className={activeTab?.autoFit ? 'active' : ''} disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, 'fit')} title="适合面板宽度"><Maximize2 size={13} /></button>
-          </div>
-          <span aria-live="polite" className="browser-feedback">{feedback}</span>
-          <div className="browser-page-actions">
-            <button aria-label="标注页面元素" className={annotating ? 'active' : ''} disabled={activeTab === undefined || annotating} title="标注页面元素并附到对话框" onClick={() => void annotate()}>{annotating ? <LoaderCircle className="spin" size={14} /> : <MessageSquare size={14} />}</button>
-            <button aria-label="保存页面截图" disabled={activeTab === undefined} onClick={() => activeTab && void api.browserScreenshot(activeTab.id).then((data) => downloadDataUrl(data, 'ganymede-browser.png')).catch((cause: unknown) => props.onError(messageOf(cause)))} title="保存页面截图"><Sparkles size={14} /></button>
-            <button aria-label="开发人员工具" className={activeTab?.devToolsOpen ? 'active' : ''} disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, 'devtools')} title="打开开发人员工具"><Code2 size={14} /></button>
-          </div>
-        </div>
-      </div>
-      {bookmarksOpen ? (
-        <div className="browser-bookmark-bar">
-          <Bookmark size={12} />
-          {bookmarks.length === 0 ? <span>点击星标收藏当前页面</span> : bookmarks.map((bookmark) => (
-            <div className="browser-bookmark" key={bookmark.id}>
-              <button className="browser-bookmark-link" onClick={() => activeTab && void api.browserNavigate(activeTab.id, bookmark.url)} title={bookmark.url}><Globe2 size={11} /><span>{bookmark.title}</span></button>
-              <button aria-label={`删除书签 ${bookmark.title}`} className="browser-bookmark-remove" onClick={() => saveBookmarks(bookmarks.filter((item) => item.id !== bookmark.id))} title="删除书签"><X size={9} /></button>
-            </div>
-          ))}
+  const captureScreenshot = useCallback((): void => {
+    if (activeTab === undefined) return;
+    void api.browserScreenshot(activeTab.id)
+      .then((data) => downloadDataUrl(data, 'ganymede-browser.png'))
+      .catch((cause: unknown) => props.onError(messageOf(cause)));
+  }, [activeTab, props.onError]);
+
+  const browserMenuItems = useMemo((): readonly AppMenuItem[] => {
+    const tabId = activeTab?.id;
+    const disabled = tabId === undefined;
+    return [
+      {
+        id: 'bookmarks-bar',
+        label: '显示书签栏',
+        icon: <Bookmark size={14} />,
+        checked: bookmarksOpen,
+        onSelect: () => setBookmarksOpen((value) => !value),
+      },
+      { id: 'browser-menu-sep-1', separator: true },
+      {
+        id: 'zoom-in',
+        label: '放大',
+        icon: <ZoomIn size={14} />,
+        disabled,
+        onSelect: () => tabId !== undefined && void api.browserAction(tabId, 'zoom-in'),
+      },
+      {
+        id: 'zoom-out',
+        label: '缩小',
+        icon: <ZoomOut size={14} />,
+        disabled,
+        onSelect: () => tabId !== undefined && void api.browserAction(tabId, 'zoom-out'),
+      },
+      {
+        id: 'zoom-reset',
+        label: `重置缩放（${zoomLabel}）`,
+        disabled,
+        onSelect: () => tabId !== undefined && void api.browserAction(tabId, 'zoom-reset'),
+      },
+      { id: 'browser-menu-sep-2', separator: true },
+      {
+        id: 'fit-width',
+        label: '适合宽度',
+        icon: <Maximize2 size={14} />,
+        checked: activeTab?.autoFit === true,
+        disabled,
+        onSelect: () => tabId !== undefined && void api.browserAction(tabId, 'fit'),
+      },
+    ];
+  }, [
+    activeTab?.autoFit,
+    activeTab?.id,
+    bookmarksOpen,
+    zoomLabel,
+  ]);
+
+  const tabBar = useMemo(() => (
+    <div className="workspace-rail-tab-bar browser-tabs" role="tablist">
+      {tabs.map((tab, index) => (
+        <button
+          aria-selected={tab.id === activeId}
+          className={tab.id === activeId ? 'active' : ''}
+          key={tab.id}
+          onAuxClick={(event) => {
+            if (event.button === 1) {
+              event.preventDefault();
+              closeTab(tab.id);
+            }
+          }}
+          onClick={() => {
+            setActiveId(tab.id);
+            setUrl(tab.url);
+          }}
+          role="tab"
+          title={tab.title || tab.url}
+          type="button"
+        >
+          {tab.loading ? <LoaderCircle className="spin" size={11} /> : <Globe2 size={11} />}
+          <span>{tab.title || `标签 ${String(index + 1)}`}</span>
+          <X
+            size={10}
+            onClick={(event) => {
+              event.stopPropagation();
+              closeTab(tab.id);
+            }}
+          />
+        </button>
+      ))}
+      <button
+        aria-label="新建浏览器标签"
+        onClick={() => void createTab()}
+        title="新建浏览器标签"
+        type="button"
+      >
+        <Plus size={12} />
+      </button>
+      {props.embedded === true ? (
+        <div className="workspace-rail-tab-bar__actions">
+          <button
+            aria-label="关闭浏览器面板"
+            onClick={props.onClose}
+            title="关闭浏览器面板"
+            type="button"
+          >
+            <X size={14} />
+          </button>
         </div>
       ) : null}
+    </div>
+  ), [activeId, closeTab, createTab, props.embedded, props.onClose, tabs]);
+
+  return (
+    <>
+      {props.embedded === true ? <WorkspaceRailChromeSlot>{tabBar}</WorkspaceRailChromeSlot> : null}
+      <div className={`browser-panel${props.embedded === true ? ' browser-panel--rail' : ''}`}>
+        {props.embedded !== true ? tabBar : null}
+        <div className="browser-toolbar">
+          <div className="browser-nav-bar">
+            <div className="browser-nav-actions">
+              <button aria-label="后退" disabled={!activeTab?.canGoBack} onClick={() => activeTab && void api.browserAction(activeTab.id, 'back')} title="后退" type="button"><ArrowLeft size={16} /></button>
+              <button aria-label="前进" disabled={!activeTab?.canGoForward} onClick={() => activeTab && void api.browserAction(activeTab.id, 'forward')} title="前进" type="button"><ArrowRight size={16} /></button>
+              <button aria-label="重新载入" disabled={activeTab === undefined} onClick={() => activeTab && void api.browserAction(activeTab.id, activeTab.loading ? 'stop' : 'reload')} title={activeTab?.loading ? '停止载入' : '重新载入'} type="button"><RefreshCw className={activeTab?.loading ? 'spin' : ''} size={16} /></button>
+            </div>
+            <form
+              className="browser-address-bar"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (activeTab) void api.browserNavigate(activeTab.id, url).catch((cause: unknown) => props.onError(messageOf(cause)));
+              }}
+            >
+              <Globe2 aria-hidden className="browser-address-bar-icon" size={14} />
+              <input aria-label="浏览器地址" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="搜索或输入网址" spellCheck={false} />
+            </form>
+            <div className="browser-toolbar-actions">
+              <button
+                aria-label={bookmarked ? '移除当前书签' : '收藏当前页面'}
+                className={bookmarked ? 'active' : ''}
+                disabled={activeTab === undefined || activeTab.url === 'about:blank'}
+                onClick={bookmarkActive}
+                title={bookmarked ? '移除当前书签' : '收藏当前页面'}
+                type="button"
+              >
+                <Star fill={bookmarked ? 'currentColor' : 'none'} size={16} />
+              </button>
+              <button
+                aria-expanded={browserMenuAnchor !== undefined}
+                aria-haspopup="menu"
+                aria-label="浏览器菜单"
+                className={browserMenuAnchor !== undefined ? 'active' : ''}
+                onClick={(event) => setBrowserMenuAnchor(anchorFromElement(event.currentTarget))}
+                title="浏览器菜单"
+                type="button"
+              >
+                <MoreVertical size={16} />
+              </button>
+            </div>
+          </div>
+          {feedback.length > 0 ? (
+            <div aria-live="polite" className="browser-feedback-bar">{feedback}</div>
+          ) : null}
+        </div>
+        {browserMenuAnchor !== undefined ? (
+          <AppMenuPopover
+            anchor={browserMenuAnchor}
+            ariaLabel="浏览器菜单"
+            items={browserMenuItems}
+            onClose={() => setBrowserMenuAnchor(undefined)}
+            placement="bottom-end"
+          />
+        ) : null}
+      <div className="browser-bookmark-bar">
+        {bookmarksOpen ? (
+          <div className="browser-bookmark-bar__items">
+            <Bookmark aria-hidden size={12} />
+            {bookmarks.length === 0 ? <span className="browser-bookmark-bar__hint">点击星标收藏当前页面</span> : bookmarks.map((bookmark) => (
+              <div className="browser-bookmark" key={bookmark.id}>
+                <button className="browser-bookmark-link" onClick={() => activeTab && void api.browserNavigate(activeTab.id, bookmark.url)} title={bookmark.url} type="button"><Globe2 size={11} /><span>{bookmark.title}</span></button>
+                <button aria-label={`删除书签 ${bookmark.title}`} className="browser-bookmark-remove" onClick={() => saveBookmarks(bookmarks.filter((item) => item.id !== bookmark.id))} title="删除书签" type="button"><X size={9} /></button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="browser-bookmark-bar__actions">
+          <button
+            aria-label="标注页面元素"
+            className={annotating ? 'active' : ''}
+            disabled={activeTab === undefined || annotating}
+            onClick={() => void annotate()}
+            title="标注元素"
+            type="button"
+          >
+            {annotating ? <LoaderCircle className="spin" size={14} /> : <SquareDashedMousePointer size={14} />}
+          </button>
+          <button
+            aria-label="保存页面截图"
+            disabled={activeTab === undefined}
+            onClick={captureScreenshot}
+            title="截图"
+            type="button"
+          >
+            <Camera size={14} />
+          </button>
+          <button
+            aria-label="开发者工具"
+            aria-pressed={activeTab?.devToolsOpen === true}
+            className={activeTab?.devToolsOpen === true ? 'active' : ''}
+            disabled={activeTab === undefined}
+            onClick={() => activeTab && void api.browserAction(activeTab.id, 'devtools')}
+            title="开发者工具"
+            type="button"
+          >
+            <Code2 size={14} />
+          </button>
+        </div>
+      </div>
       <div className="browser-viewport" ref={viewport}>
         {activeTab?.loading ? <LoaderCircle className="spin browser-loading" size={18} /> : null}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -2848,24 +5383,64 @@ function RoutePage(props: {
   readonly settings?: AppSettings;
   readonly logFile?: string;
   readonly modelConfiguration?: ModelConfiguration;
+  readonly inboxAutomationFilter?: string;
   readonly onSettings: (settings: AppSettings) => void;
   readonly onModelConfiguration: (configuration: ModelConfiguration) => void;
   readonly onOpenTask: (id: string) => void;
+  readonly onViewInbox: (automationId: string) => void;
+  readonly onOpenSettings: () => void;
+  readonly onPreviewSite: (url: string) => void;
   readonly onError: (message: string) => void;
+  readonly onProjectUpdated: (project: ProjectSummary) => void;
 }): ReactNode {
   switch (props.route) {
     case 'inbox':
-      return <InboxPage onOpenTask={props.onOpenTask} onError={props.onError} />;
+      return (
+        <InboxPage
+          onOpenTask={props.onOpenTask}
+          onError={props.onError}
+          initialAutomationId={props.inboxAutomationFilter}
+        />
+      );
     case 'scheduled':
-      return <ScheduledPage project={props.activeProject} onError={props.onError} />;
+      return (
+        <ScheduledPage
+          project={props.activeProject}
+          onError={props.onError}
+          onViewInbox={props.onViewInbox}
+        />
+      );
     case 'plugins':
-      return <PluginsPage session={props.session} onError={props.onError} />;
+      return (
+        <PluginsPage
+          session={props.session}
+          project={props.activeProject}
+          onError={props.onError}
+          onOpenTask={props.onOpenTask}
+        />
+      );
     case 'sites':
-      return <SitesPage onError={props.onError} />;
+      return <SitesPage onError={props.onError} onPreviewInBrowser={props.onPreviewSite} />;
     case 'pulls':
-      return <PullsPage project={props.activeProject} onError={props.onError} />;
+      return (
+        <PullsPage
+          project={props.activeProject}
+          onError={props.onError}
+          onProjectUpdated={props.onProjectUpdated}
+          onOpenTask={props.onOpenTask}
+        />
+      );
+    case 'git-sync':
+      return <GitSyncPage project={props.activeProject} onError={props.onError} />;
     case 'memory':
-      return <MemoryPage project={props.activeProject} onError={props.onError} />;
+      return props.settings === undefined ? null : (
+        <MemoryPage
+          project={props.activeProject}
+          settings={props.settings}
+          onError={props.onError}
+          onOpenSettings={props.onOpenSettings}
+        />
+      );
     case 'settings':
       return (
         <SettingsPage
@@ -2880,369 +5455,6 @@ function RoutePage(props: {
   }
 }
 
-function PageFrame(props: {
-  readonly icon: ReactNode;
-  readonly title: string;
-  readonly subtitle: string;
-  readonly action?: ReactNode;
-  readonly children: ReactNode;
-}): ReactNode {
-  return (
-    <div className="route-page">
-      <header className="page-heading">
-        <span>{props.icon}</span>
-        <div><h1>{props.title}</h1><p>{props.subtitle}</p></div>
-        {props.action}
-      </header>
-      <div className="page-content">{props.children}</div>
-    </div>
-  );
-}
-
-function InboxPage(props: {
-  readonly onOpenTask: (id: string) => void;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [items, setItems] = useState<readonly InboxItem[]>([]);
-  const refresh = useCallback(() => {
-    void api.listInbox().then(setItems).catch((cause) => props.onError(messageOf(cause)));
-  }, [props.onError]);
-  useEffect(refresh, [refresh]);
-  return (
-    <PageFrame icon={<Inbox />} title="收件箱" subtitle="自动化结果、需要处理的任务和后台通知。">
-      <div className="card-list">
-        {items.map((item) => (
-          <button key={item.id} className={`inbox-card ${item.status}${item.unread ? ' unread' : ''}`} onClick={() => {
-            void api.markInboxRead(item.id).then(refresh);
-            if (item.sessionId !== undefined) props.onOpenTask(item.sessionId);
-          }}>
-            <span className="status-dot" />
-            <div><strong>{item.title}</strong><p>{item.detail}</p><small>{formatRelative(item.createdAt)}</small></div>
-            <ChevronRight size={16} />
-          </button>
-        ))}
-        {items.length === 0 ? <EmptyState icon={<Inbox />} title="收件箱为空" body="Scheduled 任务的结果会出现在这里。" /> : null}
-      </div>
-    </PageFrame>
-  );
-}
-
-function ScheduledPage(props: {
-  readonly project?: ProjectSummary;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [items, setItems] = useState<readonly Automation[]>([]);
-  const [creating, setCreating] = useState(false);
-  const refresh = useCallback(() => {
-    void api.listAutomations().then(setItems).catch((cause) => props.onError(messageOf(cause)));
-  }, [props.onError]);
-  useEffect(refresh, [refresh]);
-  return (
-    <PageFrame
-      icon={<Clock3 />}
-      title="已安排"
-      subtitle="在本机或隔离 Worktree 中按计划运行任务。"
-      action={<button className="primary-button" onClick={() => setCreating(true)}><Plus size={14} /> 新建安排</button>}
-    >
-      <div className="automation-grid">
-        {items.map((item) => (
-          <article className="automation-card" key={item.id}>
-            <div className="automation-icon"><Clock3 size={18} /></div>
-            <div className="automation-copy">
-              <strong>{item.name}</strong>
-              <p>{item.prompt}</p>
-              <span>{item.schedule} · 下次 {formatRelative(item.nextRunAt)}</span>
-            </div>
-            <div className="automation-actions">
-              <button aria-label={`立即运行 ${item.name}`} onClick={() => void api.runAutomation(item.id).catch((cause) => props.onError(messageOf(cause)))} title="立即运行"><Play size={14} /></button>
-              <button onClick={() => void api.saveAutomation({ ...item, enabled: !item.enabled }).then(refresh)}>{item.enabled ? '暂停' : '启用'}</button>
-              <button aria-label={`删除安排 ${item.name}`} onClick={() => void api.deleteAutomation(item.id).then(refresh)} title="删除安排"><Trash2 size={14} /></button>
-            </div>
-          </article>
-        ))}
-        {items.length === 0 ? <EmptyState icon={<Clock3 />} title="还没有安排" body="创建代码审查、依赖更新或定期报告。" /> : null}
-      </div>
-      {creating ? <AutomationModal project={props.project} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); refresh(); }} onError={props.onError} /> : null}
-    </PageFrame>
-  );
-}
-
-function AutomationModal(props: {
-  readonly project?: ProjectSummary;
-  readonly onClose: () => void;
-  readonly onSaved: () => void;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [name, setName] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [schedule, setSchedule] = useState('every:1d');
-  return (
-    <Modal title="新建安排" onClose={props.onClose}>
-      <label>名称<input value={name} onChange={(event) => setName(event.target.value)} placeholder="每日代码健康检查" /></label>
-      <label>任务<textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="检查最近改动并修复确定的问题…" /></label>
-      <label>计划<input value={schedule} onChange={(event) => setSchedule(event.target.value)} placeholder="every:1d 或 RRULE:FREQ=DAILY" /></label>
-      <div className="modal-actions">
-        <button onClick={props.onClose}>取消</button>
-        <button className="primary-button" disabled={props.project === undefined || name.length === 0 || prompt.length === 0} onClick={() => {
-          if (props.project === undefined) return;
-          void api.saveAutomation({
-            name,
-            prompt,
-            projectPath: props.project.workDir,
-            schedule,
-            nextRunAt: Date.now(),
-            enabled: true,
-            mode: 'new-task',
-            target: 'worktree',
-          }).then(props.onSaved).catch((cause) => props.onError(messageOf(cause)));
-        }}>保存</button>
-      </div>
-    </Modal>
-  );
-}
-
-function PluginsPage(props: {
-  readonly session?: SessionSnapshot;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [plugins, setPlugins] = useState<readonly PluginView[]>([]);
-  const [skills, setSkills] = useState<readonly SkillView[]>([]);
-  const [commands, setCommands] = useState<readonly PluginCommandView[]>([]);
-  const [mcp, setMcp] = useState<readonly McpServerView[]>([]);
-  const [source, setSource] = useState('');
-  const [installTarget, setInstallTarget] = useState<string>();
-  const [removeTarget, setRemoveTarget] = useState<PluginView>();
-  const refresh = useCallback(() => {
-    void Promise.all([
-      api.listPlugins(props.session?.id),
-      api.listSkills(props.session?.id, props.session?.workDir),
-      props.session === undefined ? Promise.resolve([]) : api.listPluginCommands(props.session.id),
-      props.session === undefined ? Promise.resolve([]) : api.listMcp(props.session.id),
-    ]).then(([nextPlugins, nextSkills, nextCommands, nextMcp]) => {
-      setPlugins(nextPlugins);
-      setSkills(nextSkills);
-      setCommands(nextCommands);
-      setMcp(nextMcp);
-    }).catch((cause) => props.onError(messageOf(cause)));
-  }, [props.session?.id, props.session?.workDir, props.onError]);
-  useEffect(refresh, [refresh]);
-  const mutate = (operation: Promise<void>): void => {
-    void operation.then(refresh).catch((cause) => props.onError(messageOf(cause)));
-  };
-  return (
-    <>
-      <PageFrame icon={<Plug />} title="插件与技能" subtitle="扩展 Ganymede 的工具、Skill、命令和 MCP 连接。">
-        <div className="install-row">
-          <input value={source} onChange={(event) => setSource(event.target.value)} placeholder="本地路径、GitHub URL 或插件 ZIP" />
-          <button className="primary-button" disabled={source.trim().length === 0} onClick={() => setInstallTarget(source.trim())}>安装</button>
-        </div>
-        <h2>已安装插件</h2>
-        <div className="tile-grid">
-          {plugins.map((plugin) => (
-            <article className={`plugin-tile${plugin.hasErrors ? ' error' : ''}`} key={plugin.id}>
-              <span className="plugin-logo"><Boxes size={20} /></span>
-              <div className="plugin-details">
-                <strong>{plugin.name}</strong>
-                <p>{plugin.description ?? plugin.id}</p>
-                <small>{plugin.skillCount} Skills · {plugin.commandCount} 命令 · {plugin.enabledMcpServerCount}/{plugin.mcpServerCount} MCP · {plugin.hookCount} Hooks</small>
-                {plugin.diagnostics.map((diagnostic, index) => (
-                  <small className={`plugin-diagnostic ${diagnostic.severity}`} key={`${diagnostic.message}:${index.toString()}`}>{diagnostic.message}</small>
-                ))}
-              </div>
-              <div className="plugin-actions">
-                <button
-                  disabled={plugin.id === 'ganymede-desktop'}
-                  onClick={() => mutate(api.enablePlugin(plugin.id, !plugin.enabled, props.session?.id))}
-                >
-                  {plugin.enabled ? '停用' : '启用'}
-                </button>
-                {plugin.id === 'ganymede-desktop' ? null : (
-                  <button className="danger" onClick={() => setRemoveTarget(plugin)}><Trash2 size={11} /> 移除</button>
-                )}
-              </div>
-              {plugin.mcpServers.length > 0 ? (
-                <div className="plugin-mcp-list">
-                  {plugin.mcpServers.map((server) => (
-                    <label key={server.name}>
-                      <span><Server size={12} /> {server.name}<small>{server.transport}</small></span>
-                      <input
-                        checked={server.enabled}
-                        onChange={(event) => mutate(api.enablePluginMcp(plugin.id, server.name, event.target.checked, props.session?.id))}
-                        type="checkbox"
-                      />
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
-        <h2>可用 Skills</h2>
-        <div className="skill-list">{skills.map((skill) => (
-          <div key={skill.name}>
-            <WandSparkles size={14} />
-            <span><strong>{skill.name}</strong><small>{skill.description} · {skill.source ?? 'unknown'}{skill.type === undefined ? '' : ` · ${skill.type}`}</small></span>
-            {skill.userActivatable ? (
-              <button
-                disabled={props.session === undefined}
-                onClick={() => props.session && mutate(api.activateSkill(props.session.id, skill.name))}
-              >运行</button>
-            ) : <small>仅供模型</small>}
-          </div>
-        ))}</div>
-        <h2>Plugin Commands</h2>
-        <div className="skill-list">{commands.map((command) => (
-          <div key={`${command.pluginId}:${command.name}`}>
-            <Command size={14} />
-            <span><strong>/{command.pluginId}:{command.name}</strong><small>{command.description}</small></span>
-            <button onClick={() => props.session && mutate(api.activatePluginCommand(props.session.id, command.pluginId, command.name))}>运行</button>
-          </div>
-        ))}</div>
-        <h2>MCP 连接</h2>
-        <div className="skill-list">{mcp.map((server) => <div key={server.name}><span className={`connection ${server.status}`} /><span><strong>{server.name}</strong><small>{server.status} · {server.toolCount} tools{server.error === undefined ? '' : ` · ${server.error}`}</small></span><button onClick={() => props.session && mutate(api.reconnectMcp(props.session.id, server.name))}>重连</button></div>)}</div>
-      </PageFrame>
-      {installTarget !== undefined ? (
-        <ConfirmSheet
-          title="信任并安装插件"
-          body={`插件可以加载 Skills、命令、Hooks 和 MCP 服务，并可能执行本地程序。仅在信任来源时安装：${installTarget}`}
-          confirmLabel="信任并安装"
-          onClose={() => setInstallTarget(undefined)}
-          onConfirm={() => {
-            const target = installTarget;
-            setInstallTarget(undefined);
-            void api.installPlugin(target, props.session?.id)
-              .then(() => {
-                setSource('');
-                refresh();
-              })
-              .catch((cause) => props.onError(messageOf(cause)));
-          }}
-        />
-      ) : null}
-      {removeTarget !== undefined ? (
-        <ConfirmSheet
-          title="移除插件"
-          body={`确定移除“${removeTarget.name}”吗？插件提供的 Skills、命令与 MCP 将从后续任务中移除。`}
-          confirmLabel="移除插件"
-          danger
-          onClose={() => setRemoveTarget(undefined)}
-          onConfirm={() => {
-            const target = removeTarget;
-            setRemoveTarget(undefined);
-            mutate(api.removePlugin(target.id, props.session?.id));
-          }}
-        />
-      ) : null}
-    </>
-  );
-}
-
-function SitesPage(props: { readonly onError: (message: string) => void }): ReactNode {
-  const [sites, setSites] = useState<readonly SiteRecord[]>([]);
-  const [path, setPath] = useState('');
-  const [title, setTitle] = useState('');
-  const refresh = useCallback(() => { void api.listSites().then(setSites).catch((cause) => props.onError(messageOf(cause))); }, [props.onError]);
-  useEffect(refresh, [refresh]);
-  return (
-    <PageFrame icon={<Globe2 />} title="Sites" subtitle="预览、标注并导出代理生成的本地交互式站点。">
-      <div className="install-row">
-        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="站点名称" />
-        <input value={path} onChange={(event) => setPath(event.target.value)} placeholder="/absolute/path/to/site" />
-        <button className="primary-button" disabled={!title || !path} onClick={() => void api.saveSite({ title, path }).then(() => { setTitle(''); setPath(''); refresh(); })}>添加</button>
-      </div>
-      <div className="site-grid">
-        {sites.map((site) => (
-          <article className="site-card" key={site.id}>
-            <div className="site-preview"><Globe2 size={34} /></div>
-            <strong>{site.title}</strong><p>{site.path}</p>
-            <div>
-              <button onClick={() => void api.serveSite(site.id).then((served) => { if (served.url) void api.openExternal(served.url); refresh(); }).catch((cause) => props.onError(messageOf(cause)))}><Play size={13} /> 预览</button>
-              <button onClick={() => void api.serveSite(site.id, true).then((served) => { navigator.clipboard.writeText(served.url ?? ''); refresh(); }).catch((cause) => props.onError(messageOf(cause)))}>局域网分享</button>
-              {site.url !== undefined ? <button onClick={() => void api.openExternal(site.url!)}>打开</button> : null}
-            </div>
-          </article>
-        ))}
-      </div>
-    </PageFrame>
-  );
-}
-
-function PullsPage(props: {
-  readonly project?: ProjectSummary;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [pulls, setPulls] = useState<readonly PullRequestSummary[]>([]);
-  const [selected, setSelected] = useState<PullRequestDetail>();
-  const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  useEffect(() => {
-    if (props.project === undefined) return;
-    void api.pullRequests(props.project.workDir).then(setPulls).catch((cause) => props.onError(pullRequestErrorMessage(cause)));
-  }, [props.project, props.onError]);
-  return (
-    <PageFrame
-      icon={<GitPullRequest />}
-      title="拉取请求"
-      subtitle="查看检查、审查意见并让代理修复反馈。"
-      action={<button className="primary-button" onClick={() => setCreating((value) => !value)}><Plus size={14} /> 创建 PR</button>}
-    >
-      {creating && props.project !== undefined ? (
-        <div className="pr-create">
-          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="PR 标题" />
-          <textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="说明改动、验证与风险" />
-          <button className="primary-button" disabled={!title.trim()} onClick={() => void api.createPullRequest(props.project!.workDir, title, body).then((url) => { setCreating(false); setTitle(''); setBody(''); void api.openExternal(url); }).catch((cause) => props.onError(pullRequestErrorMessage(cause)))}>创建并打开</button>
-        </div>
-      ) : null}
-      <div className="card-list">
-        {pulls.map((pull) => (
-          <button className="pr-card" key={pull.number} onClick={() => props.project && void api.pullRequestDetail(props.project.workDir, pull.number).then(setSelected).catch((cause) => props.onError(pullRequestErrorMessage(cause)))}>
-            <GitPullRequest size={17} /><div><strong>#{pull.number} {pull.title}</strong><span>{pull.headRefName} → {pull.baseRefName}</span><small>{pull.author} · {pull.checks ?? pull.reviewDecision ?? pull.state}</small></div><ChevronRight size={16} />
-          </button>
-        ))}
-        {props.project !== undefined && pulls.length === 0 ? <EmptyState icon={<GitPullRequest />} title="没有打开的 PR" body="需要已安装并登录的 GitHub CLI。" /> : null}
-      </div>
-      {selected !== undefined ? (
-        <Modal title={`#${String(selected.number)} ${selected.title}`} onClose={() => setSelected(undefined)}>
-          <div className="pr-detail">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{selected.body}</ReactMarkdown>
-            <h3>审查</h3>
-            {selected.reviews.map((review, index) => <div key={`${review.author}:${String(index)}`}><strong>{review.author} · {review.state}</strong><p>{review.body}</p></div>)}
-            {selected.comments.map((comment, index) => <div key={`${comment.author}:${String(index)}`}><strong>{comment.author}</strong><p>{comment.body}</p></div>)}
-            <h3>文件</h3>
-            {selected.files.map((file) => <div className="pr-file" key={file.path}><span>{file.path}</span><code>+{file.additions} −{file.deletions}</code></div>)}
-          </div>
-          <div className="modal-actions"><button className="primary-button" onClick={() => void api.openExternal(selected.url)}>在 GitHub 打开</button></div>
-        </Modal>
-      ) : null}
-    </PageFrame>
-  );
-}
-
-function MemoryPage(props: {
-  readonly project?: ProjectSummary;
-  readonly onError: (message: string) => void;
-}): ReactNode {
-  const [records, setRecords] = useState<readonly MemoryRecord[]>([]);
-  const [query, setQuery] = useState('');
-  const [content, setContent] = useState('');
-  const refresh = useCallback(() => {
-    void api.searchMemories(query, props.project?.workDir).then(setRecords).catch((cause) => props.onError(messageOf(cause)));
-  }, [query, props.project?.workDir, props.onError]);
-  useEffect(refresh, [refresh]);
-  return (
-    <PageFrame icon={<Brain />} title="记忆" subtitle="仅存储在本机、可搜索并可随时删除的项目知识。">
-      <div className="memory-compose">
-        <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="记录约定、偏好或需要跨任务保留的上下文…" />
-        <button className="primary-button" disabled={!content.trim()} onClick={() => void api.saveMemory({ content, projectPath: props.project?.workDir, tags: [] }).then(() => { setContent(''); refresh(); })}>保存记忆</button>
-      </div>
-      <div className="memory-search"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索记忆" /></div>
-      <div className="memory-grid">
-        {records.map((record) => <article key={record.id}><Brain size={15} /><p>{record.content}</p><small>{formatRelative(record.updatedAt)}</small><button aria-label="删除记忆" onClick={() => void api.deleteMemory(record.id).then(refresh)} title="删除记忆"><Trash2 size={13} /></button></article>)}
-      </div>
-    </PageFrame>
-  );
-}
 
 interface SettingsTextDraft {
   readonly uiFont: string;
@@ -3253,6 +5465,196 @@ interface SettingsTextDraft {
   readonly browserAllowlist: string;
   readonly browserBlocklist: string;
   readonly computerAllowlist: string;
+}
+
+function ProjectIndexSettings(props: {
+  readonly settings: AppSettings;
+  readonly onSettings: (settings: AppSettings) => void;
+  readonly onError: (message: string) => void;
+}): ReactNode {
+  const [projects, setProjects] = useState<readonly ProjectSummary[]>([]);
+  const [statuses, setStatuses] = useState<readonly IndexStatus[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void api.listProjects().then(setProjects).catch(() => setProjects([]));
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const refresh = (): void => {
+      void Promise.all(projects.map((project) => api.indexStatus(project.workDir)))
+        .then((next) => {
+          if (alive) setStatuses(next);
+        })
+        .catch(() => {
+          if (alive) setStatuses([]);
+        });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 2_000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [projects]);
+
+  const update = (patch: Partial<AppSettings>): void => {
+    void api.setSettings(patch).then(props.onSettings).catch((cause) => props.onError(messageOf(cause)));
+  };
+
+  const upsertStatus = (next: IndexStatus): void => {
+    setStatuses((current) => {
+      const others = current.filter((item) => item.workDir !== next.workDir);
+      return [...others, next];
+    });
+  };
+
+  return (
+    <SettingsSection icon={<Search />} title="项目索引">
+      <p>
+        本地索引路径、全文与语义检索，用于 @codebase 与 Agent 的代码库搜索。数据仅保存在本机，不会上传源码。
+        可在项目根目录放置 <code>.ganymedeignore</code>（语法同 .gitignore）。打开主目录或超大文件夹时会先确认。
+      </p>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={props.settings.indexEnabled}
+          onChange={(event) => {
+            const enabled = event.target.checked;
+            void api
+              .setSettings({ indexEnabled: enabled })
+              .then(async (next) => {
+                props.onSettings(next);
+                if (!enabled) return;
+                for (const project of projects.slice(0, 8)) {
+                  await api
+                    .activateProjectIndex(project.workDir, project.additionalDirs)
+                    .then(upsertStatus)
+                    .catch(() => undefined);
+                }
+              })
+              .catch((cause) => props.onError(messageOf(cause)));
+          }}
+        />
+        启用项目索引
+      </label>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={props.settings.indexSemanticEnabled}
+          disabled={!props.settings.indexEnabled}
+          onChange={(event) => update({ indexSemanticEnabled: event.target.checked })}
+        />
+        启用本地语义向量（关闭后仅保留全文检索）
+      </label>
+      <label>
+        单文件大小上限（字节）
+        <input
+          type="number"
+          min={16_384}
+          max={8_388_608}
+          value={props.settings.indexMaxFileBytes}
+          disabled={!props.settings.indexEnabled}
+          onChange={(event) => {
+            const value = Number(event.target.value);
+            if (!Number.isFinite(value)) return;
+            update({ indexMaxFileBytes: Math.min(8_388_608, Math.max(16_384, Math.round(value))) });
+          }}
+        />
+      </label>
+      {projects.length === 0 ? (
+        <p className="muted">打开项目后可在此查看索引进度并重建索引。</p>
+      ) : (
+        <div className="index-status-list">
+          {projects.slice(0, 8).map((project) => {
+            const status = statuses.find((item) => pathsEqual(item.workDir, project.workDir));
+            const progress = status === undefined ? 0 : Math.round(status.progress * 100);
+            const stateLabel =
+              status === undefined
+                ? '未激活'
+                : status.state === 'blocked'
+                  ? '待确认'
+                  : status.state === 'indexing'
+                    ? `索引中 ${String(progress)}%`
+                    : `${status.state} · ${String(progress)}% · ${String(status.fileCount)} 文件 · ${String(status.chunkCount)} 块`;
+            return (
+              <div key={project.workDir} className="index-status-row">
+                <div>
+                  <strong>{project.name}</strong>
+                  <span>{stateLabel}</span>
+                </div>
+                <div className="index-status-row-actions">
+                  {status?.state === 'indexing' ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setBusy(true);
+                        void api
+                          .cancelProjectIndex(project.workDir)
+                          .then(upsertStatus)
+                          .catch((cause) => props.onError(messageOf(cause)))
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      停止
+                    </button>
+                  ) : null}
+                  {status?.state === 'blocked' ? (
+                    <button
+                      type="button"
+                      disabled={busy || !props.settings.indexEnabled}
+                      onClick={() => {
+                        setBusy(true);
+                        const optOut = (props.settings.indexOptOutRoots ?? []).filter(
+                          (root) => !pathsEqual(root, project.workDir),
+                        );
+                        void api
+                          .setSettings({ indexOptOutRoots: optOut })
+                          .then((next) => {
+                            props.onSettings(next);
+                            return forceActivateProjectIndex(
+                              api,
+                              project.workDir,
+                              project.additionalDirs,
+                            );
+                          })
+                          .then(upsertStatus)
+                          .catch((cause) => props.onError(messageOf(cause)))
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      确认索引
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy || !props.settings.indexEnabled}
+                      onClick={() => {
+                        setBusy(true);
+                        void api
+                          .rebuildProjectIndex(project.workDir)
+                          .then(upsertStatus)
+                          .catch((cause) => props.onError(messageOf(cause)))
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      重建索引
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
+function pathsEqual(left: string, right: string): boolean {
+  return left.replaceAll('\\', '/').replace(/\/+$/, '') === right.replaceAll('\\', '/').replace(/\/+$/, '');
 }
 
 function settingsTextDraft(settings: AppSettings): SettingsTextDraft {
@@ -3376,7 +5778,8 @@ function SettingsPage(props: {
         <SettingsSection icon={<MoonStar />} title="外观">
           <label>语言<select value={props.settings.locale} onChange={(event) => update({ locale: event.target.value as AppSettings['locale'] })}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></label>
           <label>主题<select value={props.settings.theme} onChange={(event) => update({ theme: event.target.value as AppSettings['theme'] })}><option value="dark">深色</option><option value="light">浅色</option><option value="system">跟随系统</option></select></label>
-          <label>强调色<input type="color" value={props.settings.accent} onChange={(event) => update({ accent: event.target.value })} /></label>
+          <label>深色强调色<input type="color" value={props.settings.accentDark} onChange={(event) => update({ accentDark: event.target.value })} /></label>
+          <label>浅色强调色<input type="color" value={props.settings.accentLight} onChange={(event) => update({ accentLight: event.target.value })} /></label>
           <label>
             UI 字体
             <input
@@ -3411,10 +5814,23 @@ function SettingsPage(props: {
           </label>
         </SettingsSection>
         <SettingsSection icon={<MessageSquare />} title="任务行为">
-          <label>运行中发送消息<select value={props.settings.followUp} onChange={(event) => update({ followUp: event.target.value as AppSettings['followUp'] })}><option value="steer">立即调整当前运行</option><option value="queue">排队到下一轮</option></select></label>
+          <label>
+            运行中发送消息（兼容旧路径）
+            <select
+              value={props.settings.followUp}
+              onChange={(event) => update({ followUp: event.target.value as AppSettings['followUp'] })}
+            >
+              <option value="queue">默认排队到下一轮（推荐）</option>
+              <option value="steer">主进程立即 steer（桌面端已改用 ⌘/Ctrl+Enter）</option>
+            </select>
+          </label>
+          <p className="settings-hint">
+            桌面端运行中 Enter 一律排队；使用 ⌘/Ctrl+Enter（或队列中的闪电按钮）立即注入当前回合。
+          </p>
           <label className="toggle"><input type="checkbox" checked={props.settings.notifications} onChange={(event) => update({ notifications: event.target.checked })} />完成时显示系统通知</label>
           <label className="toggle"><input type="checkbox" checked={props.settings.memoryEnabled} onChange={(event) => update({ memoryEnabled: event.target.checked })} />启用本地记忆</label>
         </SettingsSection>
+        <ProjectIndexSettings settings={props.settings} onSettings={props.onSettings} onError={props.onError} />
         <SettingsSection icon={<FolderGit2 />} title="Worktree">
           <label>
             根目录
@@ -3795,8 +6211,16 @@ function EmptyState(props: {
   readonly icon: ReactNode;
   readonly title: string;
   readonly body: string;
+  readonly action?: ReactNode;
 }): ReactNode {
-  return <div className="empty-state"><span>{props.icon}</span><strong>{props.title}</strong><p>{props.body}</p></div>;
+  return (
+    <div className="empty-state">
+      <span>{props.icon}</span>
+      <strong>{props.title}</strong>
+      <p>{props.body}</p>
+      {props.action}
+    </div>
+  );
 }
 
 function ApprovalModal(props: {
@@ -3819,42 +6243,6 @@ function ApprovalModal(props: {
 }
 
 type ApprovalResolutionInput = Parameters<typeof api.resolveApproval>[0];
-
-function QuestionModal(props: {
-  readonly request: PendingQuestion;
-  readonly onResolve: (resolution: Parameters<typeof api.resolveQuestion>[0]) => void;
-}): ReactNode {
-  const [answers, setAnswers] = useState<Record<string, string[]>>({});
-  return (
-    <Modal title="Ganymede 需要确认" onClose={() => props.onResolve({ id: props.request.id, answers: {}, cancelled: true })}>
-      <div className="question-list">
-        {props.request.questions.map((question) => (
-          <fieldset key={question.id}>
-            <legend>{question.header ?? question.prompt}</legend>
-            {question.header !== undefined ? <p>{question.prompt}</p> : null}
-            {question.options.map((option) => {
-              const selected = answers[question.prompt]?.includes(option.label) === true;
-              return (
-                <button key={option.label} className={selected ? 'selected' : ''} onClick={() => {
-                  setAnswers((current) => {
-                    const previous = current[question.prompt] ?? [];
-                    const next = question.multiple
-                      ? selected ? previous.filter((item) => item !== option.label) : [...previous, option.label]
-                      : [option.label];
-                    return { ...current, [question.prompt]: next };
-                  });
-                }}>
-                  <span>{selected ? <Check size={13} /> : null}</span><strong>{option.label}</strong><small>{option.description}</small>
-                </button>
-              );
-            })}
-          </fieldset>
-        ))}
-      </div>
-      <div className="modal-actions"><button onClick={() => props.onResolve({ id: props.request.id, answers: {}, cancelled: true })}>取消</button><button className="primary-button" onClick={() => props.onResolve({ id: props.request.id, answers })}>提交答案</button></div>
-    </Modal>
-  );
-}
 
 function Modal(props: {
   readonly title: string;
@@ -3908,24 +6296,49 @@ function ConfirmSheet(props: {
   );
 }
 
+type CommandPaletteResult =
+  | { readonly kind: 'task'; readonly task: TaskSummary }
+  | { readonly kind: 'command'; readonly command: DesktopCommand };
+
 function CommandPalette(props: {
   readonly onClose: () => void;
   readonly commands: readonly DesktopCommand[];
+  readonly projects: readonly ProjectSummary[];
+  readonly tasks: readonly TaskSummary[];
+  readonly onTask: (task: TaskSummary) => void;
 }): ReactNode {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const filteredCommands = props.commands.filter((item) =>
+  const needle = query.trim();
+  const matchedTasks = needle.length === 0
+    ? []
+    : props.tasks
+        .filter((task) => fuzzyTextMatch(`${task.title} ${task.lastPrompt ?? ''}`, needle))
+        .slice(0, 12);
+  const matchedCommands = props.commands.filter((item) =>
     fuzzyTextMatch(`${item.slash} ${item.label} ${item.description}`, query),
   );
-  const activeIndex = Math.min(selectedIndex, Math.max(filteredCommands.length - 1, 0));
+  const results: readonly CommandPaletteResult[] = [
+    ...matchedTasks.map((task): CommandPaletteResult => ({ kind: 'task', task })),
+    ...matchedCommands.map((command): CommandPaletteResult => ({ kind: 'command', command })),
+  ];
+  const activeIndex = Math.min(selectedIndex, Math.max(results.length - 1, 0));
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
 
+  const selectResult = (result: CommandPaletteResult): void => {
+    if (result.kind === 'task') props.onTask(result.task);
+    else {
+      result.command.onSelect();
+      props.onClose();
+    }
+  };
+
   const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setSelectedIndex((index) => Math.min(index + 1, Math.max(filteredCommands.length - 1, 0)));
+      setSelectedIndex((index) => Math.min(index + 1, Math.max(results.length - 1, 0)));
       return;
     }
     if (event.key === 'ArrowUp') {
@@ -3935,28 +6348,55 @@ function CommandPalette(props: {
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      filteredCommands[activeIndex]?.onSelect();
-      props.onClose();
+      const active = results[activeIndex];
+      if (active !== undefined) selectResult(active);
     }
   };
 
   return (
     <div className="command-backdrop" role="dialog" aria-modal="true" aria-label="命令面板" onMouseDown={props.onClose}>
       <div className="command-palette" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="command-input"><Search size={16} /><input aria-label="输入命令或搜索" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} placeholder="输入命令或搜索…" /><kbd>esc</kbd></div>
+        <div className="command-input"><Search size={16} /><input aria-label="搜索任务或命令" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} placeholder="搜索任务或命令…" /><kbd>esc</kbd></div>
         <div className="command-results">
-          {filteredCommands.map((item, index) => (
-            <button
-              className={index === activeIndex ? 'active' : undefined}
-              key={item.slash}
-              onClick={() => { item.onSelect(); props.onClose(); }}
-              onMouseEnter={() => { setSelectedIndex(index); }}
-            >
-              <span>{item.icon}</span>
-              <span><strong>{item.label}</strong><small>/{item.slash} · {item.description}</small></span>
-              {item.shortcut ? <kbd>{item.shortcut}</kbd> : null}
-            </button>
-          ))}
+          {matchedTasks.length > 0 ? <div className="command-group-label">任务</div> : null}
+          {matchedTasks.map((task, taskIndex) => {
+            const index = taskIndex;
+            const projectName = props.projects.find((project) => project.workDir === task.workDir)?.name ?? task.workDir;
+            const detail = [
+              projectName,
+              task.archived ? '已归档' : undefined,
+              task.lastPrompt ?? formatRelative(task.updatedAt),
+            ].filter((part): part is string => part !== undefined).join(' · ');
+            return (
+              <button
+                className={index === activeIndex ? 'active' : undefined}
+                key={`task:${task.id}`}
+                onClick={() => selectResult({ kind: 'task', task })}
+                onMouseEnter={() => { setSelectedIndex(index); }}
+              >
+                <span><MessageSquare size={16} /></span>
+                <span><strong>{task.title}</strong><small>{detail}</small></span>
+              </button>
+            );
+          })}
+          {matchedTasks.length > 0 && matchedCommands.length > 0 ? (
+            <div className="command-group-label">命令</div>
+          ) : null}
+          {matchedCommands.map((item, commandIndex) => {
+            const index = matchedTasks.length + commandIndex;
+            return (
+              <button
+                className={index === activeIndex ? 'active' : undefined}
+                key={item.slash}
+                onClick={() => selectResult({ kind: 'command', command: item })}
+                onMouseEnter={() => { setSelectedIndex(index); }}
+              >
+                <span>{item.icon}</span>
+                <span><strong>{item.label}</strong><small>/{item.slash} · {item.description}</small></span>
+                {item.shortcut ? <kbd>{item.shortcut}</kbd> : null}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -3965,22 +6405,6 @@ function CommandPalette(props: {
 
 function Toast(props: { readonly message: string; readonly onClose: () => void }): ReactNode {
   return <div className="toast" role="alert"><X size={15} /><span>{props.message}</span><button aria-label="关闭错误提示" onClick={props.onClose} title="关闭"><X size={13} /></button></div>;
-}
-
-function GanymedeMark({ size }: { readonly size: number }): ReactNode {
-  return (
-    <svg className="ganymede-mark" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
-      <defs><linearGradient id="moon" x1="8" y1="6" x2="38" y2="42"><stop stopColor="#bec9ff" /><stop offset=".48" stopColor="#7788f2" /><stop offset="1" stopColor="#3446b8" /></linearGradient></defs>
-      <ellipse cx="24" cy="24" rx="20" ry="9" fill="none" stroke="currentColor" strokeWidth="1.4" opacity=".45" transform="rotate(-23 24 24)" />
-      <circle cx="24" cy="24" r="12" fill="url(#moon)" />
-      <path d="M17 18c4 3 9 1 13 4M19 29c4-2 7 2 11 0" fill="none" stroke="#e9edff" strokeWidth="1.2" opacity=".55" />
-      <circle cx="40" cy="16" r="2.4" fill="#b8c4ff" />
-    </svg>
-  );
-}
-
-function panelLabel(panel: Exclude<Panel, 'none'>): string {
-  return { summary: '任务摘要', review: '审查改动', files: '文件', terminal: '终端', browser: '浏览器', agents: 'Agent 集群' }[panel];
 }
 
 function skillSlashCommand(skill: SkillView): string {
@@ -4001,6 +6425,13 @@ function backgroundTaskStatusLabel(status: BackgroundTaskView['status']): string
 function storedNumber(key: string, fallback: number): number {
   const value = Number(window.localStorage.getItem(key));
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function storedBoolean(key: string, fallback: boolean): boolean {
+  const value = window.localStorage.getItem(key);
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return fallback;
 }
 
 function readBrowserBookmarks(): readonly BrowserBookmarkItem[] {
@@ -4036,23 +6467,42 @@ function beginHorizontalResize(
   direction: 1 | -1,
   minimum: number,
   maximum: number,
-  update: (value: number) => void,
+  preview: (value: number) => void,
+  commit: (value: number) => void,
   storageKey: string,
 ): void {
   let latest = startSize;
+  let frame: number | undefined;
   document.body.classList.add('resizing-horizontal');
-  const onMove = (event: PointerEvent): void => {
-    latest = Math.max(minimum, Math.min(maximum, startSize + (event.clientX - startCoordinate) * direction));
-    update(latest);
-  };
-  const onUp = (): void => {
+  const cleanup = (): void => {
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onCancel);
     document.body.classList.remove('resizing-horizontal');
+  };
+  const onMove = (event: PointerEvent): void => {
+    latest = Math.max(minimum, Math.min(maximum, startSize + (event.clientX - startCoordinate) * direction));
+    if (frame !== undefined) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = undefined;
+      preview(latest);
+    });
+  };
+  const onUp = (): void => {
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+    preview(latest);
+    commit(latest);
+    cleanup();
     window.localStorage.setItem(storageKey, String(Math.round(latest)));
+  };
+  const onCancel = (): void => {
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+    preview(startSize);
+    cleanup();
   };
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp, { once: true });
+  window.addEventListener('pointercancel', onCancel, { once: true });
 }
 
 function beginVerticalResize(
@@ -4060,23 +6510,42 @@ function beginVerticalResize(
   startSize: number,
   minimum: number,
   maximum: number,
-  update: (value: number) => void,
+  preview: (value: number) => void,
+  commit: (value: number) => void,
   storageKey: string,
 ): void {
   let latest = startSize;
+  let frame: number | undefined;
   document.body.classList.add('resizing-vertical');
-  const onMove = (event: PointerEvent): void => {
-    latest = Math.max(minimum, Math.min(maximum, startSize - (event.clientY - startCoordinate)));
-    update(latest);
-  };
-  const onUp = (): void => {
+  const cleanup = (): void => {
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onCancel);
     document.body.classList.remove('resizing-vertical');
+  };
+  const onMove = (event: PointerEvent): void => {
+    latest = Math.max(minimum, Math.min(maximum, startSize - (event.clientY - startCoordinate)));
+    if (frame !== undefined) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = undefined;
+      preview(latest);
+    });
+  };
+  const onUp = (): void => {
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+    preview(latest);
+    commit(latest);
+    cleanup();
     window.localStorage.setItem(storageKey, String(Math.round(latest)));
+  };
+  const onCancel = (): void => {
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+    preview(startSize);
+    cleanup();
   };
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp, { once: true });
+  window.addEventListener('pointercancel', onCancel, { once: true });
 }
 
 function timeGreeting(date = new Date()): string {
@@ -4110,104 +6579,33 @@ function splitList(value: string): readonly string[] {
   return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function fileAttachment(file: File): Promise<PromptAttachment> {
-  const path = (file as File & { readonly path?: string }).path ?? file.name;
-  const kind: PromptAttachment['kind'] = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
-  const dataUrl = kind === 'file' ? undefined : await readDataUrl(file);
-  return { kind, name: file.name, path, dataUrl };
-}
-
-function patchStatusFromEvent(
-  status: SessionStatusView,
-  event: Readonly<Record<string, unknown>>,
-): SessionStatusView {
-  const type = String(event['type'] ?? '');
-  if (type === 'turn.started') return { ...status, running: true };
-  if (type === 'turn.ended' || type === 'error') return { ...status, running: false };
-  if (type !== 'agent.status.updated') return status;
-
-  const eventMode = asInteractionMode(event['interactionMode']);
-  const planMode = typeof event['planMode'] === 'boolean' ? event['planMode'] : undefined;
-  const swarmMode = typeof event['swarmMode'] === 'boolean' ? event['swarmMode'] : undefined;
-  const askMode = typeof event['askMode'] === 'boolean' ? event['askMode'] : undefined;
-  const debugMode = typeof event['debugMode'] === 'boolean' ? event['debugMode'] : undefined;
-  const hasModePatch =
-    eventMode !== undefined ||
-    planMode !== undefined ||
-    swarmMode !== undefined ||
-    askMode !== undefined ||
-    debugMode !== undefined;
-  const interactionMode = hasModePatch
-    ? resolveInteractionMode({
-        interactionMode: eventMode,
-        planMode: planMode ?? status.planMode,
-        swarmMode: swarmMode ?? status.swarmMode,
-        askMode: askMode ?? status.askMode,
-        debugMode: debugMode ?? status.debugMode,
-      })
-    : status.interactionMode;
-
-  return {
-    ...status,
-    model: typeof event['model'] === 'string' ? event['model'] : status.model,
-    permission:
-      event['permission'] === 'manual' ||
-      event['permission'] === 'auto' ||
-      event['permission'] === 'yolo'
-        ? event['permission']
-        : status.permission,
-    interactionMode,
-    planMode: planMode ?? (hasModePatch ? interactionMode === 'plan' : status.planMode),
-    swarmMode: swarmMode ?? (hasModePatch ? interactionMode === 'multitask' : status.swarmMode),
-    askMode: askMode ?? (hasModePatch ? interactionMode === 'ask' : status.askMode),
-    debugMode: debugMode ?? (hasModePatch ? interactionMode === 'debug' : status.debugMode),
-    contextTokens:
-      typeof event['contextTokens'] === 'number' ? event['contextTokens'] : status.contextTokens,
-    maxContextTokens:
-      typeof event['maxContextTokens'] === 'number'
-        ? event['maxContextTokens']
-        : status.maxContextTokens,
-  };
-}
-
-function asInteractionMode(value: unknown): InteractionMode | undefined {
-  return value === 'agent' ||
-    value === 'plan' ||
-    value === 'debug' ||
-    value === 'multitask' ||
-    value === 'ask'
-    ? value
-    : undefined;
-}
-
-function readDataUrl(file: File): Promise<string> {
-  return new Promise((resolveRead, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('Failed to read attachment.'));
-    reader.onload = () => resolveRead(String(reader.result));
-    reader.readAsDataURL(file);
-  });
+function toolArgsPath(args: unknown): string | undefined {
+  if (typeof args !== 'object' || args === null || Array.isArray(args)) return undefined;
+  const record = args as Record<string, unknown>;
+  const path = record['path'] ?? record['file_path'] ?? record['filePath'];
+  return typeof path === 'string' && path.length > 0 ? path : undefined;
 }
 
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: light)');
+let latestThemeSettings: AppSettings | undefined;
 
 systemThemeQuery.addEventListener('change', () => {
-  const root = document.documentElement;
-  if (root.dataset['themeSource'] === 'system') {
-    root.dataset['theme'] = systemThemeQuery.matches ? 'light' : 'dark';
+  if (latestThemeSettings !== undefined && document.documentElement.dataset['themeSource'] === 'system') {
+    applyTheme(latestThemeSettings);
   }
 });
 
 function applyTheme(settings: AppSettings): void {
+  latestThemeSettings = settings;
+  const prefersLight = systemThemeQuery.matches;
   document.documentElement.dataset['themeSource'] = settings.theme;
-  document.documentElement.dataset['theme'] = settings.theme === 'system'
-    ? systemThemeQuery.matches ? 'light' : 'dark'
-    : settings.theme;
-  document.documentElement.style.setProperty('--accent', settings.accent);
+  document.documentElement.dataset['theme'] = resolveThemeMode(settings, prefersLight);
+  const accent = resolveAccentColor(settings, prefersLight);
+  document.documentElement.style.setProperty('--accent', accent);
+  const accentRgb = hexToRgbTriplet(accent);
+  if (accentRgb !== undefined) {
+    document.documentElement.style.setProperty('--accent-rgb', accentRgb);
+  }
   document.documentElement.style.setProperty('--font-ui', normalizeFontFamily(settings.uiFont));
   document.documentElement.style.setProperty('--font-mono', normalizeFontFamily(settings.codeFont));
 }
@@ -4231,37 +6629,9 @@ function isRoute(value: string): value is Route {
     'plugins',
     'sites',
     'pulls',
+    'git-sync',
     'chat',
     'memory',
     'settings',
   ].includes(value);
-}
-
-function startDictation(onText: (text: string) => void): void {
-  const scope = window as unknown as {
-    webkitSpeechRecognition?: new () => {
-      lang: string;
-      continuous: boolean;
-      interimResults: boolean;
-      processLocally?: boolean;
-      onresult: ((event: { results: ArrayLike<{ 0?: { transcript?: string }; isFinal?: boolean }> }) => void) | null;
-      onerror: ((event: unknown) => void) | null;
-      start(): void;
-    };
-  };
-  const Recognition = scope.webkitSpeechRecognition;
-  if (Recognition === undefined) {
-    throw new Error('当前系统不支持设备端听写。');
-  }
-  const recognition = new Recognition();
-  recognition.lang = 'zh-CN';
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  if ('processLocally' in recognition) recognition.processLocally = true;
-  recognition.onresult = (event) => {
-    const transcript = event.results[0]?.[0]?.transcript?.trim();
-    if (transcript !== undefined && transcript.length > 0) onText(transcript);
-  };
-  recognition.onerror = () => {};
-  recognition.start();
 }

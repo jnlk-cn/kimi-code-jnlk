@@ -499,6 +499,8 @@ export function projectContext(
       case 'ask_mode.exit':
       case 'debug_mode.enter':
       case 'debug_mode.exit':
+      case 'engineering_mode.enter':
+      case 'engineering_mode.exit':
         break;
       // Kinds that don't affect the projected timeline / derived state,
       // including the observability records (request trace — `llm.*`,

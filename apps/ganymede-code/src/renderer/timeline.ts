@@ -1,4 +1,12 @@
 import type { EventEnvelope } from '../shared/contracts';
+import {
+  agentSwarmResultSummaryFromOutput,
+  formatAgentSwarmError,
+  formatAgentSwarmSummaryLabel,
+} from './agent-swarm';
+import { formatStepDebugTimingFromEvent } from './debug-timing';
+
+export { formatStepDebugTimingFromEvent as formatStepDebugTiming } from './debug-timing';
 
 export type TimelineKind =
   | 'user'
@@ -8,7 +16,10 @@ export type TimelineKind =
   | 'status'
   | 'error'
   | 'cron'
-  | 'subagent';
+  | 'subagent'
+  | 'swarm-marker';
+
+export type SwarmMarkerState = 'active' | 'inactive' | 'ended';
 
 export interface TimelineEntry {
   readonly id: string;
@@ -16,12 +27,61 @@ export interface TimelineEntry {
   readonly title?: string;
   readonly content: string;
   readonly toolCallId?: string;
+  readonly toolArgs?: Record<string, unknown>;
   readonly streaming?: boolean;
   readonly error?: boolean;
+  readonly swarmMarker?: SwarmMarkerState;
 }
 
 export interface ReduceLiveEventOptions {
   readonly debugMode?: boolean;
+  /** When true, foreground AgentSwarm / Agent subagents are omitted from the timeline. */
+  readonly suppressForegroundSubagents?: boolean;
+}
+
+const MAIN_AGENT_ID = 'main';
+
+const FRAME_BATCHED_EVENT_TYPES = new Set([
+  'assistant.delta',
+  'thinking.delta',
+  'tool.call.delta',
+  'tool.progress',
+]);
+
+const CHILD_AGENT_STREAM_TYPES = new Set([
+  'assistant.delta',
+  'thinking.delta',
+  'tool.call.started',
+  'tool.call.delta',
+  'tool.progress',
+  'tool.result',
+  'hook.result',
+  'agent.status.updated',
+]);
+
+const SKIP_REPLAY_ORIGINS = new Set([
+  'injection',
+  'system_trigger',
+  'hook_result',
+  'compaction_summary',
+  'background_task',
+  'cron_job',
+  'cron_missed',
+  'retry',
+]);
+
+export function isFrameBatchedTimelineEvent(event: Readonly<Record<string, unknown>>): boolean {
+  return FRAME_BATCHED_EVENT_TYPES.has(String(event['type'] ?? ''));
+}
+
+/** Child-agent stream events belong in swarm / Agent progress UI, not the main transcript. */
+function isForegroundChildAgentStreamEvent(
+  event: Readonly<Record<string, unknown>>,
+  type: string,
+): boolean {
+  if (!CHILD_AGENT_STREAM_TYPES.has(type)) return false;
+  const agentId = event['agentId'];
+  return typeof agentId === 'string' && agentId.length > 0 && agentId !== MAIN_AGENT_ID;
 }
 
 export function reduceLiveEvent(
@@ -31,12 +91,20 @@ export function reduceLiveEvent(
 ): readonly TimelineEntry[] {
   const event = envelope.event;
   const type = String(event['type'] ?? '');
+  if (
+    options.suppressForegroundSubagents !== false &&
+    isForegroundChildAgentStreamEvent(event, type)
+  ) {
+    return current;
+  }
   const entries = [...current];
+  let changed = false;
   if (type === 'assistant.delta') {
     const delta = String(event['delta'] ?? '');
     const last = entries.at(-1);
     if (last?.kind === 'assistant' && last.streaming === true) {
       entries[entries.length - 1] = { ...last, content: last.content + delta };
+      changed = true;
     } else {
       entries.push({
         id: `assistant:${envelope.seq.toString()}`,
@@ -44,12 +112,14 @@ export function reduceLiveEvent(
         content: delta,
         streaming: true,
       });
+      changed = true;
     }
   } else if (type === 'thinking.delta') {
     const delta = String(event['delta'] ?? '');
     const last = entries.at(-1);
     if (last?.kind === 'thinking' && last.streaming === true) {
       entries[entries.length - 1] = { ...last, content: last.content + delta };
+      changed = true;
     } else if (delta.length > 0) {
       entries.push({
         id: `thinking:${envelope.seq.toString()}`,
@@ -57,70 +127,109 @@ export function reduceLiveEvent(
         content: delta,
         streaming: true,
       });
+      changed = true;
     }
   } else if (type === 'tool.call.started') {
-    entries.push({
-      id: `tool:${String(event['toolCallId'] ?? envelope.seq)}`,
-      kind: 'tool',
-      title: String(event['name'] ?? 'Tool'),
-      content: pretty(event['args']),
-      toolCallId: String(event['toolCallId'] ?? ''),
-      streaming: true,
-    });
+    const args = parseToolArgs(event['args']);
+    const name = String(event['name'] ?? 'Tool');
+    const id = String(event['toolCallId'] ?? '');
+    const index = findToolEntryIndex(entries, id);
+    if (index >= 0) {
+      const previous = entries[index]!;
+      // Replayed live events must not reopen a tool card that already finalized.
+      if (previous.streaming !== true) return current;
+      entries[index] = {
+        ...previous,
+        title: name,
+        content: pretty(event['args']),
+        toolArgs: args ?? previous.toolArgs,
+        streaming: true,
+      };
+      changed = true;
+    } else {
+      entries.push({
+        id: `tool:${id || envelope.seq.toString()}`,
+        kind: 'tool',
+        title: name,
+        content: pretty(event['args']),
+        toolCallId: id,
+        toolArgs: args,
+        streaming: true,
+      });
+      changed = true;
+    }
   } else if (type === 'tool.call.delta') {
     const id = String(event['toolCallId'] ?? '');
     const index = entries.findIndex((entry) => entry.toolCallId === id);
     const argumentsPart = String(event['argumentsPart'] ?? '');
     if (index >= 0 && argumentsPart.length > 0) {
       const previous = entries[index]!;
+      const content = previous.content + argumentsPart;
       entries[index] = {
         ...previous,
         title: previous.title ?? String(event['name'] ?? 'Tool'),
-        content: previous.content + argumentsPart,
+        content,
+        toolArgs: parseToolArgs(content) ?? previous.toolArgs,
       };
+      changed = true;
     }
   } else if (type === 'tool.progress') {
     const id = String(event['toolCallId'] ?? '');
     const index = entries.findIndex((entry) => entry.toolCallId === id);
     if (index >= 0) {
       const previous = entries[index]!;
+      if (previous.title === 'AgentSwarm') return current;
       const update = asRecord(event['update']);
       entries[index] = {
         ...previous,
         content: `${previous.content}\n${String(update['text'] ?? '')}`.trim(),
       };
+      changed = true;
     }
   } else if (type === 'tool.result') {
     const id = String(event['toolCallId'] ?? '');
-    const index = entries.findIndex((entry) => entry.toolCallId === id);
-    if (index >= 0) {
-      const previous = entries[index]!;
-      entries[index] = {
-        ...previous,
-        content: `${previous.content}\n${pretty(event['output'])}`.trim(),
-        streaming: false,
-        error: event['isError'] === true,
-      };
+    const outputText =
+      typeof event['output'] === 'string' ? event['output'] : pretty(event['output']);
+    const isError = event['isError'] === true;
+    const indices = findToolEntryIndices(entries, id);
+    if (indices.length > 0) {
+      for (const index of indices) {
+        const previous = entries[index]!;
+        if (previous.title === 'AgentSwarm') {
+          entries[index] = finalizeAgentSwarmEntry(previous, outputText, isError);
+        } else {
+          entries[index] = {
+            ...previous,
+            content: `${previous.content}\n${outputText}`.trim(),
+            toolArgs: previous.toolArgs,
+            streaming: false,
+            error: isError,
+          };
+        }
+      }
+      changed = true;
     } else {
       entries.push({
         id: `tool:${id || envelope.seq.toString()}`,
         kind: 'tool',
         title: String(event['name'] ?? '工具结果'),
-        content: pretty(event['output']),
+        content: outputText,
         toolCallId: id,
         streaming: false,
-        error: event['isError'] === true,
+        error: isError,
       });
+      changed = true;
     }
   } else if (type === 'turn.ended') {
     for (let index = 0; index < entries.length; index += 1) {
       const entry = entries[index];
       if (entry?.streaming && entry.kind !== 'subagent') {
         entries[index] = { ...entry, streaming: false };
+        changed = true;
       }
     }
   } else if (type === 'turn.step.completed' && options.debugMode === true) {
-    const timing = formatStepDebugTiming(event);
+    const timing = formatStepDebugTimingFromEvent(event);
     if (timing !== undefined) {
       entries.push({
         id: `debug:${envelope.seq.toString()}`,
@@ -128,6 +237,7 @@ export function reduceLiveEvent(
         title: '排障计时',
         content: timing,
       });
+      changed = true;
     }
   } else if (type === 'error') {
     entries.push({
@@ -136,17 +246,46 @@ export function reduceLiveEvent(
       title: String(event['code'] ?? '错误'),
       content: String(event['message'] ?? 'Unknown error'),
     });
+    changed = true;
   } else if (type.startsWith('subagent.')) {
+    if (options.suppressForegroundSubagents !== false) {
+      const subagentId = String(event['subagentId'] ?? '');
+      const entryId = `subagent:${subagentId}`;
+      const existing = entries.find((entry) => entry.id === entryId);
+      if (type === 'subagent.spawned') {
+        const runInBackground = event['runInBackground'] === true;
+        const parentToolCallId = String(event['parentToolCallId'] ?? '');
+        const parentIsSwarm =
+          parentToolCallId.length > 0 &&
+          entries.some(
+            (entry) => entry.toolCallId === parentToolCallId && entry.title === 'AgentSwarm',
+          );
+        // Foreground AgentSwarm members render inside AgentSwarmProgress only.
+        if (!runInBackground && (parentIsSwarm || parentToolCallId.length > 0)) {
+          return current;
+        }
+      } else if (existing === undefined) {
+        // Lifecycle follow-ups for suppressed foreground members — ignore.
+        return current;
+      }
+    }
     updateSubagentEntry(entries, envelope.seq, event, type);
+    changed = true;
   } else if (type === 'background.task.started' || type === 'background.task.terminated') {
     updateBackgroundTaskEntry(entries, envelope.seq, event, type);
+    changed = true;
   } else if (type === 'skill.activated') {
+    // Engineering-mode bootstrap is a silent preload — hide from the timeline.
+    if (event['trigger'] === 'engineering-bootstrap') {
+      return current;
+    }
     entries.push({
       id: `skill:${String(event['activationId'] ?? envelope.seq)}`,
       kind: 'status',
       title: `Skill · ${String(event['skillName'] ?? 'unknown')}`,
       content: String(event['skillArgs'] ?? ''),
     });
+    changed = true;
   } else if (type === 'plugin_command.activated') {
     entries.push({
       id: `plugin-command:${String(event['activationId'] ?? envelope.seq)}`,
@@ -154,6 +293,7 @@ export function reduceLiveEvent(
       title: `Plugin · ${String(event['pluginId'] ?? 'unknown')}:${String(event['commandName'] ?? 'unknown')}`,
       content: String(event['commandArgs'] ?? ''),
     });
+    changed = true;
   } else if (type === 'cron.fired') {
     entries.push({
       id: `cron:${envelope.seq.toString()}`,
@@ -161,6 +301,7 @@ export function reduceLiveEvent(
       title: '定时任务已触发',
       content: String(event['prompt'] ?? ''),
     });
+    changed = true;
   } else if (type === 'hook.result' || type === 'warning' || type === 'compaction.completed') {
     entries.push({
       id: `status:${envelope.seq.toString()}`,
@@ -168,8 +309,59 @@ export function reduceLiveEvent(
       title: type,
       content: String(event['content'] ?? event['message'] ?? ''),
     });
+    changed = true;
   }
-  return entries;
+  return changed ? entries : current;
+}
+
+export function appendSwarmMarker(
+  current: readonly TimelineEntry[],
+  state: SwarmMarkerState,
+): readonly TimelineEntry[] {
+  return [
+    ...current,
+    {
+      id: `swarm-marker:${state}:${Date.now().toString()}`,
+      kind: 'swarm-marker',
+      swarmMarker: state,
+      title: swarmMarkerTitle(state),
+      content: '',
+    },
+  ];
+}
+
+export function swarmMarkerTitle(state: SwarmMarkerState): string {
+  switch (state) {
+    case 'active':
+      return '集群模式已开启';
+    case 'inactive':
+      return '集群模式已关闭';
+    case 'ended':
+      return '集群任务已结束';
+  }
+}
+
+function finalizeAgentSwarmEntry(
+  previous: TimelineEntry,
+  outputText: string,
+  isError: boolean,
+): TimelineEntry {
+  const summary = agentSwarmResultSummaryFromOutput(outputText);
+  if (summary.parsed) {
+    return {
+      ...previous,
+      content: formatAgentSwarmSummaryLabel(summary),
+      streaming: false,
+      error: false,
+    };
+  }
+  const aborted = isError && /\b(?:aborted|cancelled)\b/i.test(outputText);
+  return {
+    ...previous,
+    content: isError ? formatAgentSwarmError(outputText) : outputText,
+    streaming: false,
+    error: isError && !aborted,
+  };
 }
 
 function updateSubagentEntry(
@@ -251,10 +443,21 @@ export function replayTimeline(
     if (record['type'] !== 'message') continue;
     const message = asRecord(record['message']);
     const role = String(message['role'] ?? '');
+    const origin = asRecord(message['origin']);
+    const originKind = typeof origin['kind'] === 'string' ? origin['kind'] : undefined;
     const content = contentText(message['content']);
-    if (role === 'user' && content.length > 0) {
-      entries.push({ id: `replay:${counter++}`, kind: 'user', content });
+
+    if (role === 'user') {
+      if (originKind !== undefined && SKIP_REPLAY_ORIGINS.has(originKind)) continue;
+      if (originKind === 'shell_command' && origin['phase'] !== 'input') continue;
+      if (originKind === 'skill_activation' && origin['trigger'] !== 'user-slash') continue;
+      if (originKind === 'plugin_command' && origin['trigger'] !== 'user-slash') continue;
+      if (content.length > 0) {
+        entries.push({ id: `replay:${counter++}`, kind: 'user', content });
+      }
+      continue;
     }
+
     if (role === 'assistant') {
       if (content.length > 0) {
         entries.push({ id: `replay:${counter++}`, kind: 'assistant', content });
@@ -262,50 +465,51 @@ export function replayTimeline(
       const calls = Array.isArray(message['toolCalls']) ? message['toolCalls'] : [];
       for (const rawCall of calls) {
         const call = asRecord(rawCall);
+        const fn = asRecord(call['function']);
+        const toolName = String(fn['name'] ?? call['name'] ?? 'Tool');
         entries.push({
           id: `replay:${counter++}`,
           kind: 'tool',
-          title: String(
-            call['function'] ? asRecord(call['function'])['name'] : call['name'] ?? 'Tool',
-          ),
+          title: toolName,
           content: pretty(call),
           toolCallId: String(call['id'] ?? ''),
+          toolArgs: parseToolArgs(fn['arguments'] ?? call['args']),
           streaming: false,
         });
       }
+      continue;
     }
+
     if (role === 'tool') {
-      entries.push({
-        id: `replay:${counter++}`,
-        kind: 'tool',
-        title: '工具结果',
-        content,
-        toolCallId: String(message['toolCallId'] ?? ''),
-        error: message['isError'] === true,
-      });
+      const toolCallId = String(message['toolCallId'] ?? '');
+      const index = entries.findIndex((entry) => entry.toolCallId === toolCallId && entry.kind === 'tool');
+      const isError = message['isError'] === true;
+      if (index >= 0) {
+        const previous = entries[index]!;
+        if (previous.title === 'AgentSwarm') {
+          entries[index] = finalizeAgentSwarmEntry(previous, content, isError);
+        } else {
+          entries[index] = {
+            ...previous,
+            content: content.length > 0 ? content : previous.content,
+            streaming: false,
+            error: isError,
+          };
+        }
+      } else {
+        entries.push({
+          id: `replay:${counter++}`,
+          kind: 'tool',
+          title: '工具结果',
+          content,
+          toolCallId,
+          error: isError,
+        });
+      }
     }
   }
   for (const event of liveEvents) entries = [...reduceLiveEvent(entries, event, options)];
   return entries;
-}
-
-/** Minimal TTFT / stream timing line when both fields are present. */
-export function formatStepDebugTiming(event: Readonly<Record<string, unknown>>): string | undefined {
-  const latency = event['llmFirstTokenLatencyMs'];
-  const streamMs = event['llmStreamDurationMs'];
-  if (typeof latency !== 'number' || typeof streamMs !== 'number') return undefined;
-  const parts = [`TTFT: ${formatDuration(latency)}`, `stream: ${formatDuration(streamMs)}`];
-  const usage = asRecord(event['usage']);
-  const output = usage['output'];
-  if (typeof output === 'number' && output > 0 && streamMs >= 50) {
-    parts.push(`TPS: ${(output / (streamMs / 1000)).toFixed(1)} tok/s`);
-  }
-  return `[Debug] ${parts.join(' | ')}`;
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 function contentText(value: unknown): string {
@@ -324,6 +528,34 @@ function contentText(value: unknown): string {
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function findToolEntryIndex(entries: readonly TimelineEntry[], toolCallId: string): number {
+  if (toolCallId.length === 0) return -1;
+  return entries.findIndex((entry) => entry.kind === 'tool' && entry.toolCallId === toolCallId);
+}
+
+function findToolEntryIndices(entries: readonly TimelineEntry[], toolCallId: string): number[] {
+  if (toolCallId.length === 0) return [];
+  return entries.flatMap((entry, index) =>
+    entry.kind === 'tool' && entry.toolCallId === toolCallId ? [index] : [],
+  );
+}
+
+function parseToolArgs(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value !== 'string' || value.trim().length === 0) return undefined;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
 }
 
 function pretty(value: unknown): string {

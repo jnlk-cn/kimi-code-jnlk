@@ -3,16 +3,41 @@ import type {
   HostToolHandler,
 } from '@moonshot-ai/kimi-code-sdk';
 
+import type { DebugProbe } from '../shared/contracts';
 import type { AppStore } from './store';
 import type { BrowserManager } from './browser-manager';
 import type { ChromeBridge } from './native-bridge';
 import type { ComputerUse } from './computer-use';
 import type { AutomationManager } from './automation-manager';
 import type { WorkspaceService } from './workspace-service';
+import type { ProjectIndexService } from './project-index/project-index-service';
 
 export interface HostToolRegistration {
   readonly definition: HostToolDefinition;
   readonly handler: HostToolHandler;
+}
+
+export interface DebugHostTools {
+  readonly listProbes: (sessionId: string) => readonly DebugProbe[];
+  readonly registerProbe: (
+    sessionId: string,
+    input: {
+      readonly file: string;
+      readonly label: string;
+      readonly marker: string;
+      readonly line?: number;
+      readonly id?: string;
+    },
+  ) => readonly DebugProbe[];
+  readonly unregisterProbe: (sessionId: string, id: string) => readonly DebugProbe[];
+  readonly requestVerification: (
+    sessionId: string,
+    input: { readonly steps: readonly string[]; readonly hypothesis?: string },
+  ) => Promise<{
+    readonly outcome: 'fixed' | 'not_fixed' | 'cancelled';
+    readonly userNotes?: string;
+    readonly registeredProbes: readonly DebugProbe[];
+  }>;
 }
 
 export function createHostTools(deps: {
@@ -22,9 +47,52 @@ export function createHostTools(deps: {
   readonly computer: ComputerUse;
   readonly automations: AutomationManager;
   readonly workspace: WorkspaceService;
+  readonly projectIndex: ProjectIndexService;
+  readonly debug: DebugHostTools;
 }): readonly HostToolRegistration[] {
   const browserTabs = new Map<string, string>();
   return [
+    {
+      definition: {
+        name: 'GanymedeCodebaseSearch',
+        description:
+          'Search the locally indexed project codebase by meaning or keywords. Prefer this when you do not know exact symbol names; use Grep for precise regex or identifier lookups.',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string' },
+            projectPath: { type: 'string' },
+            mode: { type: 'string', enum: ['hybrid', 'semantic', 'lexical'] },
+            limit: { type: 'number' },
+          },
+          required: ['query', 'projectPath'],
+        },
+      },
+      handler: async (raw) => {
+        if (!deps.store.getSettings().indexEnabled) return fail('Project index is disabled.');
+        const args = record(raw);
+        const hits = await deps.projectIndex.search({
+          workDir: string(args['projectPath']),
+          query: string(args['query']),
+          mode:
+            args['mode'] === 'semantic' || args['mode'] === 'lexical' || args['mode'] === 'hybrid'
+              ? args['mode']
+              : 'hybrid',
+          limit: typeof args['limit'] === 'number' ? args['limit'] : 12,
+        });
+        return ok({
+          count: hits.length,
+          hits: hits.map((hit) => ({
+            path: hit.path,
+            startLine: hit.startLine,
+            endLine: hit.endLine,
+            source: hit.source,
+            score: hit.score,
+            snippet: hit.snippet.slice(0, 800),
+          })),
+        });
+      },
+    },
     {
       definition: {
         name: 'GanymedeBrowser',
@@ -193,15 +261,17 @@ export function createHostTools(deps: {
                 optionalString(args['projectPath']),
               ),
             );
-          case 'save':
+          case 'save': {
+            const tags = strings(args['tags']);
             return ok(
               deps.store.saveMemory({
                 id: optionalString(args['id']),
                 projectPath: optionalString(args['projectPath']),
                 content: string(args['content']),
-                tags: strings(args['tags']),
+                tags: tags.length > 0 ? tags : ['agent'],
               }),
             );
+          }
           case 'delete':
             deps.store.deleteMemory(string(args['id']));
             return ok(true);
@@ -406,6 +476,88 @@ export function createHostTools(deps: {
       },
       handler: async (raw) =>
         ok(await deps.workspace.pullRequests(string(record(raw)['projectPath']))),
+    },
+    {
+      definition: {
+        name: 'GanymedeDebugProbe',
+        description:
+          'Register, list, or unregister temporary debug instrumentation probes while in 排障 (Debug) mode. Call register after adding a marker comment such as // ganymede-debug-probe:<id> in source.',
+        parameters: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['register', 'list', 'unregister'] },
+            id: { type: 'string' },
+            file: { type: 'string' },
+            line: { type: 'number' },
+            label: { type: 'string' },
+            marker: { type: 'string' },
+          },
+          required: ['action'],
+        },
+      },
+      handler: (raw, context) => {
+        const args = record(raw);
+        switch (string(args['action'])) {
+          case 'list':
+            return ok({ probes: deps.debug.listProbes(context.sessionId) });
+          case 'register': {
+            const file = string(args['file']);
+            const label = string(args['label']);
+            const marker = string(args['marker']);
+            const line = typeof args['line'] === 'number' ? args['line'] : undefined;
+            const id = optionalString(args['id']);
+            const probes = deps.debug.registerProbe(context.sessionId, {
+              file,
+              label,
+              marker,
+              line,
+              id,
+            });
+            return ok({ probes });
+          }
+          case 'unregister': {
+            const id = string(args['id']);
+            return ok({ probes: deps.debug.unregisterProbe(context.sessionId, id) });
+          }
+          default:
+            return fail('Unsupported debug probe action.');
+        }
+      },
+    },
+    {
+      definition: {
+        name: 'GanymedeRequestDebugVerification',
+        description:
+          'Ask the user to manually verify a fix in the Composer verification bar. Provide numbered steps (1–8). Blocks until the user chooses 问题已修复 or 问题未修复. Always call this after applying a fix in Debug mode.',
+        parameters: {
+          type: 'object',
+          properties: {
+            steps: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Numbered verification steps for the user (1–8 items).',
+            },
+            hypothesis: {
+              type: 'string',
+              description: 'Short summary of the root-cause hypothesis that was fixed.',
+            },
+          },
+          required: ['steps'],
+        },
+      },
+      handler: async (raw, context) => {
+        const args = record(raw);
+        const stepsRaw = args['steps'];
+        if (!Array.isArray(stepsRaw)) {
+          return fail('steps must be an array of strings.');
+        }
+        const steps = stepsRaw.filter((item): item is string => typeof item === 'string');
+        const result = await deps.debug.requestVerification(context.sessionId, {
+          steps,
+          hypothesis: optionalString(args['hypothesis']),
+        });
+        return ok(result);
+      },
     },
   ];
 }

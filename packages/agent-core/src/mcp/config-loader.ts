@@ -1,7 +1,12 @@
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, resolve } from 'pathe';
 
-import { resolveKimiHome } from '#/config/path';
+import {
+  KIMI_CODE_BRAND,
+  projectBrandPath,
+  resolveUserHome,
+  type ProductBrand,
+} from '#/config/brand-paths';
 import { McpServerConfigSchema, type McpServerConfig } from '#/config/schema';
 import { ErrorCodes, KimiError } from '#/errors';
 import { z } from 'zod';
@@ -19,29 +24,32 @@ export interface McpJsonPaths {
 export interface ResolveMcpJsonPathsInput {
   readonly cwd: string;
   readonly homeDir?: string;
+  readonly brand?: ProductBrand;
 }
 
 export async function resolveMcpJsonPaths(input: ResolveMcpJsonPathsInput): Promise<McpJsonPaths> {
   const projectRoot = await findProjectRoot(input.cwd);
+  const brand = input.brand ?? KIMI_CODE_BRAND;
 
   return {
-    user: join(resolveKimiHome(input.homeDir), 'mcp.json'),
+    user: join(resolveUserHome({ brand, homeDir: input.homeDir }), 'mcp.json'),
     projectRoot: join(projectRoot, '.mcp.json'),
-    project: join(input.cwd, '.kimi-code', 'mcp.json'),
+    project: projectBrandPath(input.cwd, brand, 'mcp.json'),
   };
 }
 
 export interface LoadMcpServersInput {
   readonly cwd: string;
   readonly homeDir?: string;
+  readonly brand?: ProductBrand;
 }
 
 /**
- * Load MCP server declarations from the user-global `~/.kimi-code/mcp.json`,
+ * Load MCP server declarations from the user-global brand `mcp.json`,
  * the project-root `<project root>/.mcp.json`, and the project-local
- * `<cwd>/.kimi-code/mcp.json`. Entries in later files override earlier files
+ * `<cwd>/<brand>/mcp.json`. Entries in later files override earlier files
  * with the same key, so a repo can specialise or replace a shared definition,
- * and Kimi-specific project config wins over the Claude-compatible root file.
+ * and brand-specific project config wins over the Claude-compatible root file.
  *
  * Note: project-local entries may spawn stdio commands at session start, so
  * opening a session inside an untrusted checkout will execute whatever its
@@ -50,7 +58,11 @@ export interface LoadMcpServersInput {
 export async function loadMcpServers(
   input: LoadMcpServersInput,
 ): Promise<Record<string, McpServerConfig>> {
-  const paths = await resolveMcpJsonPaths({ cwd: input.cwd, homeDir: input.homeDir });
+  const paths = await resolveMcpJsonPaths({
+    cwd: input.cwd,
+    homeDir: input.homeDir,
+    brand: input.brand,
+  });
   const [user, projectRoot, project] = await Promise.all([
     readMcpJson(paths.user),
     readMcpJson(paths.projectRoot, { stdioCwdBase: dirname(paths.projectRoot) }),

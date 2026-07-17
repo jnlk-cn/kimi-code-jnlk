@@ -1,4 +1,5 @@
 import type { AppSettings } from '../shared/contracts';
+import { DEFAULT_ACCENT_DARK } from '../shared/theme-accent';
 
 export const DEFAULT_MONO_FONT =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, "JetBrains Mono", monospace';
@@ -14,7 +15,7 @@ export interface XtermThemeColors {
 export const DEFAULT_XTERM_THEME: XtermThemeColors = {
   background: '#101114',
   foreground: '#f1f3f7',
-  cursor: '#7c8cff',
+  cursor: DEFAULT_ACCENT_DARK,
 };
 
 /** Quote font-family tokens that contain whitespace so stacks like MesloLGS NF parse correctly. */
@@ -76,4 +77,43 @@ export function readTerminalThemeFromDocument(doc: Document = document): XtermTh
     foreground: style.getPropertyValue('--text'),
     cursor: style.getPropertyValue('--accent'),
   });
+}
+
+interface TerminalFitAddon {
+  proposeDimensions(): { readonly cols: number; readonly rows: number } | undefined;
+}
+
+interface XtermRenderCore {
+  readonly _core?: {
+    readonly _renderService?: {
+      readonly dimensions?: {
+        readonly css: {
+          readonly cell: {
+            readonly height: number;
+          };
+        };
+      };
+    };
+  };
+}
+
+export function terminalCellHeight(xterm: { readonly element: HTMLElement | null }): number | undefined {
+  const height = (xterm as XtermRenderCore)._core?._renderService?.dimensions?.css.cell.height;
+  if (height === undefined || height <= 0) return undefined;
+  return height;
+}
+
+/** FitAddon sizes to whole rows; trim the xterm element so no empty viewport strip remains. */
+export function clampTerminalElementHeight(
+  fitAddon: TerminalFitAddon,
+  xterm: { readonly element: HTMLElement | null },
+): void {
+  const element = xterm.element;
+  if (element === null) return;
+  const proposed = fitAddon.proposeDimensions();
+  const cellHeight = terminalCellHeight(xterm);
+  if (proposed === undefined || cellHeight === undefined) return;
+  const height = Math.ceil(proposed.rows * cellHeight);
+  element.style.height = `${height}px`;
+  element.style.flex = '0 0 auto';
 }

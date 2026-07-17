@@ -81,6 +81,9 @@ export interface AgentRecordEvents {
   'debug_mode.enter': {};
   'debug_mode.exit': {};
 
+  'engineering_mode.enter': {};
+  'engineering_mode.exit': {};
+
   'tools.register_user_tool': UserToolRegistration;
   'tools.unregister_user_tool': {
     name: string;

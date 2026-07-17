@@ -5,8 +5,10 @@ import {
   type BrowserAction,
   type CreateSessionRequest,
   type DesktopApi,
+  type DebugVerificationResolution,
   type EventEnvelope,
   type PendingApproval,
+  type PendingDebugVerification,
   type PendingQuestion,
   type PromptRequest,
   type QuestionResolution,
@@ -170,8 +172,10 @@ export function createWebDesktopApi(): DesktopApi {
     },
     notify: (title, body) => invoke(IPC.notify, { title, body }),
     listProjects: () => invoke(IPC.projectsList),
+    listHiddenProjects: () => invoke(IPC.projectsListHidden),
     openProject: () => invoke(IPC.projectOpen),
     removeProject: (workDir) => invoke(IPC.projectRemove, workDir),
+    restoreProject: (workDir) => invoke(IPC.projectRestore, workDir),
     setProjectPinned: (workDir, pinned) => invoke(IPC.projectPin, { workDir, pinned }),
     inspectProject: (workDir) => invoke(IPC.projectInspect, workDir),
     addProjectDirectory: (workDir, sessionId) =>
@@ -191,9 +195,19 @@ export function createWebDesktopApi(): DesktopApi {
     forkSession: (id, workDir) => invoke(IPC.sessionFork, { id, workDir }),
     configureSession: (id, config: SessionConfiguration) =>
       invoke(IPC.sessionConfigure, { id, config }),
+    compactSession: (sessionId, instruction) =>
+      invoke(IPC.sessionCompact, { id: sessionId, instruction }),
+    initSession: (sessionId) => invoke(IPC.sessionInit, sessionId),
+    getSessionUsage: (sessionId) => invoke(IPC.sessionUsage, sessionId),
+    clearSessionPlan: (sessionId) => invoke(IPC.sessionClearPlan, sessionId),
     closeSession: (sessionId) => invoke(IPC.sessionClose, sessionId),
+    listProjectPlans: (workDir) => invoke(IPC.plansList, workDir),
+    readPlanFile: (input) => invoke(IPC.planRead, input),
+    patchPlanTodos: (input) => invoke(IPC.planPatchTodos, input),
     resolveApproval: (input: ApprovalResolution) => invoke(IPC.approvalResolve, input),
     resolveQuestion: (input: QuestionResolution) => invoke(IPC.questionResolve, input),
+    resolveDebugVerification: (input: DebugVerificationResolution) =>
+      invoke(IPC.debugVerificationResolve, input),
     authStatus: () => invoke(IPC.authStatus),
     authLogin: () => invoke(IPC.authLogin),
     authLogout: () => invoke(IPC.authLogout),
@@ -201,15 +215,22 @@ export function createWebDesktopApi(): DesktopApi {
     configureDefaultModel: (input) => invoke(IPC.modelsConfigureDefault, input),
     listModelCatalog: () => invoke(IPC.modelsCatalogList),
     addCatalogProvider: (input) => invoke(IPC.modelsCatalogAdd, input),
+    deepSeekBillingSnapshot: (input) => invoke(IPC.billingDeepSeekSnapshot, input ?? {}),
+    contextUsageSnapshot: (input) => invoke(IPC.contextUsageSnapshot, input),
     gitStatus: (workDir) => invoke(IPC.gitStatus, workDir),
+    gitInit: (workDir) => invoke(IPC.gitInit, workDir),
     gitDiff: (cwd, staged, file) => invoke(IPC.gitDiff, { cwd, staged, file }),
     gitStage: (cwd, paths) => invoke(IPC.gitStage, { cwd, paths }),
     gitUnstage: (cwd, paths) => invoke(IPC.gitUnstage, { cwd, paths }),
     gitRevert: (cwd, paths) => invoke(IPC.gitRevert, { cwd, paths }),
     gitCommit: (cwd, message) => invoke(IPC.gitCommit, { cwd, message }),
     gitPush: (workDir) => invoke(IPC.gitPush, workDir),
+    gitFetch: (workDir) => invoke(IPC.gitFetch, workDir),
+    gitPull: (workDir) => invoke(IPC.gitPull, workDir),
+    gitCheckout: (cwd, branch) => invoke(IPC.gitCheckout, { cwd, branch }),
+    gitCreateBranch: (cwd, name) => invoke(IPC.gitCreateBranch, { cwd, name }),
     gitBranches: (workDir) => invoke(IPC.gitBranches, workDir),
-    pullRequests: (workDir) => invoke(IPC.gitPullRequests, workDir),
+    pullRequests: (workDir, state) => invoke(IPC.gitPullRequests, { workDir, state }),
     pullRequestDetail: (cwd, number) => invoke(IPC.gitPullRequestDetail, { cwd, number }),
     createPullRequest: (cwd, title, body) =>
       invoke(IPC.gitPullRequestCreate, { cwd, title, body }),
@@ -224,6 +245,10 @@ export function createWebDesktopApi(): DesktopApi {
     writeFile: (root, path, content) => invoke(IPC.fileWrite, { root, path, content }),
     revealFile: (path) => invoke(IPC.fileReveal, path),
     openFileExternal: (path) => invoke(IPC.fileOpenExternal, path),
+    previewWorkspaceFile: (root, path) => invoke(IPC.filePreview, { root, path }),
+    openInEditor: (path, command) => invoke(IPC.fileOpenInEditor, { path, command }),
+    openInTerminal: (path) => invoke(IPC.fileOpenInTerminal, path),
+    listAvailableEditors: () => invoke(IPC.editorsList),
     createTerminal: (cwd, sessionId) => invoke(IPC.terminalCreate, { cwd, sessionId }),
     terminalInput: (id, data) => invoke(IPC.terminalInput, { id, data }),
     terminalResize: (id, cols, rows) => invoke(IPC.terminalResize, { id, cols, rows }),
@@ -243,14 +268,16 @@ export function createWebDesktopApi(): DesktopApi {
     enablePluginMcp: (id, server, enabled, sessionId) =>
       invoke(IPC.pluginMcpEnable, { id, server, enabled, sessionId }),
     removePlugin: (id, sessionId) => invoke(IPC.pluginRemove, { id, sessionId }),
-    listPluginCommands: (sessionId) => invoke(IPC.pluginCommandsList, sessionId),
-    activatePluginCommand: (sessionId, pluginId, commandName, args) =>
-      invoke(IPC.pluginCommandActivate, { sessionId, pluginId, commandName, args }),
+    listPluginCommands: (sessionId) => invoke(IPC.pluginCommandsList, { sessionId }),
+    activatePluginCommand: (sessionId, pluginId, commandName, args, workDir) =>
+      invoke(IPC.pluginCommandActivate, { sessionId, pluginId, commandName, args, workDir }),
     listSkills: (sessionId, workDir) => invoke(IPC.skillsList, { sessionId, workDir }),
-    activateSkill: (sessionId, name, args) =>
-      invoke(IPC.skillActivate, { sessionId, name, args }),
-    listMcp: (sessionId) => invoke(IPC.mcpList, sessionId),
+    activateSkill: (sessionId, name, args, workDir) =>
+      invoke(IPC.skillActivate, { sessionId, name, args, workDir }),
+    listMcp: (sessionId) => invoke(IPC.mcpList, { sessionId }),
     reconnectMcp: (id, name) => invoke(IPC.mcpReconnect, { id, name }),
+    listPluginMarketplace: (sessionId, workDir) =>
+      invoke(IPC.pluginsMarketplace, { sessionId, workDir }),
     listBackgroundTasks: (sessionId) => invoke(IPC.backgroundTasksList, sessionId),
     getBackgroundTaskOutput: (sessionId, taskId, tail) =>
       invoke(IPC.backgroundTaskOutput, { sessionId, taskId, tail }),
@@ -263,6 +290,9 @@ export function createWebDesktopApi(): DesktopApi {
     runAutomation: (id) => invoke(IPC.automationRun, id),
     listInbox: () => invoke(IPC.inboxList),
     markInboxRead: (id) => invoke(IPC.inboxRead, id),
+    deleteInbox: (id) => invoke(IPC.inboxDelete, id),
+    markAllInboxRead: () => invoke(IPC.inboxMarkAllRead),
+    inboxUnreadCount: () => invoke(IPC.inboxUnreadCount),
     searchMemories: (query, projectPath) =>
       invoke(IPC.memoriesSearch, { query, projectPath }),
     saveMemory: (input) =>
@@ -277,6 +307,19 @@ export function createWebDesktopApi(): DesktopApi {
         input as Omit<SiteRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
       ),
     serveSite: (id, lan) => invoke(IPC.siteServe, { id, lan }),
+    stopSite: (id) => invoke(IPC.siteStop, id),
+    deleteSite: (id) => invoke(IPC.siteDelete, id),
+    pickSiteDirectory: () => invoke(IPC.sitePickDirectory),
+    indexStatus: (workDir) => invoke(IPC.indexStatus, workDir),
+    assessProjectIndex: (workDir, additionalDirs) =>
+      invoke(IPC.indexAssess, { workDir, additionalDirs }),
+    activateProjectIndex: (workDir, additionalDirs, options) =>
+      invoke(IPC.indexActivate, { workDir, additionalDirs, force: options?.force }),
+    cancelProjectIndex: (workDir) => invoke(IPC.indexCancel, workDir),
+    deactivateProjectIndex: (workDir) => invoke(IPC.indexDeactivate, workDir),
+    rebuildProjectIndex: (workDir) => invoke(IPC.indexRebuild, workDir),
+    searchProjectIndex: (input) => invoke(IPC.indexSearch, input),
+    previewIndexContext: (input) => invoke(IPC.indexContextPreview, input),
     getSettings: () => invoke(IPC.settingsGet),
     setSettings: (patch: Partial<AppSettings>) => invoke(IPC.settingsSet, patch),
     revealLogs: async () => {
@@ -286,11 +329,14 @@ export function createWebDesktopApi(): DesktopApi {
     onSessionEvent: (listener) => subscribe<EventEnvelope>(IPC.event, listener),
     onApproval: (listener) => subscribe<PendingApproval>(IPC.approval, listener),
     onQuestion: (listener) => subscribe<PendingQuestion>(IPC.question, listener),
+    onDebugVerification: (listener) =>
+      subscribe<PendingDebugVerification>(IPC.debugVerification, listener),
     onTerminalData: (listener) => subscribe<TerminalDataEvent>(IPC.terminalData, listener),
     onTerminalExit: (listener) =>
       subscribe<{ readonly id: string; readonly exitCode: number }>(IPC.terminalExit, listener),
     onBrowserState: (listener) => subscribe<BrowserTab>(IPC.browserState, listener),
     onAutomationState: (listener) => subscribe(IPC.automationState, () => listener()),
+    onInboxState: (listener) => subscribe(IPC.inboxState, () => listener()),
     onNavigate: (listener) => subscribe<string>('app:navigate', listener),
     onOpenProjectRequest: (listener) => subscribe('app:open-project', () => listener()),
   };

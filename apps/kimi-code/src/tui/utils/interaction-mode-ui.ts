@@ -10,6 +10,7 @@ const LABELS_ZH: Record<InteractionMode, string> = {
   debug: '排障',
   multitask: '集群',
   ask: '问答',
+  engineering: '工程',
 };
 
 const LABELS_EN: Record<InteractionMode, string> = {
@@ -18,7 +19,8 @@ const LABELS_EN: Record<InteractionMode, string> = {
   debug: 'Debug',
   multitask: 'Multitask',
   ask: 'Ask',
-};
+  engineering: 'Engineering',
+}
 
 /** Prefer Chinese badge/selector copy when the process locale is Chinese. */
 export function preferChineseUi(): boolean {

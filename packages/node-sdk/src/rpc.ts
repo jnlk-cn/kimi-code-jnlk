@@ -6,6 +6,7 @@ import {
   type AgentContextData,
   type ApprovalRequest,
   type ApprovalResponse,
+  type ContextUsageBreakdown,
   type CoreAPI,
   type Event,
   type ExperimentalFeatureState,
@@ -112,6 +113,7 @@ export type SetSessionSwarmModeRpcInput =
 export interface ActivateSkillRpcInput extends SessionIdRpcInput {
   readonly name: string;
   readonly args?: string | undefined;
+  readonly mode?: 'activate' | 'bootstrap' | undefined;
 }
 
 export interface ActivatePluginCommandRpcInput extends SessionIdRpcInput {
@@ -503,6 +505,14 @@ export abstract class SDKRpcClientBase {
     });
   }
 
+  async getContextUsageBreakdown(input: SessionIdRpcInput): Promise<ContextUsageBreakdown> {
+    const rpc = await this.getRpc();
+    return rpc.getContextUsageBreakdown({
+      sessionId: input.sessionId,
+      agentId: this.interactiveAgentId,
+    });
+  }
+
   async getUsage(input: SessionIdRpcInput): Promise<SessionUsage> {
     const rpc = await this.getRpc();
     return rpc.getUsage({
@@ -542,6 +552,10 @@ export abstract class SDKRpcClientBase {
       sessionId: input.sessionId,
       agentId,
     });
+    const engineeringMode = await rpc.getEngineeringMode({
+      sessionId: input.sessionId,
+      agentId,
+    });
     const interactionMode = await rpc.getInteractionMode({
       sessionId: input.sessionId,
       agentId,
@@ -560,14 +574,17 @@ export abstract class SDKRpcClientBase {
       thinkingEffort: config.thinkingEffort,
       permission: permission.mode,
       planMode: plan !== null,
+      planFilePath: plan?.path,
       swarmMode,
       askMode,
       debugMode,
+      engineeringMode,
       interactionMode: deriveInteractionMode({
         planMode: plan !== null,
         swarmMode,
         askMode,
         debugMode,
+        engineeringMode,
         interactionMode,
       }),
       contextTokens,
@@ -749,6 +766,7 @@ export abstract class SDKRpcClientBase {
       agentId: this.interactiveAgentId,
       name: input.name,
       args: input.args,
+      mode: input.mode,
     });
   }
 

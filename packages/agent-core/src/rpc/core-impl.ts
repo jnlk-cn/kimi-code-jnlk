@@ -14,6 +14,7 @@ import { resolveThinkingEffort } from '../agent/config/thinking';
 import { Agent } from '../agent';
 import {
   ensureKimiHome,
+  KIMI_CODE_BRAND,
   loadRuntimeConfigSafe,
   mergeConfigPatch,
   readConfigFileForUpdate,
@@ -21,11 +22,12 @@ import {
   readWorkspaceAdditionalDirs,
   resolveWorkspaceAdditionalDirs,
   resolveConfigPath,
-  resolveKimiHome,
+  resolveUserHome,
   writeConfigFile,
   type KimiConfig,
   type McpServerConfig,
   type MoonshotServiceConfig,
+  type ProductBrand,
 } from '../config';
 import {
   FLAG_DEFINITIONS,
@@ -141,6 +143,7 @@ type UpdateSessionMetadataRequest = SessionScopedPayload<UpdateSessionMetadataPa
 export interface KimiCoreOptions {
   readonly homeDir?: string | undefined;
   readonly configPath?: string | undefined;
+  readonly brand?: ProductBrand;
   readonly runtime?: ToolServices | undefined;
   readonly kimiRequestHeaders?: Record<string, string> | undefined;
   readonly resolveOAuthTokenProvider?: OAuthTokenProviderResolver | undefined;
@@ -153,6 +156,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
   readonly sdk: Promise<SDKRPC>;
   readonly homeDir: string;
   readonly configPath: string;
+  readonly brand: ProductBrand;
   readonly sessions = new Map<string, Session>();
   readonly telemetry: TelemetryClient;
 
@@ -178,11 +182,13 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
     protected readonly rpcClient: CoreRPCClient,
     options: KimiCoreOptions = {},
   ) {
-    this.homeDir = resolveKimiHome(options.homeDir);
+    this.brand = options.brand ?? KIMI_CODE_BRAND;
+    this.homeDir = resolveUserHome({ brand: this.brand, homeDir: options.homeDir });
     this.userHomeDir = homedir();
     this.configPath = resolveConfigPath({
       homeDir: this.homeDir,
       configPath: options.configPath,
+      brand: this.brand,
     });
     this.runtimeOverride = options.runtime;
     this.runtime = options.runtime;
@@ -212,7 +218,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
     );
     this.imageLimits = new ImageLimits(process.env, this.config.image);
     this.sessionStore = new SessionStore(this.homeDir);
-    this.plugins = new PluginManager({ kimiHomeDir: this.homeDir });
+    this.plugins = new PluginManager({ kimiHomeDir: this.homeDir, brand: this.brand });
     // Capture the error rather than swallow it: mutators and explicit /plugins
     // reads rethrow so the user sees what's wrong; createSession/resumeSession
     // degrade silently (no plugin skills, no sessionStart injections) so the harness still
@@ -244,18 +250,23 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
     const baseMcpConfig = await resolveSessionMcpConfig({
       cwd: workDir,
       homeDir: this.homeDir,
+      brand: this.brand,
     });
     const withCallerMcp = mergeCallerMcpServers(baseMcpConfig, options.mcpServers);
     const parentKaos = overrides.kaos ?? (await this.getKaos());
     const persistenceKaos = overrides.persistenceKaos ?? parentKaos;
-    // Read the workspace local config (`.kimi-code/local.toml`) through the
+    // Read the workspace local config (`<brand>/local.toml`) through the
     // persistence (local) kaos, not the tool kaos. In ACP mode the tool kaos is
     // the reverse-RPC bridge and the client does not know the session yet during
     // `session/new`, so reading through it fails with "unknown session"
     // (https://github.com/MoonshotAI/kimi-code/issues/988). The local config is
     // a system file and must not depend on the tool bridge — same reason
     // `Session.systemContextKaos` is backed by the persistence sink.
-    const localWorkspaceDirs = await readWorkspaceAdditionalDirs(persistenceKaos, workDir);
+    const localWorkspaceDirs = await readWorkspaceAdditionalDirs(
+      persistenceKaos,
+      workDir,
+      this.brand,
+    );
     const callerAdditionalDirs = await resolveWorkspaceAdditionalDirs(
       parentKaos,
       workDir,
@@ -296,6 +307,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
       id,
       homedir: summary.sessionDir,
       kimiHomeDir: this.homeDir,
+      brand: this.brand,
       rpc: proxyWithExtraPayload(await this.sdk, { sessionId: summary.id }),
       providerManager: this.resolveProviderManager(summary.id),
       background: config.background,
@@ -387,11 +399,12 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
   ): Promise<ResumeSessionResult> {
     const summary = await this.sessionStore.get(input.sessionId);
     const parentKaosForRead = overrides.kaos ?? (await this.getKaos());
-    // Read `.kimi-code/local.toml` through the persistence (local) kaos, not the
+    // Read brand-local `local.toml` through the persistence (local) kaos, not the
     // tool kaos — see createSessionWithOverrides and issue #988.
     const localWorkspaceDirs = await readWorkspaceAdditionalDirs(
       overrides.persistenceKaos ?? parentKaosForRead,
       summary.workDir,
+      this.brand,
     );
     const callerAdditionalDirs = await resolveWorkspaceAdditionalDirs(
       parentKaosForRead,
@@ -415,6 +428,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
     const baseMcpConfig = await resolveSessionMcpConfig({
       cwd: summary.workDir,
       homeDir: this.homeDir,
+      brand: this.brand,
     });
     const withCallerMcp = mergeCallerMcpServers(baseMcpConfig, input.mcpServers);
     await this.pluginsReady;
@@ -432,6 +446,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
       id: summary.id,
       homedir: summary.sessionDir,
       kimiHomeDir: this.homeDir,
+      brand: this.brand,
       rpc: proxyWithExtraPayload(await this.sdk, { sessionId: summary.id }),
       providerManager: this.resolveProviderManager(summary.id),
       background: config.background,
@@ -696,6 +711,10 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
     return this.sessionApi(sessionId).getDebugMode(payload);
   }
 
+  getEngineeringMode({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
+    return this.sessionApi(sessionId).getEngineeringMode(payload);
+  }
+
   beginCompaction({ sessionId, ...payload }: SessionAgentPayload<BeginCompactionPayload>) {
     return this.sessionApi(sessionId).beginCompaction(payload);
   }
@@ -748,6 +767,10 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
 
   getContext({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
     return this.sessionApi(sessionId).getContext(payload);
+  }
+
+  getContextUsageBreakdown({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
+    return this.sessionApi(sessionId).getContextUsageBreakdown(payload);
   }
 
   getConfig({ sessionId, ...payload }: SessionAgentPayload<EmptyPayload>) {
@@ -806,6 +829,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
       paths: {
         userHomeDir: skills.userHomeDir ?? this.userHomeDir,
         brandHomeDir: skills.brandHomeDir ?? this.homeDir,
+        brand: this.brand,
         workDir: cwd,
       },
       explicitDirs: skills.explicitDirs,
@@ -1014,6 +1038,7 @@ export class KimiCore implements PromisableMethods<CoreAPI> {
     return {
       userHomeDir: this.userHomeDir,
       brandHomeDir: this.homeDir,
+      brand: this.brand,
       explicitDirs,
       extraDirs: config.extraSkillDirs,
       pluginSkillRoots: this.plugins.pluginSkillRoots(),
@@ -1273,6 +1298,7 @@ async function resumeSessionResult(
     const swarmMode = await api.getSwarmMode({ agentId });
     const askMode = await api.getAskMode({ agentId });
     const debugMode = await api.getDebugMode({ agentId });
+    const engineeringMode = await api.getEngineeringMode({ agentId });
     const interactionMode = await api.getInteractionMode({ agentId });
     const usage = await api.getUsage({ agentId });
     agents[agentId] = {
@@ -1285,6 +1311,7 @@ async function resumeSessionResult(
       swarmMode,
       askMode,
       debugMode,
+      engineeringMode,
       interactionMode,
       usage,
       tools: await api.getTools({ agentId }),

@@ -2,6 +2,11 @@ import { cp, mkdir, mkdtemp, realpath, rename, rm, stat } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import {
+  brandHomeEnv,
+  KIMI_CODE_BRAND,
+  type ProductBrand,
+} from '../config/brand-paths';
 import type { McpServerConfig } from '../config/schema';
 import { discoverSkills, type SkillRoot } from '../skill';
 import type { HookDef } from '../session/hooks';
@@ -32,14 +37,17 @@ const KIMI_NODE_FALLBACK_SUBCOMMAND = '__plugin_run_node';
 
 export interface PluginManagerOptions {
   readonly kimiHomeDir: string;
+  readonly brand?: ProductBrand;
 }
 
 export class PluginManager {
   private readonly kimiHomeDir: string;
+  private readonly brand: ProductBrand;
   private records = new Map<string, PluginRecord>();
 
   constructor(options: PluginManagerOptions) {
     this.kimiHomeDir = options.kimiHomeDir;
+    this.brand = options.brand ?? KIMI_CODE_BRAND;
   }
 
   async load(): Promise<void> {
@@ -236,6 +244,7 @@ export class PluginManager {
           withMcpServerEnabled(config, true),
           record.root,
           this.kimiHomeDir,
+          this.brand,
         );
       }
     }
@@ -250,7 +259,10 @@ export class PluginManager {
         out.push({
           ...hook,
           cwd: record.root,
-          env: { KIMI_CODE_HOME: this.kimiHomeDir, KIMI_PLUGIN_ROOT: record.root },
+          env: {
+            ...brandHomeEnv(this.brand, this.kimiHomeDir),
+            KIMI_PLUGIN_ROOT: record.root,
+          },
         });
       }
     }
@@ -489,15 +501,15 @@ function withPluginMcpRuntime(
   config: McpServerConfig,
   pluginRoot: string,
   kimiHomeDir: string,
+  brand: ProductBrand = KIMI_CODE_BRAND,
 ): McpServerConfig {
   if (config.transport === 'http' || config.transport === 'sse') return config;
 
   const env = {
     ...config.env,
-    KIMI_CODE_HOME: kimiHomeDir,
+    ...brandHomeEnv(brand, kimiHomeDir),
     KIMI_PLUGIN_ROOT: pluginRoot,
   };
-
   if (config.command === 'node' && isKimiNativeBinary()) {
     return {
       ...config,

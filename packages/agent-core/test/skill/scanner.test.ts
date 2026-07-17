@@ -724,6 +724,20 @@ describe('resolveSkillRoots brand home (KIMI_CODE_HOME)', () => {
     const userRoots = roots.filter((r) => r.source === 'user').map((r) => r.path);
     expect(userRoots).toContain(await realpath(path.join(homeDir, '.kimi-code', 'skills')));
   });
+
+  it('uses .ganymede/skills for the ganymede brand', async () => {
+    const { homeDir, workDir, repoDir } = await makeWorkspace();
+    await mkdir(path.join(homeDir, '.ganymede', 'skills'), { recursive: true });
+    await mkdir(path.join(repoDir, '.ganymede', 'skills'), { recursive: true });
+
+    const roots = await resolveSkillRoots({
+      paths: { userHomeDir: homeDir, workDir, brand: 'ganymede' },
+    });
+
+    const paths = roots.map((r) => r.path);
+    expect(paths).toContain(await realpath(path.join(homeDir, '.ganymede', 'skills')));
+    expect(paths).toContain(await realpath(path.join(repoDir, '.ganymede', 'skills')));
+  });
 });
 
 describe('resolveSkillRoots extra dirs', () => {

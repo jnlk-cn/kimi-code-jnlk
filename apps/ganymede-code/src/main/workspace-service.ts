@@ -24,7 +24,9 @@ import type {
   FileEntry,
   GitDiff,
   GitFileStatus,
+  GitLineStats,
   GitStatus,
+  GitStatusLineStats,
   PathSuggestion,
   ProjectSummary,
   PromptAttachment,
@@ -36,6 +38,16 @@ import type {
 import type { AppStore } from './store';
 import type { SessionManager } from './session-manager';
 import { createScopedLogger } from './logging';
+import {
+  listAvailableEditors,
+  openInEditor as launchEditor,
+  openInTerminal as launchTerminal,
+  resolveEditorCommand,
+} from './editor-launcher';
+import { filterPathSuggestions } from './path-suggestions';
+import type { ProjectIndexService } from './project-index/project-index-service';
+
+export { filterPathSuggestions } from './path-suggestions';
 
 const execFileAsync = promisify(execFile);
 const log = createScopedLogger('workspace');
@@ -59,11 +71,17 @@ export class WorkspaceService {
     { readonly createdAt: number; readonly suggestions: readonly PathSuggestion[] }
   >();
 
+  private projectIndex: ProjectIndexService | undefined;
+
   constructor(
     private readonly store: AppStore,
     private readonly sessions: SessionManager,
     private readonly worktreeRoot: string,
   ) {}
+
+  setProjectIndex(projectIndex: ProjectIndexService): void {
+    this.projectIndex = projectIndex;
+  }
 
   async close(): Promise<void> {
     await Promise.all(
@@ -91,6 +109,7 @@ export class WorkspaceService {
           sessionCount: 0,
           pinned: false,
           additionalDirs: [],
+          isGitRepository: false,
         }));
         stored.set(task.workDir, inspected);
       }
@@ -109,12 +128,17 @@ export class WorkspaceService {
       (a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt,
     );
     for (const project of projects) this.store.upsertProject(project);
-    return projects;
+    return Promise.all(
+      projects.map(async (project) => ({
+        ...project,
+        isGitRepository: await isInsideGitWorkTree(project.workDir),
+      })),
+    );
   }
 
   async openProject(): Promise<ProjectSummary | undefined> {
     const result = await dialog.showOpenDialog({
-      title: '在 Ganymede Code 中打开项目',
+      title: '选择或新建工作目录',
       properties: ['openDirectory', 'createDirectory'],
     });
     const path = result.filePaths[0];
@@ -129,10 +153,13 @@ export class WorkspaceService {
     const absolute = await realpath(workDir);
     const info = await stat(absolute);
     if (!info.isDirectory()) throw new Error('Project path is not a directory.');
-    const [branch, remote] = await Promise.all([
-      gitText(absolute, ['rev-parse', '--abbrev-ref', 'HEAD']).catch(() => undefined),
-      gitText(absolute, ['remote', 'get-url', 'origin']).catch(() => undefined),
-    ]);
+    const isGitRepository = await isInsideGitWorkTree(absolute);
+    const [branch, remote] = isGitRepository
+      ? await Promise.all([
+          gitText(absolute, ['rev-parse', '--abbrev-ref', 'HEAD']).catch(() => undefined),
+          gitText(absolute, ['remote', 'get-url', 'origin']).catch(() => undefined),
+        ])
+      : [undefined, undefined];
     const existing = this.store.listProjects().find((project) => project.workDir === absolute);
     return {
       workDir: absolute,
@@ -143,11 +170,67 @@ export class WorkspaceService {
       sessionCount: existing?.sessionCount ?? 0,
       pinned: existing?.pinned ?? false,
       additionalDirs: existing?.additionalDirs ?? [],
+      isGitRepository,
     };
+  }
+
+  async gitInit(workDir: string): Promise<ProjectSummary> {
+    const absolute = await realpath(workDir);
+    if (!(await isInsideGitWorkTree(absolute))) {
+      await git(absolute, ['init']);
+    }
+    const existing = this.store.listProjects().find((project) => project.workDir === absolute);
+    const inspected = await this.inspectProject(absolute);
+    const next = {
+      ...inspected,
+      pinned: existing?.pinned ?? false,
+      additionalDirs: existing?.additionalDirs ?? [],
+      sessionCount: existing?.sessionCount ?? 0,
+    };
+    this.store.upsertProject(next);
+    return next;
   }
 
   removeProject(workDir: string): void {
     this.store.removeProject(workDir);
+  }
+
+  async listHiddenProjects(): Promise<readonly ProjectSummary[]> {
+    const hidden = this.store.listHiddenProjects();
+    if (hidden.length === 0) return [];
+    const tasks = await this.sessions.listSessions(undefined, true);
+    const projects = await Promise.all(
+      hidden.map(async ({ workDir, hiddenAt }) => {
+        const projectTasks = [...tasks.filter((task) => task.workDir === workDir)]
+          .sort((left, right) => right.updatedAt - left.updatedAt);
+        const latestTask = projectTasks[0];
+        const updatedAt = Math.max(hiddenAt, latestTask?.updatedAt ?? 0);
+        const inspected = await this.inspectProject(workDir).catch(() => ({
+          workDir,
+          name: basename(workDir),
+          updatedAt,
+          sessionCount: projectTasks.length,
+          pinned: false,
+          additionalDirs: [] as const,
+          isGitRepository: false,
+        }));
+        return {
+          ...inspected,
+          updatedAt,
+          sessionCount: projectTasks.length,
+          pinned: false,
+          lastPrompt: latestTask?.lastPrompt ?? latestTask?.title,
+        };
+      }),
+    );
+    return projects.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async restoreProject(workDir: string): Promise<ProjectSummary> {
+    this.store.unhideProject(workDir);
+    const project = await this.inspectProject(workDir);
+    this.store.upsertProject(project);
+    return project;
   }
 
   async setProjectPinned(workDir: string, pinned: boolean): Promise<ProjectSummary> {
@@ -183,6 +266,8 @@ export class WorkspaceService {
 
   async searchWorkspacePaths(root: string, query: string): Promise<readonly PathSuggestion[]> {
     const safeRoot = await realpath(root);
+    const indexed = await this.projectIndex?.searchPaths(safeRoot, query);
+    if (indexed !== undefined && indexed.length > 0) return indexed;
     const cached = this.pathSearchCache.get(safeRoot);
     const suggestions =
       cached !== undefined && Date.now() - cached.createdAt < 15_000
@@ -218,6 +303,7 @@ export class WorkspaceService {
         worktree,
       };
     });
+    const lineStats = files.length > 0 ? await collectGitLineStats(workDir, files) : undefined;
     return {
       branch: branchMatch?.[1] ?? 'detached',
       upstream: branchMatch?.[2],
@@ -225,14 +311,37 @@ export class WorkspaceService {
       behind,
       files,
       clean: files.length === 0,
+      lineStats,
     };
   }
 
   async gitDiff(workDir: string, staged = false, file?: string): Promise<GitDiff> {
-    const args = ['diff', '--no-ext-diff', '--no-color', '--unified=3'];
-    if (staged) args.push('--cached');
-    if (file !== undefined) args.push('--', file);
-    return { text: await gitText(workDir, args), staged, file };
+    const baseArgs = ['diff', '--no-ext-diff', '--no-color', '--unified=3'] as const;
+    let text: string;
+    if (file !== undefined) {
+      const status = await this.gitStatus(workDir);
+      const entry = status.files.find((item) => item.path === file);
+      const untracked = entry !== undefined && entry.index === '?' && entry.worktree === '?';
+      if (untracked) {
+        text = await gitDiffText(workDir, [...baseArgs, '--no-index', '--', '/dev/null', file]);
+      } else if (staged) {
+        text = await gitDiffText(workDir, [...baseArgs, '--cached', '--', file]);
+      } else if (!(await hasHead(workDir))) {
+        text = await gitDiffText(workDir, [...baseArgs, '--no-index', '--', '/dev/null', file]);
+      } else {
+        text = await gitDiffText(workDir, [...baseArgs, '--', file]);
+      }
+    } else {
+      const args = staged ? [...baseArgs, '--cached'] : [...baseArgs];
+      text = await gitDiffText(workDir, args);
+    }
+    const truncated = text.length > DIFF_MAX_BYTES;
+    return {
+      text: truncated ? text.slice(0, DIFF_MAX_BYTES) : text,
+      staged,
+      file,
+      truncated: truncated ? true : undefined,
+    };
   }
 
   async gitStage(workDir: string, paths: readonly string[]): Promise<void> {
@@ -256,6 +365,26 @@ export class WorkspaceService {
     return gitText(workDir, ['push']);
   }
 
+  async gitFetch(workDir: string): Promise<string> {
+    return gitText(workDir, ['fetch']);
+  }
+
+  async gitPull(workDir: string): Promise<string> {
+    return gitText(workDir, ['pull']);
+  }
+
+  async gitCheckout(workDir: string, branch: string): Promise<void> {
+    const name = branch.trim();
+    if (name.length === 0) throw new Error('Branch name is required.');
+    await git(workDir, ['switch', name]);
+  }
+
+  async gitCreateBranch(workDir: string, name: string): Promise<void> {
+    const branch = name.trim();
+    if (branch.length === 0) throw new Error('Branch name is required.');
+    await git(workDir, ['switch', '-c', branch]);
+  }
+
   async gitBranches(workDir: string): Promise<readonly string[]> {
     const output = await gitText(workDir, [
       'for-each-ref',
@@ -265,12 +394,17 @@ export class WorkspaceService {
     return output.split('\n').map((line) => line.trim()).filter(Boolean);
   }
 
-  async pullRequests(workDir: string): Promise<readonly PullRequestSummary[]> {
+  async pullRequests(
+    workDir: string,
+    state: 'open' | 'closed' | 'merged' | 'all' = 'open',
+  ): Promise<readonly PullRequestSummary[]> {
     const { stdout } = await execFileAsync(
       'gh',
       [
         'pr',
         'list',
+        '--state',
+        state,
         '--json',
         'number,title,state,url,headRefName,baseRefName,author,reviewDecision,statusCheckRollup',
         '--limit',
@@ -471,6 +605,56 @@ export class WorkspaceService {
     if (error.length > 0) throw new Error(error);
   }
 
+  async previewWorkspaceFile(workDir: string, relativePath: string): Promise<string> {
+    const root = await realpath(workDir);
+    const safe = await safeWorkspacePath(root, relativePath);
+    const info = await stat(safe);
+    if (!info.isFile()) throw new Error('Preview target must be a file.');
+    const serverKey = `preview:${root}`;
+    let server = this.siteServers.get(serverKey);
+    if (server === undefined) {
+      server = createServer((request, response) => {
+        const requestPath = decodeURIComponent(new URL(request.url ?? '/', 'http://local').pathname);
+        void serveStatic(root, requestPath, response);
+      });
+      await new Promise<void>((resolveListen, reject) => {
+        server!.once('error', reject);
+        server!.listen(0, '127.0.0.1', () => resolveListen());
+      });
+      this.siteServers.set(serverKey, server);
+    }
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('Failed to bind workspace preview server.');
+    }
+    const relativeUrl = relative(root, safe).split(/[/\\]/).map(encodeURIComponent).join('/');
+    return `http://127.0.0.1:${String(address.port)}/${relativeUrl}`;
+  }
+
+  async openInEditor(path: string, command?: string): Promise<void> {
+    const resolved = resolveEditorCommand(this.store.getSettings().editorCommand, command);
+    if (resolved === undefined) {
+      await this.openFileExternal(path);
+      return;
+    }
+    await launchEditor(path, resolved);
+  }
+
+  async openInTerminal(path: string): Promise<void> {
+    await launchTerminal(path);
+  }
+
+  async listAvailableEditors(): Promise<
+    readonly {
+      readonly id: string;
+      readonly label: string;
+      readonly command: string;
+      readonly iconDataUrl?: string;
+    }[]
+  > {
+    return listAvailableEditors();
+  }
+
   listSites(): readonly SiteRecord[] {
     return this.store.listSites();
   }
@@ -507,6 +691,152 @@ export class WorkspaceService {
       url: `http://${host}:${String(address.port)}`,
     });
   }
+
+  async stopSite(id: string): Promise<SiteRecord> {
+    const site = this.store.getSite(id);
+    if (site === undefined) throw new Error('Site does not exist.');
+    await this.closeSiteServers(id);
+    return this.store.saveSite({
+      id,
+      title: site.title,
+      path: site.path,
+      url: undefined,
+    });
+  }
+
+  async deleteSite(id: string): Promise<void> {
+    await this.closeSiteServers(id);
+    this.store.deleteSite(id);
+  }
+
+  async pickSiteDirectory(): Promise<string | undefined> {
+    const result = await dialog.showOpenDialog({
+      title: '选择站点目录',
+      properties: ['openDirectory'],
+    });
+    const path = result.filePaths[0];
+    if (result.canceled || path === undefined) return undefined;
+    return path;
+  }
+
+  private async closeSiteServers(id: string): Promise<void> {
+    const keys = [...this.siteServers.keys()].filter(
+      (key) => key === id || key.startsWith(`${id}:`),
+    );
+    await Promise.all(
+      keys.map(
+        (key) =>
+          new Promise<void>((resolveClose) => {
+            const server = this.siteServers.get(key);
+            this.siteServers.delete(key);
+            if (server === undefined) {
+              resolveClose();
+              return;
+            }
+            server.close(() => resolveClose());
+          }),
+      ),
+    );
+  }
+}
+
+async function isInsideGitWorkTree(cwd: string): Promise<boolean> {
+  try {
+    const out = await gitText(cwd, ['rev-parse', '--is-inside-work-tree']);
+    return out === 'true';
+  } catch {
+    return false;
+  }
+}
+
+const DIFF_MAX_BYTES = 1_048_576;
+const EMPTY_LINE_STATS: GitLineStats = { additions: 0, deletions: 0 };
+
+async function hasHead(cwd: string): Promise<boolean> {
+  try {
+    await git(cwd, ['rev-parse', '--verify', '--quiet', 'HEAD']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseGitNumstat(stdout: string): GitLineStats {
+  let additions = 0;
+  let deletions = 0;
+  for (const line of stdout.split('\n')) {
+    if (line.length === 0) continue;
+    const [addedText, deletedText] = line.split('\t');
+    additions += parseGitNumstatCount(addedText);
+    deletions += parseGitNumstatCount(deletedText);
+  }
+  return { additions, deletions };
+}
+
+function parseGitNumstatCount(value: string | undefined): number {
+  if (value === undefined || value === '-') return 0;
+  const n = Number.parseInt(value, 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function addGitLineStats(left: GitLineStats, right: GitLineStats): GitLineStats {
+  return {
+    additions: left.additions + right.additions,
+    deletions: left.deletions + right.deletions,
+  };
+}
+
+async function gitNumstat(cwd: string, args: readonly string[]): Promise<GitLineStats> {
+  try {
+    const text = await gitDiffText(cwd, ['diff', '--no-color', '--numstat', ...args]);
+    return parseGitNumstat(text);
+  } catch {
+    return EMPTY_LINE_STATS;
+  }
+}
+
+async function countUntrackedLines(workDir: string, files: readonly GitFileStatus[]): Promise<number> {
+  let additions = 0;
+  for (const file of files) {
+    if (file.index !== '?' || file.worktree !== '?') continue;
+    additions += await countTextFileLines(join(workDir, file.path));
+  }
+  return additions;
+}
+
+async function countTextFileLines(absolutePath: string): Promise<number> {
+  try {
+    const content = await readFile(absolutePath, 'utf8');
+    if (content.includes('\0')) return 0;
+    if (content.length === 0) return 0;
+    const normalized = content.endsWith('\n') ? content.slice(0, -1) : content;
+    if (normalized.length === 0) return 0;
+    return normalized.split('\n').length;
+  } catch {
+    return 0;
+  }
+}
+
+async function collectGitLineStats(
+  workDir: string,
+  files: readonly GitFileStatus[],
+): Promise<GitStatusLineStats> {
+  const untrackedAdditions = await countUntrackedLines(workDir, files);
+  const untracked: GitLineStats = { additions: untrackedAdditions, deletions: 0 };
+  const headReady = await hasHead(workDir);
+  const [staged, unstagedTracked] = await Promise.all([
+    gitNumstat(workDir, ['--cached', '--']),
+    gitNumstat(workDir, ['--']),
+  ]);
+  const unstaged = addGitLineStats(unstagedTracked, untracked);
+  const totalTracked = headReady
+    ? await gitNumstat(workDir, ['HEAD', '--'])
+    : addGitLineStats(staged, unstagedTracked);
+  return {
+    total: addGitLineStats(totalTracked, untracked),
+    staged,
+    unstaged,
+  };
 }
 
 async function git(cwd: string, args: readonly string[]): Promise<void> {
@@ -526,6 +856,33 @@ async function gitText(cwd: string, args: readonly string[]): Promise<string> {
     encoding: 'utf8',
   });
   return stdout.trim();
+}
+
+/** Like gitText, but treats exit code 1 as success (files differ / --no-index). */
+async function gitDiffText(cwd: string, args: readonly string[]): Promise<string> {
+  try {
+    const { stdout } = await execFileAsync('git', args, {
+      cwd,
+      timeout: 30_000,
+      maxBuffer: 32 * 1024 * 1024,
+      encoding: 'utf8',
+    });
+    return stdout;
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException & {
+      status?: number | null;
+      code?: number | string | null;
+      stdout?: string | Buffer;
+    };
+    const exitCode = typeof err.status === 'number' ? err.status : err.code;
+    if (exitCode === 1) {
+      if (typeof err.stdout === 'string') return err.stdout;
+      if (Buffer.isBuffer(err.stdout)) return err.stdout.toString('utf8');
+      return '';
+    }
+    log.warn('git diff failed', { cwd, args, error });
+    throw error;
+  }
 }
 
 async function gitBuffer(cwd: string, args: readonly string[]): Promise<Buffer> {
@@ -628,44 +985,6 @@ async function collectPathSuggestions(root: string): Promise<readonly PathSugges
     }
   }
   return suggestions;
-}
-
-export function filterPathSuggestions(
-  suggestions: readonly PathSuggestion[],
-  query: string,
-  limit = 80,
-): readonly PathSuggestion[] {
-  const needle = query.trim().toLocaleLowerCase();
-  return suggestions
-    .map((suggestion) => ({ suggestion, score: pathSuggestionScore(suggestion, needle) }))
-    .filter((item): item is { suggestion: PathSuggestion; score: number } => item.score !== undefined)
-    .sort(
-      (a, b) =>
-        a.score - b.score ||
-        Number(b.suggestion.kind === 'directory') - Number(a.suggestion.kind === 'directory') ||
-        a.suggestion.path.length - b.suggestion.path.length ||
-        a.suggestion.path.localeCompare(b.suggestion.path),
-    )
-    .slice(0, limit)
-    .map((item) => item.suggestion);
-}
-
-function pathSuggestionScore(suggestion: PathSuggestion, needle: string): number | undefined {
-  if (needle.length === 0) return suggestion.path.split('/').length * 4;
-  const path = suggestion.path.toLocaleLowerCase();
-  const name = suggestion.name.toLocaleLowerCase();
-  if (name === needle) return 0;
-  if (name.startsWith(needle)) return 1 + name.length / 1_000;
-  const nameIndex = name.indexOf(needle);
-  if (nameIndex >= 0) return 10 + nameIndex + name.length / 1_000;
-  const pathIndex = path.indexOf(needle);
-  if (pathIndex >= 0) return 30 + pathIndex + path.length / 1_000;
-  let cursor = 0;
-  for (const character of path) {
-    if (character === needle[cursor]) cursor += 1;
-    if (cursor === needle.length) return 100 + path.length / 1_000;
-  }
-  return undefined;
 }
 
 function attachmentKind(path: string): PromptAttachment['kind'] {

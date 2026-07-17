@@ -23,8 +23,6 @@ mac:
   gatekeeperAssess: false
   extendInfo:
     CFBundleDisplayName: Ganymede Code
-    NSMicrophoneUsageDescription: Ganymede Code 使用麦克风进行本地语音听写。
-    NSSpeechRecognitionUsageDescription: Ganymede Code 使用设备端语音识别转写提示词。
     NSScreenCaptureUsageDescription: Ganymede Code 仅在你授权后截取屏幕用于 Computer Use。
 dmg:
   title: Ganymede Code

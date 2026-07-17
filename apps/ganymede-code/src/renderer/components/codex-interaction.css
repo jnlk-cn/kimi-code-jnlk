@@ -1,0 +1,209 @@
+/*
+ * Codex-like interaction contract
+ *
+ * Selection is quiet, neutral, and content-first. Accent color is reserved
+ * for focus, progress, links, unread state, and the primary action in a
+ * region; it must not tint rounded selected controls.
+ */
+
+:root {
+  --selection-bg: color-mix(in srgb, var(--text) 8%, transparent);
+  --selection-bg-hover: color-mix(in srgb, var(--text) 11%, transparent);
+  --selection-border: color-mix(in srgb, var(--text) 12%, transparent);
+  --selection-indicator: color-mix(in srgb, var(--text) 72%, transparent);
+  --surface-active: var(--selection-bg);
+}
+
+/* Rounded navigation, segmented controls, menu rows, and toolbar buttons. */
+.icon-button.active,
+.nav-button.active,
+.editor-shortcut-main.active,
+.review-branch-list button.active,
+.segmented button.active,
+.segmented-control > button.selected,
+.segmented-control > button[aria-selected='true'],
+.command-results button.active,
+.composer-suggestions button.active,
+.workspace-bottom-terminal.active {
+  border-color: transparent;
+  color: var(--text);
+  background: var(--selection-bg);
+  box-shadow: none;
+}
+
+.nav-button.active > span {
+  color: inherit;
+}
+
+.editor-shortcut-main:hover,
+.editor-shortcut-toggle:hover,
+.composer-suggestions button:hover,
+.app-menu-item-wrap > button:hover,
+.app-menu-item-wrap > button.active {
+  color: var(--text);
+  background: var(--selection-bg-hover);
+}
+
+.composer-menu-button.composer-mode-status.mode-agent {
+  color: var(--mode-agent);
+  background: color-mix(in srgb, var(--mode-agent) 12%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-agent:hover {
+  color: var(--mode-agent);
+  background: color-mix(in srgb, var(--mode-agent) 18%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-ask {
+  color: var(--mode-ask);
+  background: color-mix(in srgb, var(--mode-ask) 12%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-ask:hover {
+  color: var(--mode-ask);
+  background: color-mix(in srgb, var(--mode-ask) 18%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-plan {
+  color: var(--mode-plan);
+  background: color-mix(in srgb, var(--mode-plan) 12%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-plan:hover {
+  color: var(--mode-plan);
+  background: color-mix(in srgb, var(--mode-plan) 18%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-debug {
+  color: var(--mode-debug);
+  background: color-mix(in srgb, var(--mode-debug) 12%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-debug:hover {
+  color: var(--mode-debug);
+  background: color-mix(in srgb, var(--mode-debug) 18%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-multitask {
+  color: var(--mode-multitask);
+  background: color-mix(in srgb, var(--mode-multitask) 12%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-multitask:hover {
+  color: var(--mode-multitask);
+  background: color-mix(in srgb, var(--mode-multitask) 18%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-engineering {
+  color: var(--mode-engineering);
+  background: color-mix(in srgb, var(--mode-engineering) 12%, transparent);
+}
+
+.composer-menu-button.composer-mode-status.mode-engineering:hover {
+  color: var(--mode-engineering);
+  background: color-mix(in srgb, var(--mode-engineering) 18%, transparent);
+}
+
+.composer-menu-button.composer-permission-yolo {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.composer-menu-button.composer-permission-yolo:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.app-menu-check {
+  color: var(--text-secondary);
+}
+
+/* Routine chrome icons are monochrome; color is semantic, not decoration. */
+.settings-section h2 svg,
+.workspace-rail-content__icon {
+  color: var(--text-secondary);
+}
+
+.workspace-rail-content__icon {
+  background: var(--selection-bg);
+}
+
+.workspace-rail-content .empty-panel > span {
+  border-color: var(--selection-border);
+  color: var(--muted);
+  background: var(--selection-bg);
+}
+
+/* Selected rows and cards use the same neutral hierarchy. */
+.changed-files > div.selected,
+.changed-files > div.selected:hover,
+.question-list fieldset > button.selected,
+.question-bar-options > button.selected,
+.agent-task-list article.selected,
+.workspace-rail-content .agent-task-list article.selected {
+  border-color: var(--selection-border);
+  color: var(--text);
+  background: var(--selection-bg);
+  box-shadow: none;
+}
+
+.changed-files > div.selected:hover,
+.question-list fieldset > button.selected:hover,
+.question-bar-options > button.selected:hover,
+.agent-task-list article.selected:hover,
+.workspace-rail-content .agent-task-list article.selected:hover {
+  background: var(--selection-bg-hover);
+}
+
+/* The vertical tool dock keeps a subtle positional marker, never an accent pill. */
+.workspace-tool-dock__items > button.is-active {
+  border-color: transparent;
+  color: var(--text);
+  background: var(--selection-bg);
+}
+
+.workspace-tool-dock__items > button.is-active:hover {
+  background: var(--selection-bg-hover);
+}
+
+.workspace-tool-dock__items > button.is-active .workspace-tool-dock__indicator {
+  background: var(--selection-indicator);
+}
+
+/* File tree selection may use a neutral edge marker for orientation. */
+.workspace-rail-content button.file-node.file.active {
+  color: var(--text);
+  background: var(--selection-bg);
+  box-shadow: inset 2px 0 var(--selection-indicator);
+}
+
+.terminal-tabs > button:hover:not(.active),
+.terminal-tabs button:hover:not(.active),
+.workspace-rail-tab-bar.browser-tabs > button:hover:not(.active),
+.workspace-rail-tab-bar.browser-tabs button:hover:not(.active),
+.workspace-rail-tab-bar.terminal-tabs > button:hover:not(.active),
+.workspace-rail-tab-bar.terminal-tabs button:hover:not(.active) {
+  color: var(--text-secondary);
+  background: var(--selection-bg-hover);
+}
+
+.terminal-tabs > button.active,
+.terminal-tabs button.active,
+.workspace-rail-tab-bar.browser-tabs > button.active,
+.workspace-rail-tab-bar.browser-tabs button.active,
+.workspace-rail-tab-bar.terminal-tabs > button.active,
+.workspace-rail-tab-bar.terminal-tabs button.active {
+  color: var(--text);
+  background: var(--selection-bg);
+  box-shadow: none;
+}
+
+/* Secondary rounded actions stay neutral; only true primary actions use accent. */
+.review-toolbar button {
+  color: var(--text-secondary);
+}
+
+.review-toolbar button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--selection-bg-hover);
+}

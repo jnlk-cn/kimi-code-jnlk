@@ -113,6 +113,15 @@ describe('loadAgentsMd brand home (KIMI_CODE_HOME)', () => {
 
     expect(result).toContain('fallback branded');
   });
+
+  it('loads project .ganymede/AGENTS.md when brand is ganymede', async () => {
+    await mkdir(join(workDir, '.ganymede'), { recursive: true });
+    await writeFile(join(workDir, '.ganymede', 'AGENTS.md'), 'ganymede project agents', 'utf-8');
+
+    const result = await loadAgentsMd(testKaos, undefined, 'ganymede');
+
+    expect(result).toContain('ganymede project agents');
+  });
 });
 
 describe('loadAgentsMd oversized content', () => {

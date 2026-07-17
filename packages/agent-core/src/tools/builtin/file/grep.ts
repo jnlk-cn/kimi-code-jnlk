@@ -165,12 +165,15 @@ export class GrepTool implements BuiltinTool<GrepInput> {
   readonly description = GREP_DESCRIPTION;
   readonly parameters: Record<string, unknown> = toInputJsonSchema(GrepInputSchema);
   private readonly telemetry: TelemetryClient;
+  private readonly shareDir: string | undefined;
   constructor(
     private readonly kaos: Kaos,
     private readonly workspace: WorkspaceConfig,
     telemetry: TelemetryClient = noopTelemetryClient,
+    shareDir?: string,
   ) {
     this.telemetry = telemetry;
+    this.shareDir = shareDir;
   }
 
   resolveExecution(args: GrepInput): ToolExecution {
@@ -207,7 +210,7 @@ export class GrepTool implements BuiltinTool<GrepInput> {
     const pathClass = this.kaos.pathClass();
     let rgPath: string;
     try {
-      const resolution = await ensureRgPath({ signal });
+      const resolution = await ensureRgPath({ signal, shareDir: this.shareDir });
       rgPath = resolution.path;
       if (resolution.source !== 'system-path') {
         this.telemetry.track('grep_tool_rg_fallback', {

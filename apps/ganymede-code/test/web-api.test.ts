@@ -144,3 +144,26 @@ describe('createWebDesktopApi', () => {
     );
   });
 });
+
+describe('ganymede brand paths', () => {
+  it('createKimiHarness with brand ganymede uses the provided homeDir', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { createKimiHarness } = await import('@moonshot-ai/kimi-code-sdk');
+
+    const homeDir = await mkdtemp(join(tmpdir(), 'ganymede-brand-'));
+    const harness = createKimiHarness({
+      brand: 'ganymede',
+      homeDir,
+      identity: { userAgentProduct: 'Ganymede Code', version: '0.0.0-test' },
+    });
+    try {
+      expect(harness.homeDir).toBe(homeDir);
+      expect(harness.homeDir.includes('.kimi-code')).toBe(false);
+    } finally {
+      await harness.close();
+      await rm(homeDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+});

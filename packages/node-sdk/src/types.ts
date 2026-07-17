@@ -1,6 +1,7 @@
 import type {
   ExportSessionManifest,
   McpServerConfig,
+  ProductBrand,
   ResumeSessionResult,
   ShellEnvironment,
   TelemetryClient,
@@ -26,6 +27,8 @@ export type {
   BackgroundTaskStatus,
   ConfigDiagnostics,
   ContextMessage,
+  ContextUsageBreakdown,
+  ContextUsageCategories,
   CronTaskSnapshot,
   ExperimentalFeatureState,
   ExperimentalFlagMap,
@@ -75,7 +78,7 @@ export type { ContentPart, Role, ThinkingEffort, ToolCall } from '@moonshot-ai/k
 
 export type PermissionMode = 'yolo' | 'manual' | 'auto';
 
-export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask';
+export type InteractionMode = 'agent' | 'plan' | 'debug' | 'multitask' | 'ask' | 'engineering';
 
 export interface CreateGoalInput {
   readonly objective: string;
@@ -87,10 +90,14 @@ export type PromptPart = Extract<ContentPart, { type: 'text' | 'image_url' | 'vi
 
 export type PromptInput = readonly PromptPart[];
 
+export type { ProductBrand };
+
 export interface KimiHarnessOptions {
   readonly identity?: KimiHostIdentity | undefined;
   readonly homeDir?: string | undefined;
   readonly configPath?: string | undefined;
+  /** Product brand for data paths; defaults to `kimi-code`. Use `ganymede` for Ganymede Code. */
+  readonly brand?: ProductBrand;
   readonly autoLoadConfig?: boolean | undefined;
   readonly uiMode?: string;
   readonly skillDirs?: readonly string[];
@@ -225,9 +232,12 @@ export interface SessionStatus {
   readonly thinkingEffort: string;
   readonly permission: PermissionMode;
   readonly planMode: boolean;
+  /** Absolute path of the active plan file while plan mode is on. */
+  readonly planFilePath?: string | undefined;
   readonly swarmMode?: boolean | undefined;
   readonly askMode?: boolean | undefined;
   readonly debugMode?: boolean | undefined;
+  readonly engineeringMode?: boolean | undefined;
   readonly interactionMode?: InteractionMode | undefined;
   readonly contextTokens: number;
   readonly maxContextTokens: number;

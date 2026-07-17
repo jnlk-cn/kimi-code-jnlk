@@ -608,6 +608,79 @@ describe('HarnessAPI session skills', () => {
     });
   });
 
+  it('bootstraps skills into context without launching a turn', async () => {
+    await writeSkill('phase-one-review', [
+      '---',
+      'name: phase-one-review',
+      'description: Review code',
+      'disable_model_invocation: true',
+      '---',
+      '',
+      'Review the requested file.',
+    ]);
+    await writeSkill('bridge-skill', [
+      '---',
+      'name: bridge-skill',
+      'description: Bridge mapping',
+      'disable_model_invocation: true',
+      '---',
+      '',
+      'Prefer AskUserQuestion.',
+    ]);
+    const { events, rpc } = await createTestRpc();
+    const created = await rpc.createSession({ id: 'ses_skill_bootstrap', workDir });
+
+    await rpc.activateSkill({
+      sessionId: created.id,
+      agentId: 'main',
+      name: 'phase-one-review',
+      mode: 'bootstrap',
+    });
+    await rpc.activateSkill({
+      sessionId: created.id,
+      agentId: 'main',
+      name: 'bridge-skill',
+      mode: 'bootstrap',
+    });
+
+    const activated = events.filter((event) => event.type === 'skill.activated');
+    expect(activated).toHaveLength(2);
+    expect(activated[0]).toMatchObject({
+      skillName: 'phase-one-review',
+      trigger: 'engineering-bootstrap',
+    });
+    expect(activated[1]).toMatchObject({
+      skillName: 'bridge-skill',
+      trigger: 'engineering-bootstrap',
+    });
+    expect(events.some((event) => event.type === 'turn.started')).toBe(false);
+
+    const context = await rpc.getContext({ sessionId: created.id, agentId: 'main' });
+    expect(context.history).toHaveLength(2);
+    expect(context.history[0]).toMatchObject({
+      role: 'user',
+      origin: {
+        kind: 'skill_activation',
+        skillName: 'phase-one-review',
+        trigger: 'engineering-bootstrap',
+      },
+    });
+    expect(context.history[1]).toMatchObject({
+      role: 'user',
+      origin: {
+        kind: 'skill_activation',
+        skillName: 'bridge-skill',
+        trigger: 'engineering-bootstrap',
+      },
+    });
+    const firstText = String(
+      (context.history[0]?.content?.[0] as { text?: string } | undefined)?.text ?? '',
+    );
+    expect(firstText).toContain('Engineering mode preloaded this skill');
+    expect(firstText).toContain('trigger="engineering-bootstrap"');
+    expect(firstText).not.toContain('User activated the skill');
+  });
+
   it('rejects missing and non-inline skills with structured errors', async () => {
     const { core, rpc } = await createTestRpc();
     const created = await rpc.createSession({ id: 'ses_skill_errors', workDir });

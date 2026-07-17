@@ -619,13 +619,15 @@ export class SessionEventHandler {
       event.planMode !== undefined ||
       event.swarmMode !== undefined ||
       event.askMode !== undefined ||
-      event.debugMode !== undefined
+      event.debugMode !== undefined ||
+      event.engineeringMode !== undefined
     ) {
       const interactionMode = deriveInteractionMode({
         planMode: event.planMode ?? this.host.state.appState.planMode,
         swarmMode: event.swarmMode ?? this.host.state.appState.swarmMode,
         askMode: event.askMode ?? this.host.state.appState.askMode,
         debugMode: event.debugMode ?? this.host.state.appState.debugMode,
+        engineeringMode: event.engineeringMode,
         interactionMode: event.interactionMode,
       });
       patch.interactionMode = interactionMode;

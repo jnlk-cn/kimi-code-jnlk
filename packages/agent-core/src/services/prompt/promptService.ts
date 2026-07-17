@@ -796,6 +796,7 @@ export class PromptService
         if (event.swarmMode !== undefined) shadow.swarmMode = event.swarmMode;
         if (event.askMode !== undefined) shadow.askMode = event.askMode;
         if (event.debugMode !== undefined) shadow.debugMode = event.debugMode;
+        if (event.engineeringMode !== undefined) shadow.engineeringMode = event.engineeringMode;
         if (event.interactionMode !== undefined) shadow.interactionMode = event.interactionMode;
       }
       // status events are also published normally; fall through to allow

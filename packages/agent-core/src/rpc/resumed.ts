@@ -41,6 +41,7 @@ export interface ResumedAgentState {
   readonly swarmMode?: boolean | undefined;
   readonly askMode?: boolean | undefined;
   readonly debugMode?: boolean | undefined;
+  readonly engineeringMode?: boolean | undefined;
   readonly interactionMode?: InteractionMode | undefined;
   readonly usage: UsageStatus;
   readonly tools: readonly ToolInfo[];
