@@ -315,7 +315,7 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
   if (!isUsableChatModel(model)) return undefined;
   const inputs = model.modalities?.input ?? [];
   const output = model.limit?.output;
-  const thinking = catalogThinkingOptions(model.reasoning_options);
+  const thinking = catalogThinkingOptions(model.reasoning_options, model.reasoning === true);
   // `limit.input` is the true prompt cap when declared (e.g. gpt-5: 400k
   // context window but a 272k input limit); it is tracked separately from the
   // total window so prompt-budget checks (compaction) use the cap while
@@ -357,15 +357,25 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
  * disabling thinking (e.g. xai grok) and becomes {@link CatalogModel.offEffort};
  * the UI keeps using its own `off` entry for it. A model that declares levels
  * with neither a toggle nor `'none'` always reasons — it cannot be turned off.
+ * models.dev also marks always-on reasoners (DeepSeek V4) as `reasoning: true`
+ * with a missing or empty `reasoning_options` list.
  */
-function catalogThinkingOptions(options: CatalogModelEntry['reasoning_options']): {
+function catalogThinkingOptions(
+  options: CatalogModelEntry['reasoning_options'],
+  reasoning: boolean,
+): {
   readonly efforts: readonly string[] | undefined;
   readonly offEffort: string | undefined;
   readonly hasToggle: boolean;
   readonly alwaysThinking: boolean | undefined;
 } {
-  if (!Array.isArray(options)) {
-    return { efforts: undefined, offEffort: undefined, hasToggle: false, alwaysThinking: undefined };
+  if (!Array.isArray(options) || options.length === 0) {
+    return {
+      efforts: undefined,
+      offEffort: undefined,
+      hasToggle: false,
+      alwaysThinking: reasoning ? true : undefined,
+    };
   }
   let efforts: readonly string[] | undefined;
   let offEffort: string | undefined;

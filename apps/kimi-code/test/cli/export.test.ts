@@ -420,7 +420,7 @@ describe('kimi export', () => {
     expect(mocks.initializeTelemetry).toHaveBeenCalledWith({
       homeDir: '/tmp/kimi-export-home',
       deviceId: 'device-1',
-      enabled: true,
+      enabled: false,
       appName: 'kimi-code-cli',
       version: expect.any(String),
       uiMode: 'shell',

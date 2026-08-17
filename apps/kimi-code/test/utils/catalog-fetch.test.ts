@@ -29,7 +29,12 @@ describe('fetchCatalogOrBuiltIn', () => {
     });
 
     expect(result.fromBuiltIn).toBe(false);
-    expect(result.catalog).toEqual(network);
+    expect(result.catalog).toEqual(
+      expect.objectContaining({
+        openai: { id: 'openai', models: {} },
+        'volcengine-coding-plan': expect.objectContaining({ id: 'volcengine-coding-plan' }),
+      }),
+    );
   });
 
   it('falls back to the built-in snapshot when the default URL fetch fails', async () => {
@@ -41,7 +46,12 @@ describe('fetchCatalogOrBuiltIn', () => {
     });
 
     expect(result.fromBuiltIn).toBe(true);
-    expect(result.catalog).toEqual(JSON.parse(BUILT_IN));
+    expect(result.catalog).toEqual(
+      expect.objectContaining({
+        anthropic: expect.objectContaining({ id: 'anthropic' }),
+        'volcengine-coding-plan': expect.objectContaining({ id: 'volcengine-coding-plan' }),
+      }),
+    );
   });
 
   it('does not fall back for a custom catalog URL', async () => {

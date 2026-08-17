@@ -3,6 +3,7 @@ import {
   catalogBaseUrl,
   catalogProviderModels,
   inferWireType,
+  mergeCatalogOverlays,
   resolveCatalogImport,
   type Catalog,
   type CatalogImportInvalidReason,
@@ -13,7 +14,13 @@ import {
   type ProviderType,
 } from '@moonshot-ai/kosong';
 
-export { catalogBaseUrl, catalogProviderModels, inferWireType, resolveCatalogImport };
+export {
+  catalogBaseUrl,
+  catalogProviderModels,
+  inferWireType,
+  mergeCatalogOverlays,
+  resolveCatalogImport,
+};
 export type { CatalogImportInvalidReason, CatalogImportResolution };
 export type { Catalog, CatalogModel, CatalogProviderEntry };
 
@@ -53,7 +60,10 @@ export async function fetchCatalog(
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
     throw new Error(`Unexpected catalog response from ${url}.`);
   }
-  return payload as Catalog;
+  const catalog = payload as Catalog;
+  // Local overlays (Volcengine Coding Plan) apply to the public models.dev
+  // directory only — a custom `--url` registry must stay unmodified.
+  return url === DEFAULT_CATALOG_URL ? mergeCatalogOverlays(catalog) : catalog;
 }
 
 function capabilityToStrings(capability: ModelCapability): string[] | undefined {
@@ -109,7 +119,7 @@ export interface ApplyCatalogProviderOptions {
 export function loadBuiltInCatalog(text?: string): Catalog | undefined {
   if (typeof text !== 'string' || text.length === 0) return undefined;
   try {
-    return JSON.parse(text) as Catalog;
+    return mergeCatalogOverlays(JSON.parse(text) as Catalog);
   } catch {
     return undefined;
   }

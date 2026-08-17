@@ -6,6 +6,7 @@ import {
   catalogModelToAlias,
   catalogProviderModels,
   CatalogFetchError,
+  DEFAULT_CATALOG_URL,
   fetchCatalog,
   loadBuiltInCatalog,
   type CatalogModel,
@@ -59,13 +60,10 @@ describe('fetchCatalog', () => {
   it('sends the given User-Agent, and none by default', async () => {
     const fetchMock = vi.fn(async () => catalogResponse({}));
 
-    await fetchCatalog(
-      'https://x/api.json',
-      {
-        fetchImpl: fetchMock as unknown as typeof fetch,
-        userAgent: 'kimi-code-cli/1.2.3',
-      },
-    );
+    await fetchCatalog('https://x/api.json', {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      userAgent: 'kimi-code-cli/1.2.3',
+    });
     const withUa = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     const withUaHeaders = withUa[1].headers as Record<string, string>;
     expect(withUaHeaders['User-Agent']).toBe('kimi-code-cli/1.2.3');
@@ -78,12 +76,40 @@ describe('fetchCatalog', () => {
     const withoutUa = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect((withoutUa[1].headers as Record<string, string>)['User-Agent']).toBeUndefined();
   });
+
+  it('merges Volcengine Coding Plan into the default models.dev URL only', async () => {
+    const catalog = { anthropic: { id: 'anthropic', models: {} } };
+    const fetchMock = vi.fn(async () => catalogResponse(catalog));
+
+    const fromDefault = await fetchCatalog(DEFAULT_CATALOG_URL, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(fromDefault['volcengine-coding-plan']).toMatchObject({
+      id: 'volcengine-coding-plan',
+      api: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+    });
+
+    fetchMock.mockClear();
+    const fromCustom = await fetchCatalog('https://x/api.json', {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(fromCustom).toEqual(catalog);
+    expect(fromCustom['volcengine-coding-plan']).toBeUndefined();
+  });
 });
 
 describe('loadBuiltInCatalog', () => {
-  it('parses a valid catalog JSON string', () => {
+  it('parses a valid catalog JSON string and merges local overlays', () => {
     const catalog = { anthropic: { id: 'anthropic', models: {} } };
-    expect(loadBuiltInCatalog(JSON.stringify(catalog))).toEqual(catalog);
+    expect(loadBuiltInCatalog(JSON.stringify(catalog))).toEqual(
+      expect.objectContaining({
+        anthropic: { id: 'anthropic', models: {} },
+        'volcengine-coding-plan': expect.objectContaining({
+          id: 'volcengine-coding-plan',
+          api: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+        }),
+      }),
+    );
   });
 
   it('returns undefined for missing or invalid input', () => {

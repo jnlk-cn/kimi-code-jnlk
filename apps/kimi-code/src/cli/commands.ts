@@ -14,14 +14,12 @@ import { registerWebCommand } from './sub/web';
 export type MainCommandHandler = (opts: CLIOptions) => void;
 export type MigrateCommandHandler = () => void;
 export type PluginNodeRunnerHandler = (entry: string, args: readonly string[]) => void;
-export type UpgradeCommandHandler = () => void | Promise<void>;
 
 export function createProgram(
   version: string,
   onMain: MainCommandHandler,
   onMigrate: MigrateCommandHandler,
   onPluginNodeRunner: PluginNodeRunnerHandler = () => {},
-  onUpgrade: UpgradeCommandHandler = () => {},
 ): Command {
   const program = new Command(CLI_COMMAND_NAME)
     .description('The Starting Point for Next-Gen Agents')
@@ -121,13 +119,6 @@ export function createProgram(
   registerDoctorCommand(program);
   registerVisCommand(program);
   registerMigrateCommand(program, onMigrate);
-  program
-    .command('upgrade')
-    .alias('update')
-    .description('Upgrade Kimi Code to the latest version.')
-    .action(async () => {
-      await onUpgrade();
-    });
 
   program
     .command('__plugin_run_node', { hidden: true })

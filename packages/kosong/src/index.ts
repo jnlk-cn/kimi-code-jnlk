@@ -54,6 +54,11 @@ export type {
   CatalogImportInvalidReason,
   CatalogImportResolution,
 } from './catalog';
+export {
+  CATALOG_OVERLAYS,
+  VOLCENGINE_CODING_PLAN_PROVIDER_ID,
+  mergeCatalogOverlays,
+} from './catalog-overlays';
 
 // Core functions
 export { generate } from './generate';

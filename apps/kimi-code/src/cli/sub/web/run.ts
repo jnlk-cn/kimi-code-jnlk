@@ -295,10 +295,6 @@ async function runServerInProcess(
     allowRemoteTerminals: options.allowRemoteTerminals,
     allowedHosts: options.allowedHosts,
     disableAuth: options.dangerousBypassAuth,
-    // Attach the engine's cloud telemetry appender (still gated by the config
-    // `telemetry` toggle). Complements the v1 client registered above, which
-    // only covers host-level events.
-    telemetry: true,
     webAssetsDir,
   });
   logger.info('serving the REST/WS API and the bundled web UI');

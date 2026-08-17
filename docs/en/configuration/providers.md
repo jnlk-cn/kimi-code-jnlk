@@ -31,7 +31,7 @@ The manager displays providers as a list of entries grouped by source. Navigatio
 
 Two paths when adding:
 
-- **Known third-party provider**: fetches the model catalog from [models.dev](https://models.dev/), select a provider → enter an API key → select a default model. Vendors whose protocol the catalog does not declare (e.g. xai, openrouter, and other vendor-specific SDKs) are imported as OpenAI-compatible with a "guessed" note; when the catalog provides no usable endpoint, a base URL prompt appears first; proprietary protocols (Amazon Bedrock, Cohere) and unrecognized explicit protocols are refused. Deprecated and alpha-status models are excluded from the import list. If the public catalog is unreachable, the CLI falls back to a built-in snapshot of the catalog, so the import still works offline or in blocked networks
+- **Known third-party provider**: fetches the model catalog from [models.dev](https://models.dev/), select a provider → enter an API key → select a default model. Vendors whose protocol the catalog does not declare (e.g. xai, openrouter, and other vendor-specific SDKs) are imported as OpenAI-compatible with a "guessed" note; when the catalog provides no usable endpoint, a base URL prompt appears first; proprietary protocols (Amazon Bedrock, Cohere) and unrecognized explicit protocols are refused. Deprecated and alpha-status models are excluded from the import list. If the public catalog is unreachable, the CLI falls back to a built-in snapshot of the catalog, so the import still works offline or in blocked networks. The catalog also merges locally maintained provider entries (for example Volcengine Ark Coding Plan)
 - **Custom registry (api.json)**: paste a custom registry URL and Bearer token; the CLI automatically creates the `providers` / `models` entries. On later startup, providers from the same registry URL are refreshed together, so upstream provider additions, removals, and model metadata changes are synced.
 
 ::: warning
@@ -151,6 +151,34 @@ kimi
 ```
 
 To route Vertex requests through a custom (e.g. proxied) endpoint, set `base_url` (or the `GOOGLE_VERTEX_BASE_URL` env var); when omitted, the SDK default regional `*-aiplatform.googleapis.com` host is used. As with `google-genai`, give the host root only — the SDK appends `/v1beta1/publishers/google/models/…` itself.
+
+## Volcengine Ark Coding Plan
+
+[Volcengine Ark Coding Plan](https://www.volcengine.com/article/37482) is a subscription package for individual AI coding. Kimi Code CLI exposes it through a local catalog overlay: pick **Volcengine Ark Coding Plan** in `/provider`, or run:
+
+```sh
+kimi provider catalog add volcengine-coding-plan --api-key YOUR_API_KEY --default-model ark-code-latest
+```
+
+The import writes `type = "openai"` and the Coding Plan OpenAI-compatible endpoint:
+
+```toml
+[providers.volcengine-coding-plan]
+type = "openai"
+base_url = "https://ark.cn-beijing.volces.com/api/coding/v3"
+api_key = "YOUR_API_KEY"
+
+[models."volcengine-coding-plan/ark-code-latest"]
+provider = "volcengine-coding-plan"
+model = "ark-code-latest"
+max_context_size = 262144
+```
+
+::: warning
+Use the API key and `/api/coding/v3` endpoint issued for Coding Plan. Do not mix Agent Plan (`/api/plan/v3`) or pay-as-you-go Ark API (`/api/v3`) keys or URLs — that can skip plan quota or incur extra charges. Plan quota is valid only inside supported AI coding tools.
+:::
+
+Prefer `ark-code-latest` (console Auto routing) first; you can also pick a concrete model such as `doubao-seed-2.0-code`, `deepseek-v4-pro`, `kimi-k2.7-code`, `glm-5.2`, or `minimax-m3`. Treat the Volcengine Coding Plan console as the source of truth for the live model list.
 
 ## OAuth and credential injection
 

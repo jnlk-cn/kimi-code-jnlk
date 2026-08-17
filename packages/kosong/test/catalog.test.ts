@@ -9,6 +9,11 @@ import {
   resolveCatalogImport,
   type CatalogModelEntry,
 } from '../src/catalog';
+import {
+  CATALOG_OVERLAYS,
+  VOLCENGINE_CODING_PLAN_PROVIDER_ID,
+  mergeCatalogOverlays,
+} from '../src/catalog-overlays';
 
 describe('inferWireType (deprecated compatibility wrapper)', () => {
   it('answers only the wire, or undefined when the entry is not importable', () => {
@@ -284,6 +289,7 @@ describe('catalogModelToCapability', () => {
       id: 'm',
       name: 'M',
       maxOutputSize: 64000,
+      alwaysThinking: true,
       capability: {
         image_in: true,
         video_in: false,
@@ -423,6 +429,51 @@ describe('catalogModelToCapability', () => {
     });
     expect(toggleable?.alwaysThinking).toBeUndefined();
     expect(toggleable?.offEffort).toBeUndefined();
+  });
+
+  it('marks reasoning=true with empty or missing reasoning_options as always-thinking (DeepSeek V4)', () => {
+    const emptyOptions = catalogModelToCapability({
+      id: 'deepseek-v4-pro',
+      reasoning: true,
+      reasoning_options: [],
+      interleaved: { field: 'reasoning_content' },
+      limit: { context: 1000000, output: 384000 },
+      tool_call: true,
+    });
+    expect(emptyOptions?.alwaysThinking).toBe(true);
+    expect(emptyOptions?.capability.thinking).toBe(true);
+    expect(emptyOptions?.maxOutputSize).toBe(384000);
+    expect(emptyOptions?.reasoningKey).toBe('reasoning_content');
+    expect(emptyOptions?.supportEfforts).toBeUndefined();
+
+    const missingOptions = catalogModelToCapability({
+      id: 'deepseek-v4-flash',
+      reasoning: true,
+      limit: { context: 1000000, output: 384000 },
+    });
+    expect(missingOptions?.alwaysThinking).toBe(true);
+    expect(missingOptions?.capability.thinking).toBe(true);
+
+    // Without the reasoning flag, an empty list is not always-thinking.
+    const noReasoning = catalogModelToCapability({
+      id: 'plain',
+      reasoning_options: [],
+      limit: { context: 1000 },
+    });
+    expect(noReasoning?.alwaysThinking).toBeUndefined();
+    expect(noReasoning?.capability.thinking).toBe(false);
+  });
+
+  it('preserves gateway effort tiers for DeepSeek V4 re-exports', () => {
+    const model = catalogModelToCapability({
+      id: 'deepseek-v4-pro',
+      reasoning: true,
+      reasoning_options: [{ type: 'effort', values: ['high', 'max'] }],
+      limit: { context: 1000000, output: 384000 },
+    });
+    expect(model?.supportEfforts).toEqual(['high', 'max']);
+    expect(model?.alwaysThinking).toBe(true);
+    expect(model?.offEffort).toBeUndefined();
   });
 
   it('strips the always-thinking inference only where the wire encodes a true off', () => {
@@ -842,5 +893,83 @@ describe('catalogProviderModels', () => {
       },
     });
     expect(models).toHaveLength(0);
+  });
+});
+
+describe('mergeCatalogOverlays (Volcengine Coding Plan)', () => {
+  it('injects volcengine-coding-plan into an empty or existing catalog', () => {
+    const empty = mergeCatalogOverlays({});
+    expect(empty[VOLCENGINE_CODING_PLAN_PROVIDER_ID]).toBeDefined();
+    expect(Object.keys(CATALOG_OVERLAYS)).toEqual([VOLCENGINE_CODING_PLAN_PROVIDER_ID]);
+
+    const merged = mergeCatalogOverlays({
+      openai: { id: 'openai', npm: '@ai-sdk/openai', api: 'https://api.openai.com/v1' },
+    });
+    expect(merged['openai']?.id).toBe('openai');
+    expect(merged[VOLCENGINE_CODING_PLAN_PROVIDER_ID]?.api).toBe(
+      'https://ark.cn-beijing.volces.com/api/coding/v3',
+    );
+  });
+
+  it('resolves the Coding Plan provider as OpenAI-compatible with the coding gateway', () => {
+    const entry = CATALOG_OVERLAYS[VOLCENGINE_CODING_PLAN_PROVIDER_ID]!;
+    expect(resolveCatalogImport(entry)).toEqual({
+      kind: 'ok',
+      wire: 'openai',
+      guessed: false,
+      baseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+    });
+  });
+
+  it('maps DeepSeek V4 overlay models as always-on reasoners', () => {
+    const entry = CATALOG_OVERLAYS[VOLCENGINE_CODING_PLAN_PROVIDER_ID]!;
+    const models = catalogProviderModels(entry);
+    const ids = models.map((model) => model.id);
+    expect(ids).toContain('deepseek-v4-pro');
+    expect(ids).toContain('deepseek-v4-flash');
+    expect(ids).toContain('ark-code-latest');
+    expect(ids).toContain('glm-5.2');
+    expect(ids).toContain('kimi-k2.7-code');
+    expect(ids).toContain('kimi-k2.7-code-thinking');
+    expect(ids).toContain('minimax-m3');
+    expect(ids).not.toContain('kimi-k2-thinking');
+
+    const pro = models.find((model) => model.id === 'deepseek-v4-pro');
+    expect(pro).toMatchObject({
+      reasoningKey: 'reasoning_content',
+      maxOutputSize: 384000,
+      capability: expect.objectContaining({
+        thinking: true,
+        tool_use: true,
+        max_context_tokens: 1048576,
+      }),
+    });
+    expect(pro?.alwaysThinking).toBeUndefined();
+
+    const volcengineOutputCaps: Record<string, number> = {
+      'ark-code-latest': 65536,
+      'doubao-seed-2.1-turbo': 65536,
+      'doubao-seed-2.0-code': 65536,
+      'doubao-seed-2.0-pro': 65536,
+      'doubao-seed-2.0-lite': 65536,
+      'doubao-seed-code': 65536,
+      'deepseek-v3.2': 65536,
+      'deepseek-v4-pro': 384000,
+      'deepseek-v4-flash': 384000,
+      'glm-4.7': 131072,
+      'glm-5.1': 131072,
+      'glm-5.2': 131072,
+      'kimi-k2.5': 32768,
+      'kimi-k2.6': 32768,
+      'kimi-k2.7-code': 32768,
+      'kimi-k2.7-code-thinking': 32768,
+      'minimax-m2.5': 131072,
+      'minimax-m2.7': 131072,
+      'minimax-m3': 131072,
+    };
+    for (const [id, maxOutputSize] of Object.entries(volcengineOutputCaps)) {
+      const model = models.find((entry) => entry.id === id);
+      expect(model?.maxOutputSize, id).toBe(maxOutputSize);
+    }
   });
 });

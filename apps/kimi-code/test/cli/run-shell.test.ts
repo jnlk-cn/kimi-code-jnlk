@@ -325,7 +325,7 @@ describe('runShell', () => {
     expect(mocks.initializeTelemetry).toHaveBeenCalledWith({
       homeDir: '/tmp/kimi-code-test-home',
       deviceId: 'device-1',
-      enabled: true,
+      enabled: false,
       appName: 'kimi-code-cli',
       version: '1.2.3-test',
       uiMode: 'shell',

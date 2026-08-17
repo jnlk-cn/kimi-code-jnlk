@@ -1,26 +1,18 @@
 /**
  * Kimi Code entry point.
  *
- * Parses CLI arguments via Commander.js, validates options, runs the
- * outer update preflight, then delegates to the requested UI runner.
+ * Parses CLI arguments via Commander.js, validates options, then delegates
+ * to the requested UI runner.
  */
 
 import {
-  createKimiHarness,
   flushDiagnosticLogs,
   installGlobalProxyDispatcher,
   log,
   resolveGlobalLogPath,
   resolveKimiHome,
-  type TelemetryClient,
 } from '@moonshot-ai/kimi-code-sdk';
-import {
-  installCrashHandlers,
-  setTelemetryContext,
-  shutdownTelemetry,
-  track,
-  withTelemetryContext,
-} from '@moonshot-ai/kimi-telemetry';
+import { installCrashHandlers } from '@moonshot-ai/kimi-telemetry';
 
 import { createProgram } from './cli/commands';
 import { finalizeHeadlessRun } from './cli/headless-exit';
@@ -31,11 +23,8 @@ import { runPrompt } from './cli/run-prompt';
 import { runShell } from './cli/run-shell';
 import { formatStartupError } from './cli/startup-error';
 import { runPluginNodeEntry } from './cli/sub/plugin-run-node';
-import { handleUpgrade } from './cli/sub/upgrade';
-import { createCliTelemetryBootstrap, initializeCliTelemetry } from './cli/telemetry';
-import { runUpdatePreflight } from './cli/update/preflight';
-import { createKimiCodeHostIdentity, getVersion } from './cli/version';
-import { CLI_SHUTDOWN_TIMEOUT_MS, CLI_UI_MODE, PROCESS_NAME } from './constant/app';
+import { getVersion } from './cli/version';
+import { PROCESS_NAME } from './constant/app';
 import { cleanupStaleNativeCacheForCurrent } from './native/native-assets';
 import { installMinidbTextBuildWorker } from './native/minidb-worker';
 import { installKapSearchWorker } from './native/search-worker';
@@ -70,16 +59,6 @@ export async function handleMainCommand(
     throw error;
   }
 
-  startupTrace('preflight:begin');
-  const preflightResult = await runUpdatePreflight(
-    version,
-    validated.uiMode === 'print' ? { track, isTTY: false } : { track },
-  );
-  startupTrace('preflight:end');
-  if (preflightResult === 'exit') {
-    process.exit(0);
-  }
-
   if (validated.uiMode === 'print') {
     await runPrompt(validated.options, version);
     return { headlessCompleted: true };
@@ -93,37 +72,6 @@ export async function handleMainCommand(
 /** `kimi migrate`: launch the migration screen only, then exit. */
 async function handleMigrateCommand(version: string): Promise<void> {
   await runShell(MIGRATE_CLI_OPTIONS, version, { migrateOnly: true });
-}
-
-export async function handleUpgradeCommand(version: string): Promise<void> {
-  const telemetryBootstrap = createCliTelemetryBootstrap();
-  const telemetryClient: TelemetryClient = {
-    track,
-    withContext: withTelemetryContext,
-    setContext: setTelemetryContext,
-  };
-  const harness = createKimiHarness({
-    homeDir: telemetryBootstrap.homeDir,
-    identity: createKimiCodeHostIdentity(version),
-    telemetry: telemetryClient,
-  });
-  let exitCode = 1;
-  try {
-    await harness.ensureConfigFile();
-    const config = await harness.getConfig();
-    initializeCliTelemetry({
-      harness,
-      bootstrap: telemetryBootstrap,
-      config,
-      version,
-      uiMode: CLI_UI_MODE,
-    });
-    exitCode = await handleUpgrade(version, { track, logger: log });
-  } finally {
-    await shutdownTelemetry({ timeoutMs: CLI_SHUTDOWN_TIMEOUT_MS }).catch(() => {});
-    await harness.close().catch(() => {});
-  }
-  process.exit(exitCode);
 }
 
 /** A neutral CLIOptions value — `kimi migrate` never opens a chat session. */
@@ -235,14 +183,6 @@ export function main(): void {
       void runPluginNodeEntry(entry, args).catch(async (error: unknown) => {
         await logStartupFailure('run plugin node entry', error);
         process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-        process.exit(1);
-      });
-    },
-    () => {
-      void handleUpgradeCommand(version).catch(async (error: unknown) => {
-        await logStartupFailure('upgrade', error);
-        process.stderr.write(formatStartupError(error, { operation: 'upgrade' }));
-        process.stderr.write(`See log: ${resolveGlobalLogPath(resolveKimiHome())}\n`);
         process.exit(1);
       });
     },

@@ -1309,6 +1309,81 @@ describe('OpenAI reasoning_effort path (issue #1616)', () => {
     const explicit = await captureOpenAIBody(provider, { thinking: { effort: 'low' } });
     expect(explicit['reasoning_effort']).toBe('low');
   });
+
+  it('omits reasoning_effort for always-thinking models with no effort tiers (DeepSeek V4)', async () => {
+    const provider = new OpenAILegacyChatProvider({
+      model: 'deepseek-v4-pro',
+      apiKey: 'sk-probe',
+      stream: false,
+      alwaysThinking: true,
+    });
+
+    const body = await captureOpenAIBody(provider, undefined, THINK_HISTORY);
+    expect(body).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('auto-injects the catalog middle effort when supportEfforts is declared', async () => {
+    const provider = new OpenAILegacyChatProvider({
+      model: 'deepseek-v4-pro',
+      apiKey: 'sk-probe',
+      stream: false,
+      alwaysThinking: true,
+      supportEfforts: ['high', 'max'],
+    });
+
+    const body = await captureOpenAIBody(provider, undefined, THINK_HISTORY);
+    expect(body['reasoning_effort']).toBe('max');
+  });
+
+  it('prefers defaultEffort over the middle tier when listed', async () => {
+    const provider = new OpenAILegacyChatProvider({
+      model: 'deepseek-v4-pro',
+      apiKey: 'sk-probe',
+      stream: false,
+      supportEfforts: ['high', 'max'],
+      defaultEffort: 'high',
+    });
+
+    const body = await captureOpenAIBody(provider, undefined, THINK_HISTORY);
+    expect(body['reasoning_effort']).toBe('high');
+  });
+});
+
+describe('OpenAI maxCompletionTokensCeiling (DeepSeek V4)', () => {
+  it('clamps to the default 128k ceiling when no per-model ceiling is set', async () => {
+    const provider = new OpenAILegacyChatProvider({
+      model: 'gpt-4.1',
+      apiKey: 'sk-probe',
+      stream: false,
+    });
+
+    const body = await captureOpenAIBody(provider, { maxCompletionTokens: 400_000 });
+    expect(body['max_tokens'] ?? body['max_completion_tokens']).toBe(131072);
+  });
+
+  it('honors a per-model ceiling above 128k', async () => {
+    const provider = new OpenAILegacyChatProvider({
+      model: 'deepseek-v4-flash',
+      apiKey: 'sk-probe',
+      stream: false,
+      maxCompletionTokensCeiling: 384_000,
+    });
+
+    const body = await captureOpenAIBody(provider, { maxCompletionTokens: 400_000 });
+    expect(body['max_tokens'] ?? body['max_completion_tokens']).toBe(384_000);
+  });
+
+  it('still respects a requested budget below the per-model ceiling', async () => {
+    const provider = new OpenAILegacyChatProvider({
+      model: 'deepseek-v4-flash',
+      apiKey: 'sk-probe',
+      stream: false,
+      maxCompletionTokensCeiling: 384_000,
+    });
+
+    const body = await captureOpenAIBody(provider, { maxCompletionTokens: 64_000 });
+    expect(body['max_tokens'] ?? body['max_completion_tokens']).toBe(64_000);
+  });
 });
 
 describe('429 wire behavior over real HTTP (no hidden SDK retry)', () => {

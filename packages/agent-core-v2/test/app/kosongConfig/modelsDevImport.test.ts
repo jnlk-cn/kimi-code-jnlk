@@ -61,6 +61,25 @@ const CATALOG = {
       },
     },
   },
+  deepseek: {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    api: 'https://api.deepseek.com',
+    npm: '@ai-sdk/openai-compatible',
+    env: ['DEEPSEEK_API_KEY'],
+    models: {
+      'deepseek-v4-pro': {
+        id: 'deepseek-v4-pro',
+        name: 'DeepSeek V4 Pro',
+        reasoning: true,
+        reasoning_options: [],
+        interleaved: { field: 'reasoning_content' },
+        tool_call: true,
+        limit: { context: 1000000, output: 384000 },
+        modalities: { input: ['text'], output: ['text'] },
+      },
+    },
+  },
   bedrock: {
     id: 'bedrock',
     name: 'Amazon Bedrock',
@@ -310,6 +329,28 @@ describe('IModelsDevImportService', () => {
     expect(config.get('secondaryModel')).toBeUndefined();
   });
 
+  it('imports DeepSeek V4 as always_thinking with maxOutputSize and reasoning_key', async () => {
+    setModelsDevUpstreamForTest({ fetchImpl: fetchJson(CATALOG) });
+    const { config, imports } = createHost({ providers: {}, models: {} });
+
+    const result = await imports.importModelsDevProvider({
+      catalogId: 'deepseek',
+      apiKey: 'sk-deepseek',
+    });
+    expect(result.modelsImported).toBe(1);
+
+    const models = config.inspect<ModelsSection>(MODELS_SECTION).userValue ?? {};
+    expect(models['deepseek/deepseek-v4-pro']).toMatchObject({
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      maxContextSize: 1000000,
+      maxOutputSize: 384000,
+      reasoningKey: 'reasoning_content',
+      capabilities: expect.arrayContaining(['always_thinking', 'tool_use']),
+    });
+    expect(models['deepseek/deepseek-v4-pro']?.capabilities).not.toContain('thinking');
+  });
+
   it('seeds default_model from the first imported model only when none is configured', async () => {
     setModelsDevUpstreamForTest({ fetchImpl: fetchJson(CATALOG) });
     const { config, imports } = createHost({ providers: {}, models: {} });
@@ -472,5 +513,49 @@ describe('IModelsDevImportService', () => {
       imports.importCustomRegistry({ url: REGISTRY_URL }),
       codes.REGISTRY_IMPORT_INVALID,
     );
+  });
+
+  it('lists and imports the Volcengine Coding Plan overlay provider', async () => {
+    setModelsDevUpstreamForTest({ fetchImpl: fetchJson(CATALOG) });
+    const { config, imports } = createHost({ providers: {}, models: {} });
+
+    const items = await imports.listModelsDevProviders();
+    const volc = items.find((item) => item.id === 'volcengine-coding-plan');
+    expect(volc).toMatchObject({
+      wire_type: 'openai',
+      guessed: false,
+      needs_base_url: false,
+      rejected: false,
+      env_key: 'ARK_API_KEY',
+    });
+    expect(volc?.models.some((model) => model.id === 'ark-code-latest')).toBe(true);
+    expect(volc?.models.some((model) => model.id === 'deepseek-v4-pro')).toBe(true);
+    expect(volc?.models.some((model) => model.id === 'kimi-k2-thinking')).toBe(false);
+
+    const result = await imports.importModelsDevProvider({
+      catalogId: 'volcengine-coding-plan',
+      apiKey: 'sk-ark',
+    });
+    expect(result.provider.id).toBe('volcengine-coding-plan');
+    expect(result.modelsImported).toBeGreaterThan(10);
+
+    const providers = config.inspect<ProvidersSection>(PROVIDERS_SECTION).userValue ?? {};
+    expect(providers['volcengine-coding-plan']).toMatchObject({
+      type: 'openai',
+      baseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+      apiKey: 'sk-ark',
+    });
+    const models = config.inspect<ModelsSection>(MODELS_SECTION).userValue ?? {};
+    expect(models['volcengine-coding-plan/ark-code-latest']).toMatchObject({
+      provider: 'volcengine-coding-plan',
+      model: 'ark-code-latest',
+    });
+    expect(models['volcengine-coding-plan/deepseek-v4-pro']).toMatchObject({
+      provider: 'volcengine-coding-plan',
+      model: 'deepseek-v4-pro',
+      maxOutputSize: 384000,
+      reasoningKey: 'reasoning_content',
+      capabilities: expect.arrayContaining(['thinking', 'tool_use']),
+    });
   });
 });

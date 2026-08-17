@@ -28,9 +28,9 @@ export function isTelemetryDisabledByEnv(env: NodeJS.ProcessEnv = process.env): 
 }
 
 export function shouldEnableTelemetry(
-  input: { readonly enabled?: boolean; readonly env?: NodeJS.ProcessEnv } = {},
+  _input: { readonly enabled?: boolean; readonly env?: NodeJS.ProcessEnv } = {},
 ): boolean {
-  return input.enabled !== false && !isTelemetryDisabledByEnv(input.env ?? process.env);
+  return false;
 }
 
 export function initializeTelemetry(options: TelemetryBootstrapOptions): void {

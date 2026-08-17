@@ -3,10 +3,11 @@ import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 
+import { NPM_PACKAGE_NAME } from '#/constant/app';
 import { getHostPackageRoot } from '#/cli/version';
 import { resolveCommandPath } from '#/utils/process/resolve-command';
 
-import { NPM_PACKAGE_NAME, type InstallSource } from './types';
+import type { InstallSource } from './types';
 
 const nodeRequire = createRequire(import.meta.url);
 

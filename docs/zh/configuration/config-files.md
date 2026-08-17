@@ -1,6 +1,6 @@
 # 配置文件
 
-Kimi Code CLI 把所有长期偏好写进 `~/.kimi-code/` 下的 TOML（一种结构清晰的纯文本配置格式）文件——比如使用哪个模型、填哪个 API 密钥、Agent 每轮最多跑几步。改一次，每次启动都生效。Agent 与运行时设置放在 `config.toml`，终端界面与客户端偏好（主题、编辑器、通知、自动更新）放在配套的 `tui.toml`。
+Kimi Code CLI 把所有长期偏好写进 `~/.kimi-code/` 下的 TOML（一种结构清晰的纯文本配置格式）文件——比如使用哪个模型、填哪个 API 密钥、Agent 每轮最多跑几步。改一次，每次启动都生效。Agent 与运行时设置放在 `config.toml`，终端界面与客户端偏好（主题、编辑器、通知）放在配套的 `tui.toml`。
 
 默认位置：`~/.kimi-code/config.toml`，首次运行时自动创建。
 
@@ -27,7 +27,6 @@ default_model = "kimi-code/k3"
 default_permission_mode = "manual"
 default_plan_mode = false
 merge_all_available_skills = true
-telemetry = true
 
 [providers."managed:kimi-code"]
 type = "kimi"
@@ -104,7 +103,6 @@ timeout = 5
 | `extra_skill_dirs` | `array<string>` | — | 额外 Skill 搜索目录，叠加到默认目录之上 |
 | `extra_agent_dirs` | `array<string>` | — | 额外自定义 Agent 搜索目录，叠加到默认目录之上 |
 | `builtin_product_skills` | `boolean` | `true` | 是否向模型提供介绍 Kimi Code 自身的内置 Skills：`update-config`、`custom-theme`、`mcp-config`、`check-kimi-code-docs`、`import-from-cc-codex`。关闭后它们的名称和描述不再进入系统提示词，代价是失去这些任务的引导流程。默认的 `agent-core-v2` 引擎会读取本字段；设置 `KIMI_CODE_LEGACY_FLAG=1` 选择旧版引擎时会忽略 |
-| `telemetry` | `boolean` | `true` | 是否启用匿名遥测；显式设为 `false` 时关闭 |
 | `providers` | `table` | `{}` | API 供应商表 → [`providers`](#providers) |
 | `models` | `table` | — | 模型别名表 → [`models`](#models) |
 | `thinking` | `table` | — | Thinking 模式默认参数 → [`thinking`](#thinking) |
@@ -477,7 +475,6 @@ MCP server 的声明配置写在 `~/.kimi-code/mcp.json` 或项目内 `.kimi-cod
 | `[editor].command` | `string` | `""` | 编写长输入用的外部编辑器命令；留空则回退到 `$VISUAL` / `$EDITOR` |
 | `[notifications].enabled` | `boolean` | `true` | 是否发送桌面通知 |
 | `[notifications].notification_condition` | `string` | `unfocused` | 何时通知：`unfocused`（仅终端失去焦点时）或 `always`（总是） |
-| `[upgrade].auto_install` | `boolean` | `true` | 是否自动安装新版本 |
 | `[status_line].items` | `string[]` | `[]` | 底部状态栏第一行展示哪些内置槽位及其顺序：`mode`、`goal`、`model`、`tasks`、`cwd`、`git`、`tips`。缺省保持默认布局；未知 id 跳过并告警 |
 | `[status_line].command` | `string` | `""` | 自定义状态栏命令。其 stdout 第一行替换状态栏第一行，stdin 会收到 JSON 快照（model、cwd、git 分支、permission 模式、plan 模式、上下文用量、session id、版本）。运行上限 300ms、每秒最多一次；失败时回退内置布局 |
 
@@ -494,9 +491,6 @@ command = "" # 留空则使用 $VISUAL / $EDITOR
 [notifications]
 enabled = true
 notification_condition = "unfocused" # "unfocused" | "always"
-
-[upgrade]
-auto_install = true
 
 # [status_line]
 # items = ["mode", "goal", "model", "tasks", "cwd", "git", "tips"]

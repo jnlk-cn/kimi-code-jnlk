@@ -44,8 +44,12 @@ registerProtocolBase({
           config.baseUrl ?? firstProcessEnv(endpoint?.baseUrlEnv) ?? endpoint?.defaultBaseUrl,
         defaultHeaders: traitDefaultHeaders(traits),
         maxTokens: config.providerOptions?.defaultMaxTokens,
+        maxCompletionTokensCeiling: config.providerOptions?.defaultMaxTokens,
         reasoningKey: config.providerOptions?.reasoningKey,
         offEffort: config.providerOptions?.offEffort,
+        supportEfforts: config.providerOptions?.supportEfforts,
+        defaultEffort: config.providerOptions?.defaultEffort,
+        alwaysThinking: config.providerOptions?.alwaysThinking,
         hooks: composeOpenAIChatHooks(traits),
       }),
     });

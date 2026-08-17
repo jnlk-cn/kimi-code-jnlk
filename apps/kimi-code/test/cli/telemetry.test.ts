@@ -1,9 +1,11 @@
 /**
- * Tests for the CLI telemetry bootstrap helpers, focusing on the
- * `kimi web` / `kimi server run` host wiring added in `cli/telemetry.ts`.
+ * Tests for the CLI telemetry bootstrap helpers. Remote telemetry is
+ * disabled; these tests only check host identity wiring.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { initializeServerTelemetry } from '#/cli/telemetry';
 
 const mocks = vi.hoisted(() => ({
   initializeTelemetry: vi.fn(),
@@ -30,8 +32,6 @@ vi.mock('@moonshot-ai/kimi-telemetry', () => ({
 }));
 
 vi.mock('@moonshot-ai/kimi-code-oauth', async (importOriginal) => {
-  // Spread the real module: the SDK's v2 client pulls agent-core-v2 into the
-  // import graph, which subclasses KimiOAuthToolkit from this package.
   const actual = await importOriginal<typeof import('@moonshot-ai/kimi-code-oauth')>();
   return {
     ...actual,
@@ -63,8 +63,7 @@ describe('initializeServerTelemetry', () => {
     });
   });
 
-  it('configures the sink with ui_mode="web" and the CLI product identity', async () => {
-    const { initializeServerTelemetry } = await import('#/cli/telemetry');
+  it('configures the host identity and keeps telemetry disabled', () => {
     const client = initializeServerTelemetry({ version: '1.2.3' });
     expect(mocks.initializeTelemetry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -72,13 +71,11 @@ describe('initializeServerTelemetry', () => {
         version: '1.2.3',
         uiMode: 'web',
         model: 'kimi-k2',
-        enabled: true,
+        enabled: false,
         deviceId: 'device-123',
         homeDir: '/home/.kimi-code',
       }),
     );
-    // The returned client wraps the module functions so core + the host share
-    // the same underlying client.
     expect(client).toEqual(
       expect.objectContaining({
         track: expect.any(Function),
@@ -86,17 +83,9 @@ describe('initializeServerTelemetry', () => {
         setContext: expect.any(Function),
       }),
     );
-    // The first dynamic import pulls in the whole SDK/oauth chain (~3s idle,
-    // more under full-suite transform contention) — give it headroom past the
-    // 5s default timeout.
-  }, 20000);
+  });
 
-  it('disables telemetry when config.toml sets telemetry = false', async () => {
-    mocks.loadRuntimeConfigSafe.mockReturnValue({
-      config: { defaultModel: 'kimi-k2', telemetry: false },
-      fileError: undefined,
-    });
-    const { initializeServerTelemetry } = await import('#/cli/telemetry');
+  it('keeps telemetry disabled when config.toml sets telemetry = true', () => {
     initializeServerTelemetry({ version: '1.2.3' });
 
     expect(mocks.initializeTelemetry).toHaveBeenCalledWith(
@@ -104,16 +93,15 @@ describe('initializeServerTelemetry', () => {
     );
   });
 
-  it('degrades to enabled with no model when config is unreadable', async () => {
+  it('keeps telemetry disabled when config is unreadable', () => {
     mocks.loadRuntimeConfigSafe.mockReturnValue({
       config: {},
       fileError: new Error('bad toml'),
     });
-    const { initializeServerTelemetry } = await import('#/cli/telemetry');
     initializeServerTelemetry({ version: '1.2.3' });
 
     expect(mocks.initializeTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: true, model: undefined }),
+      expect.objectContaining({ enabled: false, model: undefined }),
     );
   });
 });

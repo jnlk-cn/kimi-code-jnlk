@@ -61,7 +61,7 @@ pnpm add -g @moonshot-ai/kimi-code
 kimi --version
 ```
 
-**升级**：运行 `kimi upgrade`，CLI 会检查最新版本并展示更新选项。选择 `Install update now` 后根据当前安装来源执行升级；也可以直接用包管理器：
+**升级**：用当初安装时的包管理器：
 
 ```sh
 npm install -g @moonshot-ai/kimi-code@latest
@@ -161,7 +161,7 @@ Kimi Code CLI 会规划步骤、修改代码、运行测试，并在每一步告
 
 ## 数据存放在哪里
 
-Kimi Code CLI 的本地数据默认保存在 `~/.kimi-code/` 下，包含配置文件、会话记录、日志和更新缓存。如需迁移到别处，通过 `KIMI_CODE_HOME` 环境变量指定新路径。完整说明见[数据路径](../configuration/data-locations.md)和[环境变量](../configuration/env-vars.md)。
+Kimi Code CLI 的本地数据默认保存在 `~/.kimi-code/` 下，包含配置文件、会话记录和日志。如需迁移到别处，通过 `KIMI_CODE_HOME` 环境变量指定新路径。完整说明见[数据路径](../configuration/data-locations.md)和[环境变量](../configuration/env-vars.md)。
 
 ## 下一步
 

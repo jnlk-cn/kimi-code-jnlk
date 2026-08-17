@@ -28,6 +28,11 @@ function createProvider(
     reasoningKey: string;
     model: string;
     offEffort: string;
+    maxTokens: number;
+    maxCompletionTokensCeiling: number;
+    supportEfforts: readonly string[];
+    defaultEffort: string;
+    alwaysThinking: boolean;
   }>,
 ): OpenAILegacyChatProvider {
   return new OpenAILegacyChatProvider({
@@ -36,6 +41,11 @@ function createProvider(
     stream: options?.stream ?? false,
     reasoningKey: options?.reasoningKey,
     offEffort: options?.offEffort,
+    maxTokens: options?.maxTokens,
+    maxCompletionTokensCeiling: options?.maxCompletionTokensCeiling,
+    supportEfforts: options?.supportEfforts,
+    defaultEffort: options?.defaultEffort,
+    alwaysThinking: options?.alwaysThinking,
   });
 }
 
@@ -279,6 +289,7 @@ describe('OpenAILegacyChatProvider', () => {
         { role: 'user', content: 'Run bash' },
         {
           role: 'assistant',
+          content: '',
           tool_calls: [
             {
               type: 'function',
@@ -289,6 +300,41 @@ describe('OpenAILegacyChatProvider', () => {
         },
         { role: 'tool', content: '/tmp', tool_call_id: 'Bash_7' },
       ]);
+    });
+
+    it('includes empty content for think-only assistant tool turns (Volcengine/DeepSeek)', async () => {
+      const provider = createProvider({ model: 'deepseek-v4-pro' });
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Run bash' }], toolCalls: [] },
+        {
+          role: 'assistant',
+          content: [{ type: 'think', think: 'planning...' }],
+          toolCalls: [
+            {
+              type: 'function',
+              id: 'call_bash',
+              name: 'Bash',
+              arguments: '{"command":"pwd"}',
+            },
+          ],
+        },
+        {
+          role: 'tool',
+          content: [{ type: 'text', text: '/tmp' }],
+          toolCallId: 'call_bash',
+          toolCalls: [],
+        },
+      ];
+
+      const body = await captureRequestBody(provider, '', [], history);
+      const messages = body['messages'] as Record<string, unknown>[];
+
+      expect(messages[1]).toMatchObject({
+        role: 'assistant',
+        content: '',
+        reasoning_content: 'planning...',
+      });
+      expect(messages[1]).toHaveProperty('content');
     });
 
     it('tool call with image result keeps the tool result textual and reattaches images as user input', async () => {
@@ -875,6 +921,33 @@ describe('OpenAILegacyChatProvider', () => {
       // the request trace records this field.
       expect(provider.maxCompletionTokens).toBe(131072);
     });
+
+    it('withMaxCompletionTokens honors a per-model ceiling above 128k', async () => {
+      const provider = createProvider({
+        model: 'deepseek-v4-flash',
+        maxCompletionTokensCeiling: 384_000,
+      }).withMaxCompletionTokens(400_000);
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hi' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['max_tokens']).toBe(384_000);
+      expect(provider.maxCompletionTokens).toBe(384_000);
+    });
+
+    it('raises the ceiling from maxTokens when it exceeds the 128k default', async () => {
+      const provider = createProvider({
+        model: 'deepseek-v4-pro',
+        maxTokens: 384_000,
+      }).withMaxCompletionTokens(400_000);
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hi' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+
+      expect(body['max_tokens']).toBe(384_000);
+    });
   });
 
   describe('maxTokens option', () => {
@@ -1251,6 +1324,48 @@ describe('OpenAILegacyChatProvider', () => {
       expect(messages[1]!['reasoning_content']).toBe('Let me think...');
     });
 
+    it('omits auto-inject for always-thinking models with no effort tiers', async () => {
+      const provider = createProvider({
+        model: 'deepseek-v4-pro',
+        alwaysThinking: true,
+        reasoningKey: 'reasoning_content',
+      });
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hello' }], toolCalls: [] },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'think', think: 'Let me think...' },
+            { type: 'text', text: 'Hi!' },
+          ],
+          toolCalls: [],
+        },
+        { role: 'user', content: [{ type: 'text', text: 'How are you?' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+      expect(body['reasoning_effort']).toBeUndefined();
+    });
+
+    it('auto-injects the catalog defaultEffort when supportEfforts is declared', async () => {
+      const provider = createProvider({
+        model: 'deepseek-v4-pro',
+        alwaysThinking: true,
+        supportEfforts: ['high', 'max'],
+        defaultEffort: 'high',
+      });
+      const history: Message[] = [
+        { role: 'user', content: [{ type: 'text', text: 'Hello' }], toolCalls: [] },
+        {
+          role: 'assistant',
+          content: [{ type: 'think', think: '...' }, { type: 'text', text: 'Hi!' }],
+          toolCalls: [],
+        },
+        { role: 'user', content: [{ type: 'text', text: 'Next' }], toolCalls: [] },
+      ];
+      const body = await captureRequestBody(provider, '', [], history);
+      expect(body['reasoning_effort']).toBe('high');
+    });
+
     it('does not auto-inject reasoning_effort when history has no ThinkPart', async () => {
       const provider = createProvider({
         model: 'kimi-k2.5',
@@ -1406,6 +1521,7 @@ describe('OpenAILegacyChatProvider', () => {
 
       expect(messages[0]).toMatchObject({
         role: 'assistant',
+        content: '',
         reasoning_content: '',
       });
     });

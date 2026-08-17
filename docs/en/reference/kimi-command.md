@@ -133,7 +133,7 @@ In `stream-json` mode, regular replies produce an Assistant message; when the mo
 
 ## Subcommands
 
-`kimi` provides the following subcommands: `login` (non-interactive login), `acp` (ACP IDE mode), `web` (run the local REST/WebSocket/web service in the foreground and open the web UI), `doctor` (validate configuration files), `export` (export a session), `migrate` (migrate legacy data), `upgrade` (check for updates), and `provider` (manage providers).
+`kimi` provides the following subcommands: `login` (non-interactive login), `acp` (ACP IDE mode), `web` (run the local REST/WebSocket/web service in the foreground and open the web UI), `doctor` (validate configuration files), `export` (export a session), `migrate` (migrate legacy data), and `provider` (manage providers).
 
 ### `kimi login`
 
@@ -259,16 +259,6 @@ kimi migrate
 ```
 
 For full migration instructions, see [Migrating from kimi-cli](../guides/migration.md).
-
-### `kimi upgrade`
-
-Immediately check for the latest version and display an update prompt; exits after you make a selection. `kimi update` is an alias for this command.
-
-```sh
-kimi upgrade
-```
-
-For global npm, pnpm, yarn, bun, and macOS / Linux native installations, `kimi upgrade` shows update options; selecting `Install update now` runs the corresponding foreground install command. When the current installation method cannot be upgraded automatically (e.g., Windows native installation), the manual update command is printed instead.
 
 ### `kimi vis`
 

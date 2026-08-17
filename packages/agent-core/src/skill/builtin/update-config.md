@@ -1,6 +1,6 @@
 ---
 name: update-config
-description: Inspect or edit kimi-code's own config — `config.toml` (model, provider, permission, hooks) and `tui.toml` (theme, editor, notifications, auto-update). Use when the user asks what a setting does, wants to change one, or needs to fix a deprecated config key / environment variable warning.
+description: Inspect or edit kimi-code's own config — `config.toml` (model, provider, permission, hooks) and `tui.toml` (theme, editor, notifications). Use when the user asks what a setting does, wants to change one, or needs to fix a deprecated config key / environment variable warning.
 ---
 
 # Configure kimi-code (update-config)
@@ -21,7 +21,7 @@ echo "$HOME/.kimi-code"
 Use the first line when it is non-empty; otherwise use the second line. In the rest of this skill, `<KIMI_CODE_HOME>` means that resolved root — **never assume `~/.kimi-code`**.
 
 - **`config.toml`** — agent / runtime settings: `default_model`, `secondary_model` (subagent model), `providers`, `models`, `thinking`, `permission`, `hooks`, `loop_control`, etc.
-- **`tui.toml`** — terminal-UI / client preferences: `theme`, `[editor].command`, `[notifications]`, `[upgrade].auto_install` (auto-update). These can usually also be changed with the interactive commands `/config`, `/theme`, `/editor`, which is easier — prefer pointing the user at those.
+- **`tui.toml`** — terminal-UI / client preferences: `theme`, `[editor].command`, `[notifications]`. These can usually also be changed with the interactive commands `/config`, `/theme`, `/editor`, which is easier — prefer pointing the user at those.
 
 The "read → copy → Edit → validate → back up → overwrite" flow below applies to both files; only **which reload command applies** differs (see Capability 4).
 

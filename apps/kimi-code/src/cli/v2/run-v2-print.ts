@@ -29,7 +29,6 @@ import {
   IBootstrapService,
   IConfigService,
   IEventBus,
-  IOAuthToolkit,
   ISessionCronService,
   ISessionIndex,
   ISessionManager,
@@ -38,7 +37,6 @@ import {
   PRINT_WAIT_CEILING_S_DEFAULT,
   applyPrintModeConfigDefaults,
   bootstrap,
-  createCloudAppender,
   ensureMainAgent,
   resumeSessionById,
   logSeed,
@@ -56,12 +54,11 @@ import {
   type PrintBackgroundMode,
   type Scope,
 } from '@moonshot-ai/agent-core-v2';
-import { createKimiDefaultHeaders, createKimiDeviceId } from '@moonshot-ai/kimi-code-oauth';
+import { createKimiDefaultHeaders } from '@moonshot-ai/kimi-code-oauth';
 import { resolve } from 'pathe';
 
 import {
   CLI_SHUTDOWN_TIMEOUT_MS,
-  CLI_USER_AGENT_PRODUCT,
   PROMPT_CLEANUP_TIMEOUT_MS,
 } from '#/constant/app';
 
@@ -92,7 +89,6 @@ import {
   writeResumeHint,
 } from '../prompt-render';
 
-const PROMPT_UI_MODE = 'print';
 /** Re-check `goalActive` at least this often while waiting for goal turns. */
 const GOAL_WAIT_POLL_MS = 250;
 /**
@@ -117,12 +113,6 @@ export async function runV2Print(
   writeExperimentalVersion(version, outputFormat, stdout, stderr);
 
   const homeDir = resolveKimiHome();
-  let firstLaunch = false;
-  const deviceId = createKimiDeviceId(homeDir, {
-    onFirstLaunch: () => {
-      firstLaunch = true;
-    },
-  });
   const logging = resolveLoggingConfig({ homeDir, env: process.env });
   const identity = createKimiCodeHostIdentity(version);
   const hostHeaders = createKimiDefaultHeaders({ homeDir, ...identity });
@@ -145,7 +135,6 @@ export async function runV2Print(
     },
     [...logSeed(logging)],
   );
-  const auth = app.accessor.get(IOAuthToolkit);
 
   const configService = app.accessor.get(IConfigService);
   await configService.ready;
@@ -154,12 +143,6 @@ export async function runV2Print(
   // user left unset are filled, in the memory layer.
   await applyPrintModeConfigDefaults(configService);
   const defaultModel = configService.get<string>('defaultModel') ?? undefined;
-  let telemetryEnabled = true;
-  try {
-    telemetryEnabled = configService.get('telemetry') !== false;
-  } catch {
-    telemetryEnabled = true;
-  }
   for (const diagnostic of configService.diagnostics()) {
     if (diagnostic.severity === 'warning') {
       stderr.write(`Warning: ${diagnostic.message}\n`);
@@ -193,25 +176,11 @@ export async function runV2Print(
     // The model below is the best known up front; a resumed session's real
     // model is reconciled via setContext once resolved.
     telemetryService = app.accessor.get(ITelemetryService);
-    if (telemetryEnabled) {
-      telemetryService.setAppender(
-        createCloudAppender(app.accessor, {
-          deviceId,
-          appName: CLI_USER_AGENT_PRODUCT,
-          uiMode: PROMPT_UI_MODE,
-          model: opts.model ?? defaultModel,
-          getAccessToken: async () => (await auth.getCachedAccessToken()) ?? null,
-        }),
-      );
-    }
 
     const resolved = await resolveNativeSession(app, opts, workDir, defaultModel, stderr);
     restorePermission = resolved.restorePermission;
 
     telemetryService.setContext({ sessionId: resolved.session.id, model: resolved.telemetryModel });
-    if (firstLaunch) {
-      telemetryService.track2('first_launch');
-    }
 
     const goalCreate = parseHeadlessGoalCreate(opts.prompt!);
     if (goalCreate !== undefined) {

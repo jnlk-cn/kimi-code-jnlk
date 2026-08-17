@@ -36,8 +36,8 @@ describe('TUI config', () => {
     expect(text).toContain('theme = "auto"');
     expect(text).toContain('cache_expiry_hint = true');
     expect(text).toContain('command = ""');
-    expect(text).toContain('[upgrade]');
-    expect(text).toContain('auto_install = true');
+    expect(text).not.toContain('[upgrade]');
+    expect(text).not.toContain('auto_install');
     expect(text).toContain('[notifications]');
     expect(text).toContain('enabled = true');
     expect(text).toContain('notification_condition = "unfocused"');
@@ -158,7 +158,7 @@ command = "   "
       cacheExpiryHint: true,
       editorCommand: 'vim',
       notifications: { enabled: false, condition: 'always' },
-      upgrade: { autoInstall: false },
+      upgrade: { autoInstall: true },
       statusLine: { items: null, command: null },
     });
   });

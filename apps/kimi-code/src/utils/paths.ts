@@ -19,11 +19,7 @@ import {
   KIMI_CODE_INPUT_HISTORY_DIR_NAME,
   KIMI_CODE_LOG_DIR_NAME,
   KIMI_CODE_PLUGIN_UPDATE_NOTICE_STATE_FILE_NAME,
-  KIMI_CODE_UPDATE_INSTALL_LOCK_FILE_NAME,
-  KIMI_CODE_UPDATE_INSTALL_STATE_FILE_NAME,
   KIMI_CODE_UPDATE_DIR_NAME,
-  KIMI_CODE_UPDATE_ROLLOUT_LOG_FILE_NAME,
-  KIMI_CODE_UPDATE_STATE_FILE_NAME,
 } from '#/constant/app';
 
 /**
@@ -58,34 +54,6 @@ export function getCacheDir(): string {
  */
 export function getBinDir(): string {
   return join(getDataDir(), KIMI_CODE_BIN_DIR_NAME);
-}
-
-/**
- * Return the update cache file: `<dataDir>/updates/latest.json`.
- */
-export function getUpdateStateFile(): string {
-  return join(getDataDir(), KIMI_CODE_UPDATE_DIR_NAME, KIMI_CODE_UPDATE_STATE_FILE_NAME);
-}
-
-/**
- * Return the update install state file: `<dataDir>/updates/install.json`.
- */
-export function getUpdateInstallStateFile(): string {
-  return join(getDataDir(), KIMI_CODE_UPDATE_DIR_NAME, KIMI_CODE_UPDATE_INSTALL_STATE_FILE_NAME);
-}
-
-/**
- * Return the update install lock file: `<dataDir>/updates/install.lock`.
- */
-export function getUpdateInstallLockFile(): string {
-  return join(getDataDir(), KIMI_CODE_UPDATE_DIR_NAME, KIMI_CODE_UPDATE_INSTALL_LOCK_FILE_NAME);
-}
-
-/**
- * Return the rollout decision log: `<dataDir>/updates/rollout.log`.
- */
-export function getUpdateRolloutLogFile(): string {
-  return join(getDataDir(), KIMI_CODE_UPDATE_DIR_NAME, KIMI_CODE_UPDATE_ROLLOUT_LOG_FILE_NAME);
 }
 
 /**
