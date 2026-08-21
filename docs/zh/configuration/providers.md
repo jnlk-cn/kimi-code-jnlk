@@ -29,9 +29,10 @@ Kimi Code CLI 支持同时接入多家 LLM 平台——用 Kimi Code 托管服�
 - `d` 键删除当前供应商（有 `[y/N]` 确认）
 - 在 `[ Add New Platform ]` 行按 Enter 添加新供应商
 
-添加时有两条路径：
+添加时有三条路径：
 
-- **Known third-party provider**：从 [models.dev](https://models.dev/) 拉取模型目录，选供应商 → 输入 API 密钥 → 选默认模型。目录未声明协议类型的供应商（如 xai、openrouter 这类厂商专用 SDK）会按 OpenAI 兼容协议导入并显示 "guessed" 提示；目录没有可用端点时会先弹出 base URL 输入框；Amazon Bedrock / Cohere 等专有协议和无法识别的显式协议会被拒绝导入。已下线（deprecated）和 alpha 状态的模型不会出现在导入列表中。如果公共目录不可达，CLI 会回退到内置目录快照，离线或网络受限环境下也能完成导入
+- **Built-in provider**：不拉取 models.dev，直接选择官方 Kimi 或其他本地内置目录条目。官方 Kimi Code（`kimi-for-coding`）、Kimi 开放平台国内（`moonshotai-cn`）与国际（`moonshotai`）排在最前，随后是火山方舟 Coding Plan 和 DeepSeek。这些条目是公开 [models.dev](https://models.dev/) 目录的裁剪快照，再加上下文记录的本地 overlay。
+- **Known third-party provider**：从 [models.dev](https://models.dev/) 拉取模型目录，选供应商 → 输入 API 密钥 → 选默认模型。目录未声明协议类型的供应商（如 xai、openrouter 这类厂商专用 SDK）会按 OpenAI 兼容协议导入并显示 "guessed" 提示；目录没有可用端点时会先弹出 base URL 输入框；Amazon Bedrock / Cohere 等专有协议和无法识别的显式协议会被拒绝导入。已下线（deprecated）和 alpha 状态的模型不会出现在导入列表中。如果公共目录不可达，CLI 会回退到内置目录快照，离线或网络受限环境下也能完成导入。目录还会合并与 **Built-in provider** 相同的本地 overlay 条目。
 - **Custom registry (api.json)**：粘贴自定义 registry 地址和 Bearer token，CLI 自动创建 `providers` / `models` 条目。后续启动时，同一个 registry 地址下的供应商会一起刷新，因此上游新增、删除供应商以及模型元数据变化都会同步。
 
 ::: warning
@@ -56,6 +57,16 @@ api_key = "sk-xxxxx"
 ```
 
 > 使用 Kimi Code 托管服务时，`/login` 登录后会自动配置 `base_url` 和凭证，无需手动填写。
+
+若要用 [Kimi Code 控制台](https://www.kimi.com/code/console) 的 API 密钥而不是 OAuth，在 `/provider` 中选择 **Built-in provider** → **Kimi For Coding**，或运行：
+
+```sh
+kimi provider catalog add kimi-for-coding --api-key YOUR_API_KEY --default-model k3
+```
+
+导入遵循官方 models.dev 条目：`type = "anthropic"`，`base_url = "https://api.kimi.com/coding"`（目录里的 `/v1` 后缀会按 Anthropic 协议被去掉）。可用模型 id 为 `k3`、`k3-256k`、`kimi-for-coding`、`kimi-for-coding-highspeed`。
+
+Kimi 开放平台密钥请用同一份内置列表里的 **Moonshot AI (China)**（`moonshotai-cn`，`https://api.moonshot.cn/v1`）或 **Moonshot AI**（`moonshotai`，`https://api.moonshot.ai/v1`）。这两条仍是 OpenAI 兼容协议。
 
 ## `anthropic`
 
@@ -92,6 +103,16 @@ type = "openai"
 base_url = "https://api.openai.com/v1"
 api_key = "sk-xxxxx"
 ```
+
+官方 DeepSeek 也是 OpenAI 兼容协议。在 `/provider` 中选择 **DeepSeek**，或运行：
+
+```sh
+kimi provider catalog add deepseek --api-key YOUR_API_KEY --default-model deepseek-v4-flash
+```
+
+导入后写入 `type = "openai"`，`base_url = "https://api.deepseek.com"`。当前官方模型为 `deepseek-v4-flash`、`deepseek-v4-pro` 和 `deepseek-v4-flash-vision-exp`。
+
+2026-08-16 起 DeepSeek 官方 API 改为峰谷计价（高峰 01:00–04:00 与 06:00–10:00 UTC；低谷价为高峰价的一半）。本地 catalog overlay 记录的是低谷价（美元 / 百万 token）：`deepseek-v4-flash` $0.22 / $0.66，`deepseek-v4-pro` $0.66 / $1.98，缓存命中输入 $0.007 / $0.022。高峰价为上述数字的 2 倍。
 
 ## `openai_responses`
 
@@ -151,6 +172,34 @@ kimi
 ```
 
 如需让 Vertex 请求走自定义（如代理）端点，可设置 `base_url`（或 `GOOGLE_VERTEX_BASE_URL` 环境变量）；不填时使用 SDK 默认的区域化 `*-aiplatform.googleapis.com` 地址。与 `google-genai` 一样，只填主机根地址——SDK 会自行追加 `/v1beta1/publishers/google/models/…`。
+
+## 火山方舟 Coding Plan
+
+火山方舟 [Coding Plan](https://www.volcengine.com/article/37482) 是面向个人开发者的 AI 编程订阅套餐。Kimi Code CLI 通过本地 catalog overlay 提供一键导入：在 `/provider` 中选择 **Volcengine Ark Coding Plan**，或运行：
+
+```sh
+kimi provider catalog add volcengine-coding-plan --api-key YOUR_API_KEY --default-model ark-code-latest
+```
+
+导入后写入的 `type` 为 `openai`，`base_url` 为 Coding Plan 专用 OpenAI 兼容端点：
+
+```toml
+[providers.volcengine-coding-plan]
+type = "openai"
+base_url = "https://ark.cn-beijing.volces.com/api/coding/v3"
+api_key = "YOUR_API_KEY"
+
+[models."volcengine-coding-plan/ark-code-latest"]
+provider = "volcengine-coding-plan"
+model = "ark-code-latest"
+max_context_size = 262144
+```
+
+::: warning 注意
+必须使用 Coding Plan 控制台发放的 API Key 与 `/api/coding/v3` 端点。不要混用 Agent Plan（`/api/plan/v3`）或后付费 Ark API（`/api/v3`）的 Key / URL，否则可能无法抵扣套餐额度或产生额外费用。套餐额度仅限在支持的 AI 编程工具中使用。
+:::
+
+推荐先用 `ark-code-latest`（控制台 Auto 调度）；也可在模型列表中选择具体模型，例如 `doubao-seed-2.0-code`、`deepseek-v4-pro`、`kimi-k2.7-code`、`glm-5.2`、`minimax-m3`。可用模型以火山方舟 Coding Plan「开通管理」页面为准。
 
 ## OAuth 与凭证注入
 

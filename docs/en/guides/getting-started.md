@@ -61,7 +61,7 @@ After installation, verify that the executable is ready:
 kimi --version
 ```
 
-**Upgrade**: run `kimi upgrade` — the CLI checks for the latest version and presents update options. Choose `Install update now` to upgrade based on your current install source. You can also upgrade directly via the package manager:
+**Upgrade** via the package manager you used to install:
 
 ```sh
 npm install -g @moonshot-ai/kimi-code@latest
@@ -161,7 +161,7 @@ For the full list, type `/help` or visit [Slash commands reference](../reference
 
 ## Where data is stored
 
-Kimi Code CLI stores its local data under `~/.kimi-code/` by default — config files, session records, logs, and the update cache. To move it elsewhere, point to a new path via the `KIMI_CODE_HOME` environment variable. For the full directory layout, see [Data locations](../configuration/data-locations.md) and [Environment variables](../configuration/env-vars.md).
+Kimi Code CLI stores its local data under `~/.kimi-code/` by default — config files, session records, and logs. To move it elsewhere, point to a new path via the `KIMI_CODE_HOME` environment variable. For the full directory layout, see [Data locations](../configuration/data-locations.md) and [Environment variables](../configuration/env-vars.md).
 
 ## Next steps
 

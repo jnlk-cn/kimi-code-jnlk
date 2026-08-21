@@ -179,11 +179,8 @@ export interface ServerStartOptions {
    */
   readonly serverVersion?: string;
   /**
-   * Opt-in cloud telemetry for the engine's `ITelemetryService` events: when
-   * true, a `CloudAppender` is attached at startup (still gated by the config
-   * `telemetry` toggle) and flushed on close. Defaults to false so tests and
-   * embedding hosts that wire their own telemetry never post to the real
-   * endpoint unintentionally; the CLI's `kimi web` host passes true.
+   * Kept for host compatibility. Cloud telemetry is disabled; this flag is
+   * ignored.
    */
   readonly telemetry?: boolean;
 }

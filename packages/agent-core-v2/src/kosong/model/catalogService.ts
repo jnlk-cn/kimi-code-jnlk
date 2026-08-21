@@ -568,6 +568,12 @@ function buildProtocolProviderOptions(
       const reasoningKey = nonEmpty(model.reasoningKey);
       if (reasoningKey !== undefined) options.reasoningKey = reasoningKey;
       if (model.offEffort !== undefined) options.offEffort = model.offEffort;
+      if (model.maxOutputSize !== undefined) options.defaultMaxTokens = model.maxOutputSize;
+      if (model.supportEfforts !== undefined) options.supportEfforts = model.supportEfforts;
+      if (model.defaultEffort !== undefined) options.defaultEffort = model.defaultEffort;
+      if (model.capabilities?.some((cap) => cap.trim().toLowerCase() === 'always_thinking')) {
+        options.alwaysThinking = true;
+      }
       break;
     }
     case 'google-genai': {

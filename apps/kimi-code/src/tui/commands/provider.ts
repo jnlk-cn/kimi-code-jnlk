@@ -6,6 +6,8 @@ import {
 } from '@moonshot-ai/kimi-code-oauth';
 import {
   applyCatalogProvider,
+  BUILTIN_CATALOG_PROVIDER_IDS,
+  CATALOG_OVERLAYS,
   cascadeSubagentModelPool,
   catalogProviderModels,
   CatalogFetchError,
@@ -120,6 +122,10 @@ async function handleProviderAdd(host: SlashCommandHost): Promise<void> {
     return;
   }
 
+  if (source === 'builtin') {
+    await handleBuiltinProviderAdd(host);
+    return;
+  }
   if (source === 'known') {
     await handleCatalogProviderAdd(host);
     return;
@@ -136,19 +142,26 @@ function reopenProviderManager(host: SlashCommandHost): void {
   host.mountEditorReplacement(component);
 }
 
-function promptProviderAddSource(
-  host: SlashCommandHost,
-): Promise<'known' | 'custom' | undefined> {
+type ProviderAddSource = 'builtin' | 'known' | 'custom';
+
+function promptProviderAddSource(host: SlashCommandHost): Promise<ProviderAddSource | undefined> {
   return new Promise((resolve) => {
     const picker = new ChoicePickerComponent({
       title: 'Add provider',
       options: [
+        {
+          value: 'builtin',
+          label: 'Built-in provider',
+          description: 'Official Kimi Code and other local presets',
+        },
         { value: 'known', label: 'Known third-party provider' },
         { value: 'custom', label: 'Custom registry (api.json)' },
       ],
       onSelect: (value) => {
         host.restoreEditor();
-        resolve(value === 'known' || value === 'custom' ? value : undefined);
+        resolve(
+          value === 'builtin' || value === 'known' || value === 'custom' ? value : undefined,
+        );
       },
       onCancel: () => {
         host.restoreEditor();
@@ -157,6 +170,15 @@ function promptProviderAddSource(
     });
     host.mountEditorReplacement(picker);
   });
+}
+
+async function handleBuiltinProviderAdd(host: SlashCommandHost): Promise<void> {
+  const providerId = await promptCatalogProviderSelection(host, CATALOG_OVERLAYS, {
+    title: 'Select a built-in provider',
+    orderedIds: BUILTIN_CATALOG_PROVIDER_IDS,
+  });
+  if (providerId === undefined) return;
+  await importCatalogProvider(host, CATALOG_OVERLAYS, providerId);
 }
 
 async function handleCatalogProviderAdd(host: SlashCommandHost): Promise<void> {
@@ -196,6 +218,14 @@ async function handleCatalogProviderAdd(host: SlashCommandHost): Promise<void> {
 
   const providerId = await promptCatalogProviderSelection(host, catalog);
   if (providerId === undefined) return;
+  await importCatalogProvider(host, catalog, providerId);
+}
+
+async function importCatalogProvider(
+  host: SlashCommandHost,
+  catalog: Catalog,
+  providerId: string,
+): Promise<void> {
   const entry = catalog[providerId];
   if (entry === undefined) return;
 

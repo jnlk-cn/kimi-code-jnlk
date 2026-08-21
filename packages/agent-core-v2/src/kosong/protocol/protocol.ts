@@ -20,6 +20,8 @@ export interface ProtocolProviderOptions {
   readonly reasoningKey?: string;
   readonly defaultMaxTokens?: number;
   readonly supportEfforts?: readonly string[];
+  readonly defaultEffort?: string;
+  readonly alwaysThinking?: boolean;
   readonly offEffort?: string;
   readonly adaptiveThinking?: boolean;
   readonly betaApi?: boolean;

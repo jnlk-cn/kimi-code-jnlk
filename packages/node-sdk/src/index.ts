@@ -33,6 +33,8 @@ export {
   inferWireType,
   loadBuiltInCatalog,
   resolveCatalogImport,
+  BUILTIN_CATALOG_PROVIDER_IDS,
+  CATALOG_OVERLAYS,
 } from '#/catalog';
 export type {
   ApplyCatalogProviderOptions,

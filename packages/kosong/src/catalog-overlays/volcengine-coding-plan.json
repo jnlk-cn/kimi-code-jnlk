@@ -1,0 +1,194 @@
+{
+  "id": "volcengine-coding-plan",
+  "name": "Volcengine Ark Coding Plan",
+  "api": "https://ark.cn-beijing.volces.com/api/coding/v3",
+  "npm": "@ai-sdk/openai-compatible",
+  "env": ["ARK_API_KEY"],
+  "models": {
+    "ark-code-latest": {
+      "id": "ark-code-latest",
+      "name": "Ark Code Latest (Auto)",
+      "family": "ark-code",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 65536 }
+    },
+    "doubao-seed-2.1-turbo": {
+      "id": "doubao-seed-2.1-turbo",
+      "name": "Doubao Seed 2.1 Turbo",
+      "family": "doubao-seed",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 65536 }
+    },
+    "doubao-seed-2.0-code": {
+      "id": "doubao-seed-2.0-code",
+      "name": "Doubao Seed 2.0 Code",
+      "family": "doubao-seed",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 65536 }
+    },
+    "doubao-seed-2.0-pro": {
+      "id": "doubao-seed-2.0-pro",
+      "name": "Doubao Seed 2.0 Pro",
+      "family": "doubao-seed",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 65536 }
+    },
+    "doubao-seed-2.0-lite": {
+      "id": "doubao-seed-2.0-lite",
+      "name": "Doubao Seed 2.0 Lite",
+      "family": "doubao-seed",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 65536 }
+    },
+    "doubao-seed-code": {
+      "id": "doubao-seed-code",
+      "name": "Doubao Seed Code",
+      "family": "doubao-seed",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 65536 }
+    },
+    "deepseek-v3.2": {
+      "id": "deepseek-v3.2",
+      "name": "DeepSeek V3.2",
+      "family": "deepseek",
+      "tool_call": true,
+      "reasoning": true,
+      "interleaved": { "field": "reasoning_content" },
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 128000, "output": 65536 }
+    },
+    "deepseek-v4-pro": {
+      "id": "deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro",
+      "family": "deepseek-thinking",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [{ "type": "toggle" }],
+      "interleaved": { "field": "reasoning_content" },
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 1048576, "output": 384000 }
+    },
+    "deepseek-v4-flash": {
+      "id": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "family": "deepseek-flash",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [{ "type": "toggle" }],
+      "interleaved": { "field": "reasoning_content" },
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 1048576, "output": 384000 }
+    },
+    "glm-4.7": {
+      "id": "glm-4.7",
+      "name": "GLM-4.7",
+      "family": "glm",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 204800, "output": 131072 }
+    },
+    "glm-5.1": {
+      "id": "glm-5.1",
+      "name": "GLM-5.1",
+      "family": "glm",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 202752, "output": 131072 }
+    },
+    "glm-5.2": {
+      "id": "glm-5.2",
+      "name": "GLM-5.2",
+      "family": "glm",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 1048576, "output": 131072 }
+    },
+    "kimi-k2.5": {
+      "id": "kimi-k2.5",
+      "name": "Kimi K2.5",
+      "family": "kimi-k2",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [{ "type": "toggle" }],
+      "interleaved": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 32768 }
+    },
+    "kimi-k2.6": {
+      "id": "kimi-k2.6",
+      "name": "Kimi K2.6",
+      "family": "kimi-k2",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [{ "type": "toggle" }],
+      "interleaved": true,
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "limit": { "context": 262144, "input": 229376, "output": 32768 }
+    },
+    "kimi-k2.7-code": {
+      "id": "kimi-k2.7-code",
+      "name": "Kimi K2.7 Code",
+      "family": "kimi-k2",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [],
+      "interleaved": true,
+      "modalities": { "input": ["text", "image", "video"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 32768 }
+    },
+    "kimi-k2.7-code-thinking": {
+      "id": "kimi-k2.7-code-thinking",
+      "name": "Kimi K2.7 Code (Thinking)",
+      "family": "kimi-k2",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [],
+      "interleaved": true,
+      "modalities": { "input": ["text", "image", "video"], "output": ["text"] },
+      "limit": { "context": 262144, "output": 32768 }
+    },
+    "minimax-m2.5": {
+      "id": "minimax-m2.5",
+      "name": "MiniMax M2.5",
+      "family": "minimax",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 204800, "output": 131072 }
+    },
+    "minimax-m2.7": {
+      "id": "minimax-m2.7",
+      "name": "MiniMax M2.7",
+      "family": "minimax",
+      "tool_call": true,
+      "reasoning": true,
+      "modalities": { "input": ["text"], "output": ["text"] },
+      "limit": { "context": 204800, "input": 196608, "output": 131072 }
+    },
+    "minimax-m3": {
+      "id": "minimax-m3",
+      "name": "MiniMax M3",
+      "family": "minimax",
+      "tool_call": true,
+      "reasoning": true,
+      "reasoning_options": [{ "type": "toggle" }],
+      "modalities": { "input": ["text", "image", "video"], "output": ["text"] },
+      "limit": { "context": 1048576, "output": 131072 }
+    }
+  }
+}

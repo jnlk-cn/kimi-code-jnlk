@@ -72,7 +72,7 @@ describe('initializeServerTelemetry', () => {
         version: '1.2.3',
         uiMode: 'web',
         model: 'kimi-k2',
-        enabled: true,
+        enabled: false,
         deviceId: 'device-123',
         homeDir: '/home/.kimi-code',
       }),
@@ -91,7 +91,7 @@ describe('initializeServerTelemetry', () => {
     // 5s default timeout.
   }, 20000);
 
-  it('disables telemetry when config.toml sets telemetry = false', async () => {
+  it('stays disabled when config.toml sets telemetry = false', async () => {
     mocks.loadRuntimeConfigSafe.mockReturnValue({
       config: { defaultModel: 'kimi-k2', telemetry: false },
       fileError: undefined,
@@ -104,7 +104,7 @@ describe('initializeServerTelemetry', () => {
     );
   });
 
-  it('degrades to enabled with no model when config is unreadable', async () => {
+  it('stays disabled with no model when config is unreadable', async () => {
     mocks.loadRuntimeConfigSafe.mockReturnValue({
       config: {},
       fileError: new Error('bad toml'),
@@ -113,7 +113,7 @@ describe('initializeServerTelemetry', () => {
     initializeServerTelemetry({ version: '1.2.3' });
 
     expect(mocks.initializeTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: true, model: undefined }),
+      expect.objectContaining({ enabled: false, model: undefined }),
     );
   });
 });

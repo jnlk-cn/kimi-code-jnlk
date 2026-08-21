@@ -7,12 +7,16 @@
  * placeholder so the generated catalog is not committed.
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const scriptDir = import.meta.dirname;
 const outFile = resolveOutputFile(process.argv.slice(2));
 const modelsUrl = process.env.MODELS_DEV_URL || "https://models.dev/api.json";
+const overlayPath = resolve(
+  scriptDir,
+  "../../../packages/kosong/src/catalog-overlays/volcengine-coding-plan.json",
+);
 
 const KEEP_PROVIDER = new Set(["id", "name", "api", "env", "npm", "type", "models"]);
 const KEEP_MODEL = new Set([
@@ -22,12 +26,14 @@ const KEEP_MODEL = new Set([
   "limit",
   "tool_call",
   "reasoning",
+  "reasoning_options",
   "interleaved",
   "modalities",
   // Message-level tool declarations capability — kosong's
   // catalogModelToCapability reads it; stripping it here would silently
   // disable tool-select for catalog-imported aliases.
   "dynamically_loaded_tools",
+  "cost",
 ]);
 
 function resolveOutputFile(args) {
@@ -83,6 +89,18 @@ async function fetchCatalog(url) {
     const p = stripProvider(v);
     if (p !== undefined && Object.keys(p).length > 0) stripped[k] = p;
   }
+  // Local overlays (e.g. Volcengine Coding Plan) are not on models.dev —
+  // merge them so release built-in snapshots stay usable offline.
+  const overlayProvider = JSON.parse(readFileSync(overlayPath, "utf-8"));
+  const overlayId = overlayProvider.id;
+  if (typeof overlayId !== "string" || overlayId.length === 0) {
+    throw new Error(`overlay at ${overlayPath} is missing id`);
+  }
+  const strippedOverlay = stripProvider(overlayProvider);
+  if (strippedOverlay === undefined) {
+    throw new Error(`overlay at ${overlayPath} stripped to empty`);
+  }
+  stripped[overlayId] = strippedOverlay;
   return JSON.stringify(stripped);
 }
 

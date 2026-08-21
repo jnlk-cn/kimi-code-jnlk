@@ -1,6 +1,6 @@
 # Configuration files
 
-Kimi Code CLI writes all long-term preferences — which model to use, which API key to fill in, how many steps an Agent can run per turn — into TOML (a plain-text configuration format with a clear structure) files. Change them once and they take effect on every startup. Agent and runtime settings live in `config.toml`; terminal-UI and client preferences (theme, editor, notifications, auto-update) live in a companion `tui.toml`.
+Kimi Code CLI writes all long-term preferences — which model to use, which API key to fill in, how many steps an Agent can run per turn — into TOML (a plain-text configuration format with a clear structure) files. Change them once and they take effect on every startup. Agent and runtime settings live in `config.toml`; terminal-UI and client preferences (theme, editor, notifications) live in a companion `tui.toml`.
 
 Default location: `~/.kimi-code/config.toml`, created automatically on first run.
 
@@ -27,7 +27,6 @@ default_model = "kimi-code/k3"
 default_permission_mode = "manual"
 default_plan_mode = false
 merge_all_available_skills = true
-telemetry = true
 
 [providers."managed:kimi-code"]
 type = "kimi"
@@ -104,7 +103,6 @@ Fields in the config file fall into two categories: **top-level scalars** that d
 | `extra_skill_dirs` | `array<string>` | — | Extra skill search directories, layered on top of the default directories |
 | `extra_agent_dirs` | `array<string>` | — | Extra custom agent search directories, layered on top of the default directories |
 | `builtin_product_skills` | `boolean` | `true` | Whether the built-in skills that document Kimi Code itself are offered to the model: `update-config`, `custom-theme`, `mcp-config`, `check-kimi-code-docs`, and `import-from-cc-codex`. Turning them off trims their names and descriptions from the system prompt, at the cost of the guided flows for those tasks. Read by the default `agent-core-v2` engine; ignored when `KIMI_CODE_LEGACY_FLAG=1` selects the legacy engine |
-| `telemetry` | `boolean` | `true` | Whether anonymous telemetry is enabled; disabled only when explicitly set to `false` |
 | `providers` | `table` | `{}` | API provider table → [`providers`](#providers) |
 | `models` | `table` | — | Model alias table → [`models`](#models) |
 | `thinking` | `table` | — | Default parameters for Thinking mode → [`thinking`](#thinking) |
@@ -511,7 +509,6 @@ Alongside `config.toml`, the CLI keeps terminal-UI and client preferences in a c
 | `[editor].command` | `string` | `""` | External editor command for composing long input; empty falls back to `$VISUAL` / `$EDITOR` |
 | `[notifications].enabled` | `boolean` | `true` | Whether desktop notifications are sent |
 | `[notifications].notification_condition` | `string` | `unfocused` | When to notify: `unfocused` (only when the terminal is not focused) or `always` |
-| `[upgrade].auto_install` | `boolean` | `true` | Whether new versions are installed automatically |
 | `[status_line].items` | `string[]` | `[]` | Built-in slots to show on the first footer line and their order: `mode`, `goal`, `model`, `tasks`, `cwd`, `git`, `tips`. Unset keeps the default layout; unknown ids are skipped with a warning |
 | `[status_line].command` | `string` | `""` | Custom status line command. Its first stdout line replaces the first footer line, with a JSON snapshot (model, cwd, git branch, permission mode, plan mode, context usage, session id, version) passed on stdin. Runs are capped at 300ms and throttled to once per second; failures fall back to the built-in layout |
 
@@ -528,9 +525,6 @@ command = "" # empty uses $VISUAL / $EDITOR
 [notifications]
 enabled = true
 notification_condition = "unfocused" # "unfocused" | "always"
-
-[upgrade]
-auto_install = true
 
 # [status_line]
 # items = ["mode", "goal", "model", "tasks", "cwd", "git", "tips"]

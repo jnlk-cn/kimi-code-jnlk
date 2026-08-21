@@ -56,6 +56,31 @@ import { normalizeToolCallIdsForProvider, sanitizeToolCallId } from '../tool-cal
 
 const CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING = 128 * 1024;
 
+/**
+ * Picks the `reasoning_effort` wire value when history contains a ThinkPart
+ * but the caller did not pin an effort (issue #1616). Always-on reasoners
+ * with no effort tiers (DeepSeek V4) must omit the field; models with a
+ * declared effort list use the catalog default / middle tier; legacy
+ * OpenAI-compatible endpoints keep the historical `'medium'` fallback.
+ */
+export function resolveHistoryReasoningEffortFallback(args: {
+  readonly alwaysThinking?: boolean;
+  readonly supportEfforts?: readonly string[];
+  readonly defaultEffort?: string;
+}): string | undefined {
+  const efforts =
+    args.supportEfforts?.map((value) => value.trim()).filter((value) => value.length > 0) ?? [];
+  if (efforts.length > 0) {
+    const declared = args.defaultEffort?.trim();
+    if (declared !== undefined && declared.length > 0 && efforts.includes(declared)) {
+      return declared;
+    }
+    return efforts[Math.floor(efforts.length / 2)]!;
+  }
+  if (args.alwaysThinking === true) return undefined;
+  return 'medium';
+}
+
 export const OPENAI_CHAT_TOOL_CALL_ID_POLICY: ToolCallIdPolicy = {
   normalize: (id) => sanitizeToolCallId(id, 64),
   maxLength: 64,
@@ -95,8 +120,17 @@ export interface OpenAILegacyOptions {
   model: string;
   stream?: boolean | undefined;
   maxTokens?: number | undefined;
+  /**
+   * Per-model hard upper bound on completion tokens. When unset, falls back
+   * to the 128k chat-completions ceiling. DeepSeek V4 and similar models
+   * advertise larger windows via `maxOutputSize`.
+   */
+  maxCompletionTokensCeiling?: number | undefined;
   reasoningKey?: string | undefined;
   offEffort?: string | undefined;
+  supportEfforts?: readonly string[] | undefined;
+  defaultEffort?: string | undefined;
+  alwaysThinking?: boolean | undefined;
   thinkingEffort?: ThinkingEffort | undefined;
   httpClient?: unknown;
   defaultHeaders?: Record<string, string>;
@@ -250,8 +284,12 @@ function convertMessage(
     result.content = '';
   }
 
-  if (message.role === 'assistant' && result.content === undefined) {
-    result.content = null;
+  // Strict OpenAI-compatible gateways (Volcengine Ark, DeepSeek, …) reject
+  // requests when `messages[].content` is absent or null — even for tool-only
+  // assistant turns. Empty string keeps the key present for LiteLLM (#3017)
+  // and satisfies those gateways.
+  if (result.content === undefined) {
+    result.content = '';
   }
 
   if (hasReasoningPart || (preserveThinking && message.role === 'assistant')) {
@@ -494,6 +532,10 @@ export class OpenAILegacyChatProvider implements ChatProvider {
   private readonly _defaultHeaders: Record<string, string> | undefined;
   private readonly _reasoningKeyDialect: ReasoningKeyDialect;
   private readonly _offEffort: string | undefined;
+  private readonly _supportEfforts: readonly string[] | undefined;
+  private readonly _defaultEffort: string | undefined;
+  private readonly _alwaysThinking: boolean;
+  private readonly _maxCompletionTokensCeiling: number;
   private readonly _thinkingEffort: ThinkingEffort | undefined;
   private readonly _generationKwargs: OpenAILegacyGenerationKwargs;
   private readonly _toolMessageConversion: ToolMessageConversion;
@@ -523,6 +565,13 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     );
     this._thinkingEffort = options.thinkingEffort;
     this._offEffort = options.offEffort;
+    this._supportEfforts = options.supportEfforts;
+    this._defaultEffort = options.defaultEffort;
+    this._alwaysThinking = options.alwaysThinking === true;
+    this._maxCompletionTokensCeiling =
+      options.maxCompletionTokensCeiling !== undefined && options.maxCompletionTokensCeiling > 0
+        ? options.maxCompletionTokensCeiling
+        : CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING;
     this._generationKwargs = normalizeGenerationKwargs(
       this._model,
       options.maxTokens !== undefined ? completionTokenKwargs(this._model, options.maxTokens) : {},
@@ -691,7 +740,11 @@ export class OpenAILegacyChatProvider implements ChatProvider {
         message.content.some((part) => part.type === 'think'),
       );
       if (hasThinkPart) {
-        reasoningEffort = 'medium';
+        reasoningEffort = resolveHistoryReasoningEffortFallback({
+          alwaysThinking: this._alwaysThinking,
+          supportEfforts: this._supportEfforts,
+          defaultEffort: this._defaultEffort,
+        });
       }
     }
 
@@ -709,7 +762,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
       if (hooked !== undefined) {
         kwargs = { ...kwargs, ...hooked };
       } else {
-        const capped = Math.min(cap, CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING);
+        const capped = Math.min(cap, this._maxCompletionTokensCeiling);
         kwargs = { ...kwargs, ...completionTokenKwargs(this._model, Math.max(1, capped)) };
       }
     }

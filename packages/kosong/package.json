@@ -32,6 +32,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./catalog-overlays": {
+      "types": "./src/catalog-overlays/index.ts",
+      "default": "./src/catalog-overlays/index.ts"
+    },
     "./providers/*": {
       "types": "./src/providers/*.ts",
       "default": "./src/providers/*.ts"

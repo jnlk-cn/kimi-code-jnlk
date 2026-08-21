@@ -9,6 +9,7 @@ import {
   resolveCatalogImport,
   type CatalogModelEntry,
 } from '../src/catalog';
+import { mergeCatalogOverlays } from '../src/catalog-overlays';
 
 describe('inferWireType (deprecated compatibility wrapper)', () => {
   it('answers only the wire, or undefined when the entry is not importable', () => {
@@ -284,6 +285,10 @@ describe('catalogModelToCapability', () => {
       id: 'm',
       name: 'M',
       maxOutputSize: 64000,
+      reasoningKey: undefined,
+      supportEfforts: undefined,
+      offEffort: undefined,
+      alwaysThinking: true,
       capability: {
         image_in: true,
         video_in: false,
@@ -291,6 +296,7 @@ describe('catalogModelToCapability', () => {
         thinking: true,
         tool_use: true,
         max_context_tokens: 200000,
+        max_input_tokens: undefined,
         dynamically_loaded_tools: false,
       },
     });
@@ -520,7 +526,6 @@ describe('catalogModelToCapability', () => {
     for (const reasoning_options of [
       [{ type: 'toggle' }],
       [{ type: 'budget_tokens', min: 1024, max: 32768 }],
-      [],
     ] as const) {
       const model = catalogModelToCapability({
         id: 'm',
@@ -530,7 +535,20 @@ describe('catalogModelToCapability', () => {
       });
       expect(model?.supportEfforts).toBeUndefined();
       expect(model?.capability.thinking).toBe(true);
+      expect(model?.alwaysThinking).toBeUndefined();
     }
+  });
+
+  it('marks reasoning:true with empty reasoning_options as always-thinking (DeepSeek V4)', () => {
+    const model = catalogModelToCapability({
+      id: 'deepseek-v4-pro',
+      reasoning: true,
+      reasoning_options: [],
+      limit: { context: 1000000 },
+    });
+    expect(model?.supportEfforts).toBeUndefined();
+    expect(model?.alwaysThinking).toBe(true);
+    expect(model?.capability.thinking).toBe(true);
   });
 
   it('treats declared effort levels as thinking support when reasoning is absent', () => {
@@ -842,5 +860,136 @@ describe('catalogProviderModels', () => {
       },
     });
     expect(models).toHaveLength(0);
+  });
+});
+
+describe('catalog overlays', () => {
+  it('merges Volcengine Coding Plan over a models.dev snapshot', () => {
+    const merged = mergeCatalogOverlays({ anthropic: { id: 'anthropic', models: {} } });
+    expect(merged['volcengine-coding-plan']).toMatchObject({
+      id: 'volcengine-coding-plan',
+      api: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+    });
+    expect(merged.anthropic).toEqual({ id: 'anthropic', models: {} });
+  });
+
+  it('ships official Kimi Code and Open Platform snapshots from models.dev', () => {
+    const merged = mergeCatalogOverlays({});
+    expect(merged['kimi-for-coding']).toMatchObject({
+      id: 'kimi-for-coding',
+      name: 'Kimi For Coding',
+      npm: '@ai-sdk/anthropic',
+      api: 'https://api.kimi.com/coding/v1',
+    });
+    expect(resolveCatalogImport(merged['kimi-for-coding']!)).toEqual({
+      kind: 'ok',
+      wire: 'anthropic',
+      guessed: false,
+      baseUrl: 'https://api.kimi.com/coding',
+    });
+    expect(catalogProviderModels(merged['kimi-for-coding']!).map((model) => model.id).toSorted()).toEqual([
+      'k3',
+      'k3-256k',
+      'kimi-for-coding',
+      'kimi-for-coding-highspeed',
+    ]);
+    expect(merged.moonshotai).toMatchObject({
+      id: 'moonshotai',
+      api: 'https://api.moonshot.ai/v1',
+    });
+    expect(merged['moonshotai-cn']).toMatchObject({
+      id: 'moonshotai-cn',
+      api: 'https://api.moonshot.cn/v1',
+    });
+  });
+
+  it('patches official DeepSeek off-peak prices without dropping upstream metadata', () => {
+    const merged = mergeCatalogOverlays({
+      deepseek: {
+        id: 'deepseek',
+        name: 'DeepSeek',
+        api: 'https://api.deepseek.com',
+        models: {
+          'deepseek-v4-pro': {
+            id: 'deepseek-v4-pro',
+            name: 'DeepSeek V4 Pro',
+            family: 'deepseek-thinking',
+            tool_call: true,
+            reasoning: true,
+            limit: { context: 1048576, output: 384000 },
+            cost: { input: 0.435, output: 0.87, cache_read: 0.003625 },
+          },
+        },
+      },
+    });
+    const provider = merged.deepseek;
+    expect(provider).toMatchObject({
+      id: 'deepseek',
+      name: 'DeepSeek',
+      api: 'https://api.deepseek.com',
+    });
+    expect(provider?.models?.['deepseek-v4-pro']).toMatchObject({
+      id: 'deepseek-v4-pro',
+      name: 'DeepSeek V4 Pro',
+      limit: { context: 1048576, output: 384000 },
+      cost: { input: 0.66, output: 1.98, cache_read: 0.022 },
+    });
+    expect(provider?.models?.['deepseek-v4-flash-vision-exp']).toMatchObject({
+      id: 'deepseek-v4-flash-vision-exp',
+      cost: { input: 0.22, output: 0.66, cache_read: 0.007 },
+    });
+  });
+
+  it('exposes Volcengine Coding Plan models with DeepSeek V4 output windows', () => {
+    const models = catalogProviderModels(
+      mergeCatalogOverlays({})['volcengine-coding-plan']!,
+    );
+    const ids = models.map((model) => model.id);
+    expect(ids).toContain('deepseek-v4-pro');
+    expect(ids).toContain('deepseek-v4-flash');
+    expect(ids).toContain('ark-code-latest');
+    expect(ids).toContain('glm-5.2');
+    expect(ids).toContain('kimi-k2.7-code');
+    expect(ids).toContain('kimi-k2.7-code-thinking');
+    expect(ids).toContain('minimax-m3');
+    expect(ids).not.toContain('kimi-k2-thinking');
+
+    const pro = models.find((model) => model.id === 'deepseek-v4-pro');
+    expect(pro).toMatchObject({
+      reasoningKey: 'reasoning_content',
+      maxOutputSize: 384000,
+      capability: expect.objectContaining({
+        thinking: true,
+        tool_use: true,
+        max_context_tokens: 1048576,
+      }),
+    });
+    expect(pro?.alwaysThinking).toBeUndefined();
+
+    const volcengineOutputCaps: Record<string, number> = {
+      'ark-code-latest': 65536,
+      'doubao-seed-2.1-turbo': 65536,
+      'doubao-seed-2.0-code': 65536,
+      'doubao-seed-2.0-pro': 65536,
+      'doubao-seed-2.0-lite': 65536,
+      'doubao-seed-code': 65536,
+      'deepseek-v3.2': 65536,
+      'deepseek-v4-pro': 384000,
+      'deepseek-v4-flash': 384000,
+      'glm-4.7': 131072,
+      'glm-5.1': 131072,
+      'glm-5.2': 131072,
+      'kimi-k2.5': 32768,
+      'kimi-k2.6': 32768,
+      'kimi-k2.7-code': 32768,
+      'kimi-k2.7-code-thinking': 32768,
+      'minimax-m2.5': 131072,
+      'minimax-m2.7': 131072,
+      'minimax-m3': 131072,
+    };
+    for (const [id, maxOutputSize] of Object.entries(volcengineOutputCaps)) {
+      const model = models.find((entry) => entry.id === id);
+      expect(model?.maxOutputSize, id).toBe(maxOutputSize);
+    }
   });
 });

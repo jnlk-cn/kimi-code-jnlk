@@ -133,7 +133,7 @@ kimi -p "List changed files" --output-format stream-json
 
 ## 子命令
 
-`kimi` 提供以下子命令：`login`（非交互式登录）、`acp`（ACP IDE 模式）、`web`（前台运行本地 REST/WebSocket/web 服务并打开 web UI）、`doctor`（校验配置文件）、`export`（导出会话）、`migrate`（迁移旧版数据）、`upgrade`（检查更新）、`provider`（管理供应商）。
+`kimi` 提供以下子命令：`login`（非交互式登录）、`acp`（ACP IDE 模式）、`web`（前台运行本地 REST/WebSocket/web 服务并打开 web UI）、`doctor`（校验配置文件）、`export`（导出会话）、`migrate`（迁移旧版数据）、`provider`（管理供应商）。
 
 ### `kimi login`
 
@@ -259,16 +259,6 @@ kimi migrate
 ```
 
 完整迁移说明见[从 kimi-cli 迁移](../guides/migration.md)。
-
-### `kimi upgrade`
-
-立即检查最新版本并展示更新提示，选择操作后退出。也可以使用别名 `kimi update`。
-
-```sh
-kimi upgrade
-```
-
-对全局 npm、pnpm、yarn、bun 安装，`kimi upgrade` 会展示更新选项；选择 `Install update now` 后运行对应的前台安装命令。对 native 安装（含 Windows），会在前台下载并校验新二进制，并在下次启动时替换生效。当前安装方式无法自动升级时，改为打印手动更新命令。
 
 ### `kimi vis`
 

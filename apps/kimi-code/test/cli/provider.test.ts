@@ -610,6 +610,7 @@ describe('kimi provider catalog list', () => {
     const out = stdout.join('');
     expect(out).toMatch(/^anthropic\s+wire=anthropic\s+models=2\s+Anthropic\n/);
     expect(out).toMatch(/openai\s+wire=openai\s+models=1\s+OpenAI/);
+    expect(out).toMatch(/kimi-for-coding\s+wire=anthropic\s+models=4\s+Kimi For Coding/);
     // anthropic before openai (alphabetical).
     expect(out.indexOf('anthropic')).toBeLessThan(out.indexOf('openai'));
   });
@@ -722,6 +723,35 @@ describe('kimi provider catalog add', () => {
     // The patch sent over `setConfig` must explicitly carry the preserved default.
     expect(setConfigCalls[0]?.defaultModel).toBe('other/main');
     expect(stdout.join('')).toContain('Imported Anthropic (anthropic)');
+  });
+
+  it('imports official Kimi For Coding from the overlay when the fetched catalog is empty', async () => {
+    mockRegistryFetch({});
+    const { harness, current, setConfigCalls } = makeHarness({
+      providers: {},
+    } as KimiConfig);
+    const { deps, stdout, exitCodes } = makeDeps(harness);
+
+    await tryRun(() =>
+      handleCatalogAdd(deps, 'kimi-for-coding', {
+        apiKey: 'sk-kimi',
+        defaultModel: 'k3',
+      }),
+    );
+
+    expect(exitCodes).toEqual([]);
+    expect(current().providers['kimi-for-coding']).toMatchObject({
+      type: 'anthropic',
+      baseUrl: 'https://api.kimi.com/coding',
+      apiKey: 'sk-kimi',
+    });
+    expect(current().models?.['kimi-for-coding/k3']).toMatchObject({
+      provider: 'kimi-for-coding',
+      model: 'k3',
+    });
+    expect(current().defaultModel).toBe('kimi-for-coding/k3');
+    expect(setConfigCalls[0]?.defaultModel).toBe('kimi-for-coding/k3');
+    expect(stdout.join('')).toContain('Imported Kimi For Coding (kimi-for-coding)');
   });
 
   it('sets default_model when --default-model is supplied and the model exists', async () => {

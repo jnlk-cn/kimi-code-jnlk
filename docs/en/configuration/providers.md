@@ -29,9 +29,10 @@ The manager displays providers as a list of entries grouped by source. Navigatio
 - `d` to delete the current provider (with `[y/N]` confirmation)
 - Press Enter on the `[ Add New Platform ]` row to add a new provider
 
-Two paths when adding:
+Three paths when adding:
 
-- **Known third-party provider**: fetches the model catalog from [models.dev](https://models.dev/), select a provider → enter an API key → select a default model. Vendors whose protocol the catalog does not declare (e.g. xai, openrouter, and other vendor-specific SDKs) are imported as OpenAI-compatible with a "guessed" note; when the catalog provides no usable endpoint, a base URL prompt appears first; proprietary protocols (Amazon Bedrock, Cohere) and unrecognized explicit protocols are refused. Deprecated and alpha-status models are excluded from the import list. If the public catalog is unreachable, the CLI falls back to a built-in snapshot of the catalog, so the import still works offline or in blocked networks
+- **Built-in provider**: pick an official Kimi or other locally shipped catalog entry without fetching models.dev. Official Kimi Code (`kimi-for-coding`), Kimi Open Platform China (`moonshotai-cn`) and global (`moonshotai`) come first, then Volcengine Ark Coding Plan and DeepSeek. These entries are stripped snapshots of the public [models.dev](https://models.dev/) catalog plus the local overlays documented below.
+- **Known third-party provider**: fetches the model catalog from [models.dev](https://models.dev/), select a provider → enter an API key → select a default model. Vendors whose protocol the catalog does not declare (e.g. xai, openrouter, and other vendor-specific SDKs) are imported as OpenAI-compatible with a "guessed" note; when the catalog provides no usable endpoint, a base URL prompt appears first; proprietary protocols (Amazon Bedrock, Cohere) and unrecognized explicit protocols are refused. Deprecated and alpha-status models are excluded from the import list. If the public catalog is unreachable, the CLI falls back to a built-in snapshot of the catalog, so the import still works offline or in blocked networks. The catalog also merges the same local overlay entries as **Built-in provider**.
 - **Custom registry (api.json)**: paste a custom registry URL and Bearer token; the CLI automatically creates the `providers` / `models` entries. On later startup, providers from the same registry URL are refreshed together, so upstream provider additions, removals, and model metadata changes are synced.
 
 ::: warning
@@ -56,6 +57,16 @@ api_key = "sk-xxxxx"
 ```
 
 > When using the Kimi Code managed service, running `/login` automatically configures `base_url` and credentials — no manual setup needed.
+
+To use a [Kimi Code console](https://www.kimi.com/code/console) API key instead of OAuth, pick **Built-in provider** → **Kimi For Coding** in `/provider`, or:
+
+```sh
+kimi provider catalog add kimi-for-coding --api-key YOUR_API_KEY --default-model k3
+```
+
+The import follows the official models.dev entry: `type = "anthropic"` and `base_url = "https://api.kimi.com/coding"` (the catalog's `/v1` suffix is stripped for the Anthropic protocol). Available model ids are `k3`, `k3-256k`, `kimi-for-coding`, and `kimi-for-coding-highspeed`.
+
+Kimi Open Platform keys use **Moonshot AI (China)** (`moonshotai-cn`, `https://api.moonshot.cn/v1`) or **Moonshot AI** (`moonshotai`, `https://api.moonshot.ai/v1`) from the same built-in list. Those stay OpenAI-compatible.
 
 ## `anthropic`
 
@@ -92,6 +103,16 @@ type = "openai"
 base_url = "https://api.openai.com/v1"
 api_key = "sk-xxxxx"
 ```
+
+Official DeepSeek is also OpenAI-compatible. Pick **DeepSeek** in `/provider`, or:
+
+```sh
+kimi provider catalog add deepseek --api-key YOUR_API_KEY --default-model deepseek-v4-flash
+```
+
+The import writes `type = "openai"` and `base_url = "https://api.deepseek.com"`. Current official models are `deepseek-v4-flash`, `deepseek-v4-pro`, and `deepseek-v4-flash-vision-exp`.
+
+On 2026-08-16 DeepSeek switched to peak/off-peak token prices (peak hours 01:00–04:00 and 06:00–10:00 UTC; off-peak is half of peak). The local catalog overlay lists the off-peak USD / 1M token rates (`deepseek-v4-flash` $0.22 / $0.66, `deepseek-v4-pro` $0.66 / $1.98, cache-hit input $0.007 / $0.022). Peak is 2× those numbers.
 
 ## `openai_responses`
 
@@ -151,6 +172,34 @@ kimi
 ```
 
 To route Vertex requests through a custom (e.g. proxied) endpoint, set `base_url` (or the `GOOGLE_VERTEX_BASE_URL` env var); when omitted, the SDK default regional `*-aiplatform.googleapis.com` host is used. As with `google-genai`, give the host root only — the SDK appends `/v1beta1/publishers/google/models/…` itself.
+
+## Volcengine Ark Coding Plan
+
+[Volcengine Ark Coding Plan](https://www.volcengine.com/article/37482) is a subscription package for individual AI coding. Kimi Code CLI exposes it through a local catalog overlay: pick **Volcengine Ark Coding Plan** in `/provider`, or run:
+
+```sh
+kimi provider catalog add volcengine-coding-plan --api-key YOUR_API_KEY --default-model ark-code-latest
+```
+
+The import writes `type = "openai"` and the Coding Plan OpenAI-compatible endpoint:
+
+```toml
+[providers.volcengine-coding-plan]
+type = "openai"
+base_url = "https://ark.cn-beijing.volces.com/api/coding/v3"
+api_key = "YOUR_API_KEY"
+
+[models."volcengine-coding-plan/ark-code-latest"]
+provider = "volcengine-coding-plan"
+model = "ark-code-latest"
+max_context_size = 262144
+```
+
+::: warning
+Use the API key and `/api/coding/v3` endpoint issued for Coding Plan. Do not mix Agent Plan (`/api/plan/v3`) or pay-as-you-go Ark API (`/api/v3`) keys or URLs — that can skip plan quota or incur extra charges. Plan quota is valid only inside supported AI coding tools.
+:::
+
+Prefer `ark-code-latest` (console Auto routing) first; you can also pick a concrete model such as `doubao-seed-2.0-code`, `deepseek-v4-pro`, `kimi-k2.7-code`, `glm-5.2`, or `minimax-m3`. Treat the Volcengine Coding Plan console as the source of truth for the live model list.
 
 ## OAuth and credential injection
 

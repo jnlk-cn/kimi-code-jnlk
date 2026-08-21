@@ -19,6 +19,11 @@ export interface ModelsDevModelEntry {
     readonly input?: readonly string[];
     readonly output?: readonly string[];
   };
+  readonly cost?: {
+    readonly input?: number;
+    readonly output?: number;
+    readonly cache_read?: number;
+  };
 }
 
 export interface ModelsDevReasoningOption {
@@ -193,7 +198,7 @@ export function modelsDevModelToCapability(model: ModelsDevModelEntry): ModelsDe
   if (!isUsableChatModel(model)) return undefined;
   const inputs = model.modalities?.input ?? [];
   const output = model.limit?.output;
-  const thinking = modelsDevThinkingOptions(model.reasoning_options);
+  const thinking = modelsDevThinkingOptions(model.reasoning_options, model.reasoning === true);
   const input = model.limit?.input;
   const maxInputTokens =
     typeof input === 'number' && Number.isInteger(input) && input > 0
@@ -221,14 +226,25 @@ export function modelsDevModelToCapability(model: ModelsDevModelEntry): ModelsDe
   };
 }
 
-function modelsDevThinkingOptions(options: ModelsDevModelEntry['reasoning_options']): {
+function modelsDevThinkingOptions(
+  options: ModelsDevModelEntry['reasoning_options'],
+  reasoning: boolean,
+): {
   readonly efforts: readonly string[] | undefined;
   readonly offEffort: string | undefined;
   readonly hasToggle: boolean;
   readonly alwaysThinking: boolean | undefined;
 } {
-  if (!Array.isArray(options)) {
-    return { efforts: undefined, offEffort: undefined, hasToggle: false, alwaysThinking: undefined };
+  // models.dev marks always-on reasoners (DeepSeek V4 Pro/Flash) as
+  // `reasoning: true` with a missing or empty `reasoning_options` list —
+  // no toggle, no effort tiers, no off encoding.
+  if (!Array.isArray(options) || options.length === 0) {
+    return {
+      efforts: undefined,
+      offEffort: undefined,
+      hasToggle: false,
+      alwaysThinking: reasoning ? true : undefined,
+    };
   }
   let efforts: readonly string[] | undefined;
   let offEffort: string | undefined;

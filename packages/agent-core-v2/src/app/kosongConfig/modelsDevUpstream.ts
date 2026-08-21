@@ -4,6 +4,7 @@ import type { ModelCapability } from '#/kosong/contract/capability';
 import type { ModelRecord } from '#/kosong/model/model';
 
 import { BUILT_IN_MODELS_DEV_JSON } from './builtInModelsDev';
+import { mergeCatalogOverlays } from './catalogOverlays';
 import { ModelsDevImportErrors } from './errors';
 import {
   modelsDevProviderModels,
@@ -21,7 +22,7 @@ export const UPSTREAM_FETCH_TIMEOUT_MS = 10_000;
 export function loadBuiltInModelsDevCatalog(text?: string): ModelsDevCatalog | undefined {
   if (typeof text !== 'string' || text.length === 0) return undefined;
   try {
-    return JSON.parse(text) as ModelsDevCatalog;
+    return mergeCatalogOverlays(JSON.parse(text) as ModelsDevCatalog);
   } catch {
     return undefined;
   }
@@ -83,7 +84,10 @@ async function fetchAndCache(userAgent: string): Promise<ModelsDevCatalog> {
     if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
       throw new Error2(CoreErrors.codes.INTERNAL, 'unexpected catalog payload shape');
     }
-    cache = { catalog: payload as ModelsDevCatalog, fetchedAt: now };
+    cache = {
+      catalog: mergeCatalogOverlays(payload as ModelsDevCatalog),
+      fetchedAt: now,
+    };
     return cache.catalog;
   } catch (err) {
     if (cache !== undefined) return cache.catalog;

@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { flushTelemetrySync, initializeTelemetry, shutdownTelemetry, track } from '../src';
-import { isTelemetryDisabledByEnv } from '../src/bootstrap';
+import { isTelemetryDisabledByEnv, shouldEnableTelemetry } from '../src/bootstrap';
 import { TelemetryClient, resetDefaultTelemetryClientForTests } from '../src/client';
 import { installCrashHandlersForClient, setCrashPhase, uninstallCrashHandlers } from '../src/crash';
 import { EventSink } from '../src/sink';
@@ -824,29 +824,28 @@ describe('telemetry bootstrap', () => {
     expect(isTelemetryDisabledByEnv({ KIMI_DISABLE_TELEMETRY: 'false' })).toBe(false);
   });
 
-  it('disables the singleton without attaching a sink when opted out', async () => {
+  it('never enables remote telemetry', () => {
+    expect(shouldEnableTelemetry()).toBe(false);
+    expect(shouldEnableTelemetry({ enabled: true })).toBe(false);
+    expect(shouldEnableTelemetry({ enabled: false })).toBe(false);
+  });
+
+  it('disables the singleton without attaching a sink', async () => {
     const fetchImpl = vi.fn(async () => new Response('', { status: 200 }));
     vi.stubGlobal('fetch', fetchImpl);
-    const saved = process.env['KIMI_DISABLE_TELEMETRY'];
-    try {
-      process.env['KIMI_DISABLE_TELEMETRY'] = 'true';
-      initializeTelemetry({
-        homeDir: await tempHome(),
-        deviceId: 'dev',
-        appName: 'kimi-code-cli',
-        version: '1.2.3',
-      });
-      track('dropped');
-      await shutdownTelemetry();
-    } finally {
-      if (saved === undefined) delete process.env['KIMI_DISABLE_TELEMETRY'];
-      else process.env['KIMI_DISABLE_TELEMETRY'] = saved;
-    }
+    initializeTelemetry({
+      homeDir: await tempHome(),
+      deviceId: 'dev',
+      appName: 'kimi-code-cli',
+      version: '1.2.3',
+    });
+    track('dropped');
+    await shutdownTelemetry();
 
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('queues singleton track calls before initialization, then flushes after bootstrap', async () => {
+  it('drops queued singleton track calls on bootstrap', async () => {
     const fetchImpl = vi.fn(async () => new Response('', { status: 200 }));
     vi.stubGlobal('fetch', fetchImpl);
 
@@ -861,18 +860,10 @@ describe('telemetry bootstrap', () => {
 
     await shutdownTelemetry();
 
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    const init = requestInitFrom(fetchImpl);
-    const payload = JSON.parse(init.body as string) as {
-      events: Array<{ event: string; session_id: string }>;
-    };
-    expect(payload.events[0]).toMatchObject({
-      event: 'kfc_before_init',
-      session_id: 'ses',
-    });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('forwards a caller-provided endpoint to the transport', async () => {
+  it('does not send to a caller-provided endpoint', async () => {
     const fetchImpl = vi.fn(async (_input: unknown) => new Response('', { status: 200 }));
     vi.stubGlobal('fetch', fetchImpl);
 
@@ -886,11 +877,10 @@ describe('telemetry bootstrap', () => {
     track('custom_endpoint');
     await shutdownTelemetry();
 
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://mock.test/events');
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('flushes the singleton synchronously to disk fallback', async () => {
+  it('does not write a telemetry directory when the singleton is disabled', async () => {
     const homeDir = await tempHome();
     initializeTelemetry({
       homeDir,
@@ -903,47 +893,7 @@ describe('telemetry bootstrap', () => {
 
     flushTelemetrySync();
 
-    const telemetryDir = join(homeDir, 'telemetry');
-    const file = readFileSync(join(telemetryDir, readdirOne(telemetryDir)), 'utf-8');
-    expect(file).toContain('"event":"sync_flush"');
-  });
-
-  it('writes system metrics with the singleton session context', async () => {
-    vi.useFakeTimers();
-    const homeDir = await tempHome();
-    initializeTelemetry({
-      homeDir,
-      deviceId: 'dev',
-      sessionId: 'ses',
-      appName: 'kimi-code-cli',
-      version: '1.2.3',
-    });
-
-    vi.advanceTimersByTime(1_500);
-    flushTelemetrySync();
-
-    const telemetryDir = join(homeDir, 'telemetry');
-    const file = readFileSync(join(telemetryDir, readdirOne(telemetryDir)), 'utf-8');
-    const events = file
-      .trim()
-      .split('\n')
-      .map(
-        (line) =>
-          JSON.parse(line) as {
-            event: string;
-            session_id: string | null;
-            properties: Record<string, number>;
-          },
-      );
-    const metrics = events.find((event) => event.event === 'system_metrics');
-    if (metrics === undefined) throw new Error('Expected a system_metrics event');
-
-    expect(metrics.session_id).toBe('ses');
-    expect(Number.isFinite(metrics.properties['process_started_at'])).toBe(true);
-    expect(metrics.properties['process_started_at']).toBeGreaterThan(0);
-    expect(Number.isFinite(metrics.properties['process_uptime_ms'])).toBe(true);
-    expect(metrics.properties['process_uptime_ms']).toBeGreaterThanOrEqual(0);
-    expect(metrics.properties['rss_bytes']).toBeGreaterThan(0);
+    expect(() => statSync(join(homeDir, 'telemetry'))).toThrow();
   });
 });
 

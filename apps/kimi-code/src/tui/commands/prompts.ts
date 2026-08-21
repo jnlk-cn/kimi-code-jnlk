@@ -153,27 +153,39 @@ export function promptBaseUrl(host: SlashCommandHost, platformName: string): Pro
   });
 }
 
-export function promptCatalogProviderSelection(host: SlashCommandHost, catalog: Catalog): Promise<string | undefined> {
+export function promptCatalogProviderSelection(
+  host: SlashCommandHost,
+  catalog: Catalog,
+  options: { readonly title?: string; readonly orderedIds?: readonly string[] } = {},
+): Promise<string | undefined> {
   return new Promise((resolve) => {
-    const options: ChoiceOption[] = Object.entries(catalog)
+    const entries = options.orderedIds
+      ? options.orderedIds.flatMap((id) => {
+          const entry = catalog[id];
+          return entry === undefined ? [] : ([[id, entry]] as const);
+        })
+      : Object.entries(catalog);
+    const choiceOptions: ChoiceOption[] = entries
       .filter(([, entry]) => resolveCatalogImport(entry).kind !== 'invalid')
       .map(([id, entry]) => ({
         value: id,
         label: entry.name ?? id,
         description:
           typeof entry.api === 'string' && entry.api.length > 0 ? entry.api : undefined,
-      }))
-      .toSorted((a, b) => a.label.localeCompare(b.label));
+      }));
+    if (options.orderedIds === undefined) {
+      choiceOptions.sort((a, b) => a.label.localeCompare(b.label));
+    }
 
-    if (options.length === 0) {
+    if (choiceOptions.length === 0) {
       host.showError('Catalog has no providers with supported wire types.');
       resolve(undefined);
       return;
     }
 
     const picker = new ChoicePickerComponent({
-      title: 'Select a provider',
-      options,
+      title: options.title ?? 'Select a provider',
+      options: choiceOptions,
       searchable: true,
       onSelect: (value) => {
         host.restoreEditor();

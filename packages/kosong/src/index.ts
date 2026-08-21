@@ -54,6 +54,16 @@ export type {
   CatalogImportInvalidReason,
   CatalogImportResolution,
 } from './catalog';
+export {
+  BUILTIN_CATALOG_PROVIDER_IDS,
+  CATALOG_OVERLAYS,
+  DEEPSEEK_PROVIDER_ID,
+  KIMI_FOR_CODING_PROVIDER_ID,
+  MOONSHOTAI_CN_PROVIDER_ID,
+  MOONSHOTAI_PROVIDER_ID,
+  VOLCENGINE_CODING_PLAN_PROVIDER_ID,
+  mergeCatalogOverlays,
+} from './catalog-overlays';
 
 // Core functions
 export { generate } from './generate';
