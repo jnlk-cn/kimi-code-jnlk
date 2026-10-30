@@ -1,11 +1,11 @@
 import { log, type Logger } from '@moonshot-ai/kimi-code-sdk';
 import { track as trackTelemetry, type TelemetryProperties } from '@moonshot-ai/kimi-telemetry';
 
-import { INTERACTIVE_UPDATE_CHECK_TIMEOUT_MS } from '#/constant/app';
+import { FORK_UPGRADE_NOTICE, INTERACTIVE_UPDATE_CHECK_TIMEOUT_MS } from '#/constant/app';
 
 import { refreshUpdateCache } from '#/cli/update/refresh';
 import { decideUpdate, formatUpdateChannelWarning, resolveUpdateChannel } from '#/cli/update/select';
-import { detectInstallSource } from '#/cli/update/source';
+import { detectInstallSource, detectNativeInstall } from '#/cli/update/source';
 import {
   canAutoInstall,
   installCommandFor,
@@ -62,6 +62,10 @@ export async function handleUpgrade(
   overrides: Partial<UpgradeDeps> = {},
 ): Promise<number> {
   const deps = createDefaultUpgradeDeps(overrides);
+  if (detectNativeInstall()) {
+    deps.stderr.write(FORK_UPGRADE_NOTICE);
+    return 1;
+  }
   const sourceHint = await deps.detectInstallSource({ allowGlobalPrefix: false }).catch(() => null);
   const selection = resolveUpdateChannel(currentVersion, sourceHint ?? 'unsupported', deps.env);
   const channelWarning = formatUpdateChannelWarning(selection);

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const nativeBuild = vi.hoisted(() => ({ enabled: false }));
+
+vi.mock('#/cli/update/source', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#/cli/update/source')>();
+  return { ...actual, detectNativeInstall: () => nativeBuild.enabled };
+});
+
 import { handleUpgrade } from '#/cli/sub/upgrade';
 import type { InstallPromptChoiceValue } from '#/cli/update/prompt';
 import type {
@@ -447,5 +454,25 @@ describe('handleUpgrade', () => {
       expect(deps.installUpdate).not.toHaveBeenCalled();
       expect(stderr.join('')).toContain('error: failed to check for updates: canary unavailable');
     });
+  });
+});
+
+describe('handleUpgrade in a packaged fork build', () => {
+  it('refuses to swap the fork binary for an official release', async () => {
+    nativeBuild.enabled = true;
+    try {
+      const { stdout, stderr, writable } = captureOutput();
+      const deps = createDeps({ latest: '9.9.9', source: 'native' });
+
+      await expect(handleUpgrade('2.4.0', { ...deps, ...writable })).resolves.toBe(1);
+
+      expect(stderr.join('')).toContain('jnlk-cn/kimi-code-jnlk');
+      expect(stderr.join('')).toContain('install.sh');
+      expect(stdout.join('')).toBe('');
+      expect(deps.refreshUpdateCache).not.toHaveBeenCalled();
+      expect(deps.installUpdate).not.toHaveBeenCalled();
+    } finally {
+      nativeBuild.enabled = false;
+    }
   });
 });

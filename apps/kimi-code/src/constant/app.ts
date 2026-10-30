@@ -47,6 +47,15 @@ export const HEADLESS_STDIO_DRAIN_TIMEOUT_MS = 10000;
 // Published npm package name; this can differ from the executable command.
 export const NPM_PACKAGE_NAME = '@moonshot-ai/kimi-code';
 
+// This build ships from the community fork, whose releases are published on
+// GitHub rather than through the official CDN.
+export const FORK_REPOSITORY = 'jnlk-cn/kimi-code-jnlk';
+export const FORK_INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${FORK_REPOSITORY}/main/install.sh`;
+export const FORK_UPGRADE_NOTICE = `This build is ${FORK_REPOSITORY}, whose releases are not served by the official update channel.
+Upgrade it with the fork installer instead:
+  curl -fsSL ${FORK_INSTALL_SCRIPT_URL} | bash
+`;
+
 // App-owned data paths. SDK/core runtime config is intentionally not routed here.
 export const KIMI_CODE_HOME_ENV = 'KIMI_CODE_HOME';
 export const KIMI_CODE_DATA_DIR_NAME = '.kimi-code';
