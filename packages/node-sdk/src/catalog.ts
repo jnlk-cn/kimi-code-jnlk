@@ -19,7 +19,7 @@ export type { CatalogImportInvalidReason, CatalogImportResolution };
 export type { Catalog, CatalogModel, CatalogProviderEntry };
 
 export const DEFAULT_CATALOG_URL =
-  'https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json';
+  'https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/catalog/api.json';
 
 export class RegistryImportError extends Error {
   constructor(

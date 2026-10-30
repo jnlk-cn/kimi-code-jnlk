@@ -3,10 +3,10 @@
 # kimi-code-jnlk installer for macOS and Linux (community fork).
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | KIMI_VERSION=v2.4.0-jnlk.0 bash
-#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash -s -- --version v2.4.0-jnlk.0
-#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | sudo env KIMI_INSTALL_DIR=/usr/local bash
+#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | KIMI_VERSION=v2.4.0-jnlk.0 bash
+#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash -s -- --version v2.4.0-jnlk.0
+#   curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | sudo env KIMI_INSTALL_DIR=/usr/local bash
 #
 # Optional env:
 #   KIMI_VERSION         Release tag (e.g. v2.4.0-jnlk.0); if unset, fetch latest GitHub Release
@@ -48,10 +48,10 @@ _err() {
 _usage() {
   cat <<'EOF'
 Usage:
-  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash
-  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | KIMI_VERSION=v2.4.0-jnlk.0 bash
-  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | bash -s -- --version v2.4.0-jnlk.0
-  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.sh | sudo env KIMI_INSTALL_DIR=/usr/local bash
+  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | KIMI_VERSION=v2.4.0-jnlk.0 bash
+  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash -s -- --version v2.4.0-jnlk.0
+  curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | sudo env KIMI_INSTALL_DIR=/usr/local bash
 
 Options:
   --version TAG        Install a specific GitHub Release tag (e.g. v2.4.0-jnlk.0)

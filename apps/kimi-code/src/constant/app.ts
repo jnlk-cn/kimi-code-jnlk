@@ -50,7 +50,7 @@ export const NPM_PACKAGE_NAME = '@moonshot-ai/kimi-code';
 // This build ships from the community fork, whose releases are published on
 // GitHub rather than through the official CDN.
 export const FORK_REPOSITORY = 'jnlk-cn/kimi-code-jnlk';
-export const FORK_INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${FORK_REPOSITORY}/main/install.sh`;
+export const FORK_INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${FORK_REPOSITORY}/jnlk/2.4.0/install.sh`;
 export const FORK_UPGRADE_NOTICE = `This build is ${FORK_REPOSITORY}, whose releases are not served by the official update channel.
 Upgrade it with the fork installer instead:
   curl -fsSL ${FORK_INSTALL_SCRIPT_URL} | bash

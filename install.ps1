@@ -3,11 +3,11 @@
   kimi-code-jnlk installer for Windows (PowerShell 5.1+).
 
 .EXAMPLE
-  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
+  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
 
 .EXAMPLE
   $env:KIMI_VERSION = 'v2.4.0-jnlk.0'
-  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/install.ps1 | iex
+  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
 
 .NOTES
   Optional env:
