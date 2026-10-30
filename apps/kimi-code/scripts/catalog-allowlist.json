@@ -1,0 +1,14 @@
+{
+  "$schema_comment": "jnlk-maintained catalog allowlist. Only providers/models listed here are shipped in the built-in catalog and catalog/api.json. Add an entry after wire + TUI verification against the official API. Run `pnpm -C apps/kimi-code run catalog:mirror` to refresh the committed mirror.",
+  "providers": {
+    "deepseek": {
+      "note": "Official api.deepseek.com — verified in this fork for DeepSeek V4 thinking + tool calls.",
+      "api": "https://api.deepseek.com",
+      "type": "openai",
+      "models": [
+        "deepseek-v4-pro",
+        "deepseek-v4-flash"
+      ]
+    }
+  }
+}

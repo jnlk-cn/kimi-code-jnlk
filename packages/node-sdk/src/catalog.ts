@@ -2,6 +2,7 @@ import type { KimiConfig, ModelAlias } from '#/config/index';
 import {
   catalogBaseUrl,
   catalogProviderModels,
+  deepSeekV4Efforts,
   inferWireType,
   resolveCatalogImport,
   type Catalog,
@@ -13,11 +14,12 @@ import {
   type ProviderType,
 } from '@moonshot-ai/kosong';
 
-export { catalogBaseUrl, catalogProviderModels, inferWireType, resolveCatalogImport };
+export { catalogBaseUrl, catalogProviderModels, deepSeekV4Efforts, inferWireType, resolveCatalogImport };
 export type { CatalogImportInvalidReason, CatalogImportResolution };
 export type { Catalog, CatalogModel, CatalogProviderEntry };
 
-export const DEFAULT_CATALOG_URL = 'https://models.dev/api.json';
+export const DEFAULT_CATALOG_URL =
+  'https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/main/catalog/api.json';
 
 export class RegistryImportError extends Error {
   constructor(
@@ -96,6 +98,7 @@ export function catalogModelToAlias(providerId: string, model: CatalogModel): Mo
     displayName: model.name,
     reasoningKey: model.reasoningKey,
     supportEfforts: model.supportEfforts === undefined ? undefined : [...model.supportEfforts],
+    defaultEffort: model.defaultEffort,
     offEffort: model.offEffort,
     protocol: model.protocol,
     baseUrl: model.baseUrl,
