@@ -7,7 +7,12 @@
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import { formatDuration } from '@moonshot-ai/kimi-code-oauth';
-import type { SessionUsage, TokenUsage } from '@moonshot-ai/kimi-code-sdk';
+import {
+  estimateStepCostCny,
+  resolveDeepSeekRates,
+  type SessionUsage,
+  type TokenUsage,
+} from '@moonshot-ai/kimi-code-sdk';
 
 import {
   formatTokenCount,
@@ -58,6 +63,15 @@ export interface UsageReportOptions {
   readonly maxContextTokens: number;
   readonly managedUsage?: ManagedUsageReport;
   readonly managedUsageError?: string;
+  readonly deepSeekBalance?: DeepSeekBalanceReport;
+  readonly deepSeekBalanceError?: string;
+}
+
+export interface DeepSeekBalanceReport {
+  readonly totalCny: string;
+  readonly grantedCny: string;
+  readonly toppedUpCny: string;
+  readonly available: boolean;
 }
 
 export interface ManagedUsageReportLineOptions {
@@ -75,6 +89,28 @@ function usageInputTotal(usage: TokenUsage): number {
     usageNumber(usage.inputCacheRead) +
     usageNumber(usage.inputCacheCreation)
   );
+}
+
+function formatCnyAmount(amount: number): string {
+  const digits = amount > 0 && amount < 1 ? 4 : 2;
+  return `¥${amount.toFixed(digits)}`;
+}
+
+/**
+ * Estimated spend for one model to date, priced at the current DeepSeek rate.
+ * Undefined for models this fork has no rates for — aggregate session usage
+ * carries no per-step timestamps, so peak pricing cannot be replayed exactly.
+ */
+function deepSeekCostLabel(model: string, usage: TokenUsage): string | undefined {
+  if (resolveDeepSeekRates(model) === undefined) return undefined;
+  const cost = estimateStepCostCny({
+    modelId: model,
+    hitTokens: usageNumber(usage.inputCacheRead),
+    missTokens: usageNumber(usage.inputOther) + usageNumber(usage.inputCacheCreation),
+    outputTokens: usageNumber(usage.output),
+    atMs: Date.now(),
+  });
+  return cost > 0 ? formatCnyAmount(cost) : undefined;
 }
 
 function buildSessionUsageSection(
@@ -97,10 +133,13 @@ function buildSessionUsageSection(
     const output = usageNumber(row.output);
     totalInput += input;
     totalOutput += output;
+    const cost = deepSeekCostLabel(model, row);
     lines.push(
       `  ${muted(model)}  input ${value(formatTokenCount(input))}  output ${value(
         formatTokenCount(output),
-      )}  total ${value(formatTokenCount(input + output))}`,
+      )}  total ${value(formatTokenCount(input + output))}${
+        cost === undefined ? '' : `  est. ${value(cost)}`
+      }`,
     );
   }
   if (entries.length > 1) {
@@ -302,6 +341,47 @@ export function buildUsageReportLines(options: UsageReportOptions): string[] {
     lines.push(...extraSection);
   }
 
+  const balanceSection = buildDeepSeekBalanceSection(
+    options.deepSeekBalance,
+    options.deepSeekBalanceError,
+    accent,
+    value,
+    muted,
+  );
+  if (balanceSection.length > 0) {
+    lines.push('');
+    lines.push(...balanceSection);
+  }
+
+  return lines;
+}
+
+function buildDeepSeekBalanceSection(
+  balance: DeepSeekBalanceReport | undefined,
+  error: string | undefined,
+  accent: (text: string) => string,
+  value: (text: string) => string,
+  muted: (text: string) => string,
+): string[] {
+  if (balance === undefined && error === undefined) return [];
+  const lines = [accent('DeepSeek balance')];
+  if (error !== undefined) {
+    lines.push(muted(`  ${error}`));
+    return lines;
+  }
+  if (balance === undefined) return [];
+  const rows: Array<readonly [string, string]> = [
+    ['Total', balance.totalCny],
+    ['Granted', balance.grantedCny],
+    ['Topped up', balance.toppedUpCny],
+  ];
+  const labelWidth = Math.max(...rows.map(([label]) => label.length));
+  for (const [label, amount] of rows) {
+    lines.push(`  ${muted(label.padEnd(labelWidth, ' '))}  ${value(`¥${amount}`)}`);
+  }
+  if (!balance.available) {
+    lines.push(muted('  Balance unavailable for this account.'));
+  }
   return lines;
 }
 

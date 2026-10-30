@@ -41,6 +41,10 @@
     "./ssh-askpass": {
       "types": "./src/ssh-askpass.ts",
       "default": "./src/ssh-askpass.ts"
+    },
+    "./deepseek/format": {
+      "types": "./src/deepseek/format.ts",
+      "default": "./src/deepseek/format.ts"
     }
   },
   "publishConfig": {

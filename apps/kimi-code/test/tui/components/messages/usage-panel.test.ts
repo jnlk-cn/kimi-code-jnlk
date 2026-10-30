@@ -240,6 +240,7 @@ describe('UsagePanelComponent', () => {
     const added: string[] = [];
     const host = {
       session: undefined,
+      harness: { getConfig: async () => ({}) },
       state: {
         appState: {
           model: 'kimi',
@@ -308,5 +309,74 @@ describe('UsagePanelComponent', () => {
     currentTheme.setPalette(lightColors);
     component.invalidate();
     expect(bodyOf()).toContain(lightColors.text);
+  });
+});
+
+describe('usage panel DeepSeek cost', () => {
+  it('adds an estimated CNY cost for DeepSeek models only', () => {
+    const lines = buildUsageReportLines({
+      sessionUsage: {
+        byModel: {
+          'deepseek-v4-pro': {
+            inputOther: 1000,
+            inputCacheRead: 500,
+            inputCacheCreation: 500,
+            output: 250,
+          },
+          'kimi-k2': {
+            inputOther: 1000,
+            inputCacheRead: 0,
+            inputCacheCreation: 0,
+            output: 250,
+          },
+        },
+      },
+      contextUsage: 0.25,
+      contextTokens: 2500,
+      maxContextTokens: 10000,
+    }).map(strip);
+
+    const deepseek = lines.find((line) => line.includes('deepseek-v4-pro')) ?? '';
+    const kimi = lines.find((line) => line.includes('kimi-k2')) ?? '';
+    expect(deepseek).toContain('est. ¥');
+    expect(deepseek).toMatch(/est\. ¥0\.0\d{3}/);
+    expect(kimi).not.toContain('est. ¥');
+  });
+});
+
+describe('usage panel DeepSeek balance', () => {
+  it('lists the DeepSeek balance rows and surfaces fetch errors', () => {
+    const withBalance = buildUsageReportLines({
+      contextUsage: 0.25,
+      contextTokens: 2500,
+      maxContextTokens: 10000,
+      deepSeekBalance: {
+        totalCny: '12.34',
+        grantedCny: '0.00',
+        toppedUpCny: '12.34',
+        available: true,
+      },
+    }).map(strip);
+    expect(withBalance).toContain('DeepSeek balance');
+    expect(withBalance.some((line) => line.includes('Total') && line.includes('¥12.34'))).toBe(true);
+    expect(withBalance.some((line) => line.includes('Granted'))).toBe(true);
+
+    const withError = buildUsageReportLines({
+      contextUsage: 0.25,
+      contextTokens: 2500,
+      maxContextTokens: 10000,
+      deepSeekBalanceError: 'invalid api key',
+    }).map(strip);
+    expect(withError).toContain('DeepSeek balance');
+    expect(withError.some((line) => line.includes('invalid api key'))).toBe(true);
+  });
+
+  it('omits the balance section when the provider is not DeepSeek', () => {
+    const lines = buildUsageReportLines({
+      contextUsage: 0.25,
+      contextTokens: 2500,
+      maxContextTokens: 10000,
+    }).map(strip);
+    expect(lines).not.toContain('DeepSeek balance');
   });
 });

@@ -1,10 +1,20 @@
 import { release as osRelease, type as osType } from 'node:os';
 
 import type { McpServerInfo, SessionStatus, SessionUsage } from '@moonshot-ai/kimi-code-sdk';
+import {
+  fetchDeepSeekBalance,
+  isDeepSeekProvider,
+  resolveDeepSeekProviderApiKey,
+} from '@moonshot-ai/kimi-code-sdk';
 
 import { buildMcpStatusReportLines } from '../components/messages/mcp-status-panel';
 import { buildStatusReportLines } from '../components/messages/status-panel';
-import { buildUsageReportLines, UsagePanelComponent, type ManagedUsageReport } from '../components/messages/usage-panel';
+import {
+  buildUsageReportLines,
+  UsagePanelComponent,
+  type DeepSeekBalanceReport,
+  type ManagedUsageReport,
+} from '../components/messages/usage-panel';
 import { isExperimentalFlagEnabled } from './experimental-flags';
 import { quotaUsageRows } from '#/utils/usage/usage-format';
 import {
@@ -160,6 +170,7 @@ interface ManagedUsageResult {
 export async function showUsage(host: SlashCommandHost): Promise<void> {
   const sessionUsage = await loadSessionUsageReport(host);
   const managedUsage = await loadManagedUsageReport(host);
+  const deepSeekBalance = await loadDeepSeekBalanceReport(host);
   const reportArgs = {
     sessionUsage: sessionUsage.usage,
     sessionUsageError: sessionUsage.error,
@@ -168,6 +179,8 @@ export async function showUsage(host: SlashCommandHost): Promise<void> {
     maxContextTokens: host.state.appState.maxContextTokens,
     managedUsage: managedUsage?.usage,
     managedUsageError: managedUsage?.error,
+    deepSeekBalance: deepSeekBalance?.balance,
+    deepSeekBalanceError: deepSeekBalance?.error,
   };
   const panel = new UsagePanelComponent(() => buildUsageReportLines(reportArgs), 'primary');
   host.state.transcriptContainer.addChild(panel);
@@ -263,4 +276,35 @@ async function loadManagedUsageReport(host: SlashCommandHost): Promise<ManagedUs
     return { error: res.message };
   }
   return { usage: { rows: quotaUsageRows(res.quota), extraUsage: res.quota.extraUsage } };
+}
+
+interface DeepSeekBalanceResult {
+  readonly balance?: DeepSeekBalanceReport;
+  readonly error?: string;
+}
+
+async function loadDeepSeekBalanceReport(
+  host: SlashCommandHost,
+): Promise<DeepSeekBalanceResult | undefined> {
+  const alias = host.state.appState.model;
+  if (alias === undefined) return undefined;
+  const config = await host.harness.getConfig().catch(() => undefined);
+  if (config === undefined) return undefined;
+  const providers = config.providers ?? {};
+  const models = config.models ?? {};
+  if (!isDeepSeekProvider(alias, models, providers)) return undefined;
+  const provider = models[alias] === undefined ? undefined : providers[models[alias].provider];
+  const apiKey = resolveDeepSeekProviderApiKey(provider);
+  if (apiKey === undefined) return undefined;
+  const res = await fetchDeepSeekBalance(apiKey, provider?.baseUrl);
+  return res.ok
+    ? {
+        balance: {
+          totalCny: res.totalCny,
+          grantedCny: res.grantedCny,
+          toppedUpCny: res.toppedUpCny,
+          available: res.available,
+        },
+      }
+    : { error: res.message };
 }
