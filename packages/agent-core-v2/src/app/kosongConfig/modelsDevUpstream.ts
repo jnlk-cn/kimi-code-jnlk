@@ -201,6 +201,7 @@ export function modelsDevModelToRecord(providerId: string, model: ModelsDevModel
   if (model.name !== undefined) record.displayName = model.name;
   if (model.reasoningKey !== undefined) record.reasoningKey = model.reasoningKey;
   if (model.supportEfforts !== undefined) record.supportEfforts = [...model.supportEfforts];
+  if (model.defaultEffort !== undefined) record.defaultEffort = model.defaultEffort;
   if (model.offEffort !== undefined) record.offEffort = model.offEffort;
   if (model.protocol !== undefined) record.protocol = model.protocol;
   if (model.baseUrl !== undefined) record.baseUrl = model.baseUrl;

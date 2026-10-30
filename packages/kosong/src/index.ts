@@ -43,6 +43,7 @@ export {
   catalogBaseUrl,
   catalogModelToCapability,
   catalogProviderModels,
+  deepSeekV4Efforts,
   inferWireType,
   resolveCatalogImport,
 } from './catalog';

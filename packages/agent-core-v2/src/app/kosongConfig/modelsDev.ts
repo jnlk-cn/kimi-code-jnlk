@@ -49,6 +49,7 @@ export interface ModelsDevModel {
   readonly maxOutputSize?: number;
   readonly reasoningKey?: string;
   readonly supportEfforts?: readonly string[];
+  readonly defaultEffort?: string;
   readonly offEffort?: string;
   readonly alwaysThinking?: boolean;
   readonly protocol?: 'anthropic';
@@ -186,6 +187,20 @@ function modelsDevEndpointRequired(entry: ModelsDevProviderEntry, wire: Provider
   return false;
 }
 
+const DEEPSEEK_V4_MODEL_PREFIX = 'deepseek-v4-';
+
+function modelsDevBaseModelId(modelName: string): string {
+  const slash = modelName.lastIndexOf('/');
+  return (slash >= 0 ? modelName.slice(slash + 1) : modelName).toLowerCase();
+}
+
+function deepSeekV4Efforts(
+  modelName: string,
+): { readonly supportEfforts: readonly string[]; readonly defaultEffort: string } | undefined {
+  if (!modelsDevBaseModelId(modelName).startsWith(DEEPSEEK_V4_MODEL_PREFIX)) return undefined;
+  return { supportEfforts: ['high', 'max'], defaultEffort: 'high' };
+}
+
 export function modelsDevModelToCapability(model: ModelsDevModelEntry): ModelsDevModel | undefined {
   if (typeof model.id !== 'string' || model.id.length === 0) return undefined;
   const context = model.limit?.context;
@@ -194,6 +209,8 @@ export function modelsDevModelToCapability(model: ModelsDevModelEntry): ModelsDe
   const inputs = model.modalities?.input ?? [];
   const output = model.limit?.output;
   const thinking = modelsDevThinkingOptions(model.reasoning_options);
+  const deepSeek = thinking.efforts === undefined ? deepSeekV4Efforts(model.id) : undefined;
+  const efforts = thinking.efforts ?? deepSeek?.supportEfforts;
   const input = model.limit?.input;
   const maxInputTokens =
     typeof input === 'number' && Number.isInteger(input) && input > 0
@@ -204,15 +221,15 @@ export function modelsDevModelToCapability(model: ModelsDevModelEntry): ModelsDe
     name: typeof model.name === 'string' && model.name.length > 0 ? model.name : undefined,
     maxOutputSize: typeof output === 'number' && output > 0 ? output : undefined,
     reasoningKey: modelsDevReasoningKey(model.interleaved),
-    supportEfforts: thinking.efforts,
+    supportEfforts: efforts,
+    defaultEffort: thinking.efforts === undefined ? deepSeek?.defaultEffort : undefined,
     offEffort: thinking.offEffort,
     alwaysThinking: thinking.alwaysThinking,
     capability: {
       image_in: inputs.includes('image'),
       video_in: inputs.includes('video'),
       audio_in: inputs.includes('audio'),
-      thinking:
-        Boolean(model.reasoning) || thinking.efforts !== undefined || thinking.hasToggle,
+      thinking: Boolean(model.reasoning) || efforts !== undefined || thinking.hasToggle,
       tool_use: model.tool_call ?? true,
       max_context_tokens: context,
       max_input_tokens: maxInputTokens,

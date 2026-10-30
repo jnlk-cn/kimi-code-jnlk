@@ -844,3 +844,33 @@ describe('catalogProviderModels', () => {
     expect(models).toHaveLength(0);
   });
 });
+
+describe('deepseek V4 thinking metadata', () => {
+  it('recovers the effort levels from the model id when the catalog omits them', () => {
+    const model = catalogModelToCapability({
+      id: 'deepseek/deepseek-v4-pro',
+      name: 'DeepSeek V4 Pro',
+      limit: { context: 128000 },
+      tool_call: true,
+    });
+    expect(model?.supportEfforts).toEqual(['high', 'max']);
+    expect(model?.defaultEffort).toBe('high');
+    expect(model?.capability.thinking).toBe(true);
+  });
+
+  it('keeps the declared reasoning_options when the catalog has them', () => {
+    const model = catalogModelToCapability({
+      id: 'deepseek-v4-pro',
+      limit: { context: 128000 },
+      reasoning_options: [{ type: 'effort', values: ['low', 'high'] }],
+    });
+    expect(model?.supportEfforts).toEqual(['low', 'high']);
+    expect(model?.defaultEffort).toBeUndefined();
+  });
+
+  it('leaves unrelated models without a fallback', () => {
+    const model = catalogModelToCapability({ id: 'glm-5', limit: { context: 128000 } });
+    expect(model?.supportEfforts).toBeUndefined();
+    expect(model?.defaultEffort).toBeUndefined();
+  });
+});

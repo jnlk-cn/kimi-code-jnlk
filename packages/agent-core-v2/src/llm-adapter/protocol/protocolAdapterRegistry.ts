@@ -3,11 +3,13 @@ import { LifecycleScope } from '#/app/scopes';
 import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
 import {
   anthropicRequester,
+  deepseekRequester,
   googleGenAIRequester,
   googleVertexRequester,
   openAIRequester,
   openAIResponsesRequester,
 } from '#human/llm/builtin/provider/index';
+import { isDeepSeekV4Model } from '#human/llm/builtin/provider/deepseek/index';
 import type { LlmRequester as CoreLlmRequester } from '#human/llm/requester';
 import type { ProviderMediaContribution } from '#human/media/upload';
 import type { LlmModel } from '#human/llm-requester/model';
@@ -61,16 +63,33 @@ function openAIReasoningKeyFor(model: Model): string | undefined {
   return model.providerOptions?.reasoningKey ?? model.reasoningKey;
 }
 
+function isDeepSeekHost(baseUrl: string | undefined): boolean {
+  if (baseUrl === undefined) return false;
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return host === 'deepseek.com' || host.endsWith('.deepseek.com');
+  } catch {
+    return false;
+  }
+}
+
+function isDeepSeekRoute(model: Model): boolean {
+  if (!isDeepSeekV4Model(model.name)) return false;
+  if (model.providerType === 'deepseek' || model.providerName === 'deepseek') return true;
+  return isDeepSeekHost(model.baseUrl);
+}
+
 function routeFor(model: Model): AdapterRoute {
   const definition =
     model.providerType === undefined
       ? undefined
       : getProviderDefinition(model.providerType, model.protocol);
   const routeMedia = definition?.modelSource === 'oauth-catalog' ? kimiMedia : undefined;
+  const deepseek = definition === undefined && isDeepSeekRoute(model);
   switch (model.protocol) {
     case 'openai':
       return {
-        requester: definition?.requester ?? openAIRequester,
+        requester: definition?.requester ?? (deepseek ? deepseekRequester : openAIRequester),
         options: (config) => ({
           extras: config.extraParams?.openai,
           reasoningKey:

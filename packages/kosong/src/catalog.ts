@@ -84,6 +84,8 @@ export interface CatalogModel {
    * some level, so the UI must not offer an off option.
    */
   readonly alwaysThinking?: boolean;
+  /** Effort level preselected when the model declares several. */
+  readonly defaultEffort?: string;
   /**
    * Per-model protocol override from the catalog entry's `provider` field
    * (gateway providers serving this model over the Anthropic protocol).
@@ -307,6 +309,24 @@ function catalogEndpointRequired(entry: CatalogProviderEntry, wire: ProviderType
   return false;
 }
 
+const DEEPSEEK_V4_MODEL_PREFIX = 'deepseek-v4-';
+
+function catalogModelBaseId(modelId: string): string {
+  const slash = modelId.lastIndexOf('/');
+  return (slash >= 0 ? modelId.slice(slash + 1) : modelId).toLowerCase();
+}
+
+/**
+ * Thinking metadata for DeepSeek V4, which accepts `high` and `max` but is not
+ * always described by a `reasoning_options` entry in the public catalog.
+ */
+export function deepSeekV4Efforts(
+  modelId: string,
+): { readonly supportEfforts: readonly string[]; readonly defaultEffort: string } | undefined {
+  if (!catalogModelBaseId(modelId).startsWith(DEEPSEEK_V4_MODEL_PREFIX)) return undefined;
+  return { supportEfforts: ['high', 'max'], defaultEffort: 'high' };
+}
+
 /** Normalizes one catalog model entry into a {@link CatalogModel}; skips invalid entries. */
 export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel | undefined {
   if (typeof model.id !== 'string' || model.id.length === 0) return undefined;
@@ -316,6 +336,8 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
   const inputs = model.modalities?.input ?? [];
   const output = model.limit?.output;
   const thinking = catalogThinkingOptions(model.reasoning_options);
+  const deepSeek = thinking.efforts === undefined ? deepSeekV4Efforts(model.id) : undefined;
+  const efforts = thinking.efforts ?? deepSeek?.supportEfforts;
   // `limit.input` is the true prompt cap when declared (e.g. gpt-5: 400k
   // context window but a 272k input limit); it is tracked separately from the
   // total window so prompt-budget checks (compaction) use the cap while
@@ -330,7 +352,8 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
     name: typeof model.name === 'string' && model.name.length > 0 ? model.name : undefined,
     maxOutputSize: typeof output === 'number' && output > 0 ? output : undefined,
     reasoningKey: catalogReasoningKey(model.interleaved),
-    supportEfforts: thinking.efforts,
+    supportEfforts: efforts,
+    defaultEffort: thinking.efforts === undefined ? deepSeek?.defaultEffort : undefined,
     offEffort: thinking.offEffort,
     alwaysThinking: thinking.alwaysThinking,
     capability: {
@@ -340,8 +363,7 @@ export function catalogModelToCapability(model: CatalogModelEntry): CatalogModel
       // Declaring concrete effort levels (or a toggle) implies thinking
       // support even when the `reasoning` boolean is absent (mirrors the
       // api.json importer).
-      thinking:
-        Boolean(model.reasoning) || thinking.efforts !== undefined || thinking.hasToggle,
+      thinking: Boolean(model.reasoning) || efforts !== undefined || thinking.hasToggle,
       tool_use: model.tool_call ?? true,
       max_context_tokens: context,
       max_input_tokens: maxInputTokens,

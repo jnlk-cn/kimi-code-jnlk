@@ -18,6 +18,7 @@ import {
   type ModelThinkingMetadata,
 } from '#/llm-requester/thinking';
 import { classifyKimiQuotaError } from '#/llm/builtin/provider/kimi/errors';
+import { deepseekOpenAIProtocol } from '#/llm/builtin/provider/deepseek/index';
 import { createKimiOpenAIRequester, createOpenAIRequester, kimiEndpoint } from '#/llm-requester/factories';
 import type { LlmClientContext, LlmRequestEvent } from '#/llm-requester/requester';
 
@@ -1018,5 +1019,66 @@ describe('openai requester thinking', () => {
       { type: 'think', think: 'We', reasoningKey: 'reasoning' },
       { type: 'text', text: 'ok' },
     ]);
+  });
+});
+
+describe('deepseek protocol encoding', () => {
+  function encodeDeepSeek(options: {
+    readonly effort?: string;
+    readonly history?: readonly Message[];
+    readonly maxOutputTokens?: number;
+    readonly modelName?: string;
+  }): Record<string, unknown> {
+    const request = deepseekOpenAIProtocol.encode({
+      model: {
+        spec: {
+          provider: 'deepseek',
+          name: options.modelName ?? 'deepseek-v4-pro',
+          capability: THINKING_CAPABILITY,
+        },
+        thinking: options.effort === undefined ? undefined : { effort: options.effort },
+        maxOutputTokens: options.maxOutputTokens,
+      },
+      profile: { systemPrompt: 'system' },
+      content: { messages: options.history ?? messages },
+      options: undefined,
+    });
+    return request.params as Record<string, unknown>;
+  }
+
+  it('encodes an explicit effort as high or max with thinking enabled', () => {
+    expect(encodeDeepSeek({ effort: 'on' })).toMatchObject({
+      thinking: { type: 'enabled' },
+      reasoning_effort: 'high',
+    });
+    expect(encodeDeepSeek({ effort: 'max' })).toMatchObject({
+      thinking: { type: 'enabled' },
+      reasoning_effort: 'max',
+    });
+    expect(encodeDeepSeek({ effort: 'xhigh' })).toMatchObject({ reasoning_effort: 'max' });
+  });
+
+  it('encodes off as a disabled thinking object without reasoning_effort', () => {
+    const params = encodeDeepSeek({ effort: 'off' });
+    expect(params['thinking']).toEqual({ type: 'disabled' });
+    expect(params['reasoning_effort']).toBeUndefined();
+  });
+
+  it('omits thinking for a fresh turn and re-enables it once thinking is replayed', () => {
+    expect(encodeDeepSeek({})['thinking']).toBeUndefined();
+    const replayed = encodeDeepSeek({
+      history: [createAssistantMessage([{ type: 'think', think: 'hmm' }])],
+    });
+    expect(replayed['thinking']).toEqual({ type: 'enabled' });
+    expect(replayed['reasoning_effort']).toBe('high');
+  });
+
+  it('raises the output ceiling and strips the provider prefix from the model id', () => {
+    const params = encodeDeepSeek({
+      maxOutputTokens: 500_000,
+      modelName: 'deepseek/deepseek-v4-pro',
+    });
+    expect(params['max_tokens']).toBe(384 * 1024);
+    expect(params['model']).toBe('deepseek-v4-pro');
   });
 });
