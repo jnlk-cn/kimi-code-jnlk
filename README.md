@@ -1,7 +1,21 @@
-# Kimi Code CLI
+# Kimi Code CLI (kimi-code-jnlk)
+
+> **Fork notice**
+>
+> This repository is a community fork of [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code), currently re-based on upstream **2.4.0**. It is **not** affiliated with, endorsed by, or supported by Moonshot AI. Distribution is this fork's [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) plus `install.sh` / `install.ps1` — not `code.kimi.com` and not npm.
+
+## What this fork changes
+
+Compared with upstream 2.4.0:
+
+- **DeepSeek V4 on the official API** (`api.deepseek.com`): thinking levels `high` / `max`, `off` disabling thinking explicitly, and reasoning round-trips across tool-call turns through the `openai` provider.
+- **Verified provider catalog**: `/provider` and `kimi provider catalog` default to this fork's [catalog/api.json](catalog/api.json), filtered by [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) — only providers verified against their official API ship in the built-in catalog. `--url https://models.dev/api.json` still lists everything.
+- **Telemetry off by default**: set `telemetry = true` in `config.toml` to opt in.
+- **Self-hosted upgrades**: `kimi upgrade` refuses to swap a fork native build for an official release; upgrade with `install.sh` / `install.ps1`.
+- **Ganymede Code desktop is not on this branch.** It remains on the 0.25 fork line and cannot build against this SDK.
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/en/) <br>
-[Documentation](https://moonshotai.github.io/kimi-code/en/) · [Issues](https://github.com/MoonshotAI/kimi-code/issues) · [中文](README.zh-CN.md)
+[Documentation](https://moonshotai.github.io/kimi-code/en/) · [Issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues) · [中文](README.zh-CN.md)
 
 ![Demo of using Kimi Code](./docs/media/intro.gif)
 

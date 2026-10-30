@@ -1,8 +1,22 @@
-# Kimi Code CLI
+# Kimi Code CLI (kimi-code-jnlk)
+
+> **Fork 声明**
+>
+> 本仓库是 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) 的社区 fork，当前已重新基于上游 **2.4.0**。与 Moonshot AI 无隶属、背书或支持关系。分发渠道仅为本 fork 的 [GitHub Releases](https://github.com/jnlk-cn/kimi-code-jnlk/releases) 与 `install.sh` / `install.ps1`，不走 `code.kimi.com`，也不发布到 npm。
+
+## 本 fork 的改动
+
+相对上游 2.4.0：
+
+- **DeepSeek V4（官方 API `api.deepseek.com`）**：支持 `high` / `max` 思考档位，`off` 会显式关闭思考，工具调用轮次间的推理内容可正常往返（走 `openai` provider）。
+- **验证过的 provider 目录**：`/provider` 与 `kimi provider catalog` 默认指向本 fork 的 [catalog/api.json](catalog/api.json)，由 [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) 过滤，只有对官方 API 验证过的 provider 才会进内置目录。用 `--url https://models.dev/api.json` 仍可查看全部。
+- **遥测默认关闭**：需在 `config.toml` 设置 `telemetry = true` 才开启。
+- **自托管升级**：`kimi upgrade` 不会把 fork 的原生构建换成官方版本；升级请用 `install.sh` / `install.ps1`。
+- **Ganymede Code 桌面端不在本分支**，仍留在 0.25 的 fork 线上，且无法对着新版 SDK 构建。
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/zh/)
 
-[Documentation](https://moonshotai.github.io/kimi-code/zh/) · [Issues](https://github.com/MoonshotAI/kimi-code/issues) · [English](README.md)
+[Documentation](https://moonshotai.github.io/kimi-code/zh/) · [Issues](https://github.com/jnlk-cn/kimi-code-jnlk/issues) · [English](README.md)
 
 
 ![Kimi Code 的使用演示](./docs/media/intro.gif)
