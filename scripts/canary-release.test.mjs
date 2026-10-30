@@ -86,7 +86,9 @@ await test('changeset status provides the canary base from its output file', (t)
 
 await test('changeset status failures do not fall back', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'canary-base-test-'));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  t.after(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
   assert.throws(() => resolveCanaryBaseVersion({
     outputFile: join(dir, 'failed.json'),
     packageVersion: '2.4.0',
