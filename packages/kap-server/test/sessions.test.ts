@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { inflateRawSync } from 'node:zlib';
 import { ISessionMediaStore } from '@moonshot-ai/agent-core-v2/agent/media/sessionMediaStore';
 import { mcpResultToExecutableOutput } from '@moonshot-ai/agent-core-v2/agent/mcp/output';
@@ -1005,7 +1006,7 @@ describe('server-v2 /api/v1/sessions', () => {
 
   it('archives a session, force-kills a SIGTERM-ignoring baseline MCP, and reacquires the workspace', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'kimi-server-v2-session-archive-mcp-'));
-    const fixture = new URL('../../agent-core-v2/test/mcpCore/fixtures/mock-stdio-server.mjs', import.meta.url).pathname;
+    const fixture = fileURLToPath(new URL('../../agent-core-v2/test/mcpCore/fixtures/mock-stdio-server.mjs', import.meta.url));
     const spawned: IHostProcess[] = [];
     let disposeReplacement: (() => void) | undefined;
     const hostProcesses = (server as RunningServer).core.accessor.get(IHostProcessService);

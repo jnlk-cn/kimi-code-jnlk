@@ -99,10 +99,10 @@ describe('import-store', () => {
 });
 
 describe('resolveSafeTarget (zip-slip guard)', () => {
-  const root = '/tmp/imp/abc';
+  const root = join(tmpdir(), 'imp', 'abc');
   it('accepts in-tree paths', () => {
-    expect(resolveSafeTarget(root, 'state.json')).toBe('/tmp/imp/abc/state.json');
-    expect(resolveSafeTarget(root, 'agents/main/wire.jsonl')).toBe('/tmp/imp/abc/agents/main/wire.jsonl');
+    expect(resolveSafeTarget(root, 'state.json')).toBe(join(root, 'state.json'));
+    expect(resolveSafeTarget(root, 'agents/main/wire.jsonl')).toBe(join(root, 'agents/main/wire.jsonl'));
   });
   it('rejects traversal and absolute escapes', () => {
     expect(resolveSafeTarget(root, '../evil')).toBeNull();

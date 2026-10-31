@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
-import { join } from 'pathe';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import type { EnvironmentLease, EnvironmentStatus } from '#/environment/environment';
@@ -32,7 +33,10 @@ function createClient(
   const environment = Object.assign(
     new FakeEnvironment(
       { environmentId: 'local', generation: 'test' },
-      { capabilities: ['process'] },
+      {
+        capabilities: ['process'],
+        pathClass: process.platform === 'win32' ? 'win32' : 'posix',
+      },
     ),
     { process: new HostProcessService() },
   );
@@ -90,6 +94,7 @@ function createEnvironmentClient(
     { environmentId, generation: 'test' },
     {
       capabilities: ['process'],
+      pathClass: process.platform === 'win32' ? 'win32' : 'posix',
       status: options.status ?? 'ready',
       host: options.host ?? { homeDir: process.cwd() },
     },
@@ -520,7 +525,10 @@ describe('StdioMcpClient', () => {
     const environment = Object.assign(
       new FakeEnvironment(
         { environmentId: 'local', generation: 'test' },
-        { capabilities: ['process'] },
+        {
+          capabilities: ['process'],
+          pathClass: process.platform === 'win32' ? 'win32' : 'posix',
+        },
       ),
       { process: new HostProcessService() },
     );

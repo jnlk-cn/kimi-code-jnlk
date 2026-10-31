@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { fileURLToPath } from 'node:url';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -21,27 +22,17 @@ import type {
   ToolExecution,
 } from '#/tool/toolContract';
 
-export const fixturesDir = new URL('./fixtures/', import.meta.url).pathname;
-export const stdioFixture = new URL('./fixtures/mock-stdio-server.mjs', import.meta.url).pathname;
-export const cwdStdioFixture = new URL('./fixtures/cwd-stdio-server.mjs', import.meta.url).pathname;
-export const slowStdioFixture = new URL('./fixtures/slow-stdio-server.mjs', import.meta.url)
-  .pathname;
-export const slowToolStdioFixture = new URL(
-  './fixtures/slow-tool-stdio-server.mjs',
-  import.meta.url,
-).pathname;
-export const hangingListStdioFixture = new URL(
-  './fixtures/hanging-list-stdio-server.mjs',
-  import.meta.url,
-).pathname;
-export const crashAfterConnectFixture = new URL(
-  './fixtures/crash-after-connect-stdio-server.mjs',
-  import.meta.url,
-).pathname;
-export const stderrThenExitFixture = new URL(
-  './fixtures/stderr-then-exit-stdio-server.mjs',
-  import.meta.url,
-).pathname;
+const fixturePath = (name: string): string =>
+  fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
+
+export const fixturesDir = fileURLToPath(new URL('./fixtures/', import.meta.url));
+export const stdioFixture = fixturePath('mock-stdio-server.mjs');
+export const cwdStdioFixture = fixturePath('cwd-stdio-server.mjs');
+export const slowStdioFixture = fixturePath('slow-stdio-server.mjs');
+export const slowToolStdioFixture = fixturePath('slow-tool-stdio-server.mjs');
+export const hangingListStdioFixture = fixturePath('hanging-list-stdio-server.mjs');
+export const crashAfterConnectFixture = fixturePath('crash-after-connect-stdio-server.mjs');
+export const stderrThenExitFixture = fixturePath('stderr-then-exit-stdio-server.mjs');
 
 export function createMemoryMcpOAuthStore(): McpOAuthStore {
   const data = new Map<string, unknown>();

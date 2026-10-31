@@ -40,6 +40,7 @@ const testProcess = new HostProcessService();
 const testEnvironment = Object.assign(
   new FakeEnvironment({ ...testEnvironmentBinding, generation: 'test-generation' }, {
     capabilities: ['process'],
+    pathClass: process.platform === 'win32' ? 'win32' : 'posix',
   }),
   { process: testProcess },
 );
