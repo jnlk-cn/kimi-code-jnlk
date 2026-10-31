@@ -10,7 +10,7 @@ import { registerExportCommand } from '#/cli/sub/export';
 import { createKimiCodeHostIdentity } from '#/cli/host-identity';
 import { createKimiHarness } from '@moonshot-ai/kimi-code-sdk';
 
-const GLOBAL_LOG = 'logs/global/kimi-code.log';
+const GLOBAL_LOG = 'logs/global/ganycode.log';
 const MAIN_WIRE = 'agents/main/wire.jsonl';
 const ENABLED = process.env['KIMI_E2E'] === '1';
 

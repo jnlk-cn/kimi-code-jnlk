@@ -34,8 +34,8 @@ import {
 import { openZipSource, type ZipSource } from './file-source';
 import { FILE_HISTORY_BLOB_PREFIX } from '#/features/fileHistory/fileHistoryService';
 
-const SESSION_LOG_REL = 'logs/kimi-code.log';
-const GLOBAL_LOG_REL = 'logs/global/kimi-code.log';
+const SESSION_LOG_REL = 'logs/ganycode.log';
+const GLOBAL_LOG_REL = 'logs/global/ganycode.log';
 const WEB_LOG_REL = 'logs/kimi-web.jsonl';
 const DESKTOP_LOG_REL = 'logs/kimi-desktop.log';
 
