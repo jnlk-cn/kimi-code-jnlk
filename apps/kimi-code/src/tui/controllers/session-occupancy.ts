@@ -82,7 +82,7 @@ function showSessionTakeover(
     new ChoicePickerComponent({
       title: t('Session still in use'),
       notice: t(
-        'If another Kimi Code process is still running, taking over may mix up the history.',
+        'If another GanyCode process is still running, taking over may mix up the history.',
       ),
       noticeTone: 'warning',
       options: [

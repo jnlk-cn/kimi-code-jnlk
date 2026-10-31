@@ -24,8 +24,8 @@ describe('connectWithGuidance', () => {
     expect(error).toBeInstanceOf(HandshakeError);
     const message = (error as Error).message;
     expect(message).toContain('was not found on ssh:dev-box');
-    expect(message).toContain('Kimi Code release CDN');
-    expect(message).toContain('executor path (~/.kimi-code/bin/kimi)');
+    expect(message).toContain('GanyCode release CDN');
+    expect(message).toContain('executor path (~/.ganycode/bin/ganycode)');
     expect(message).toContain('Then reconnect the environment.');
     expect(message).not.toContain('curl -fL');
     expect(message).not.toContain('/tmp/kimi-install');

@@ -1107,16 +1107,16 @@ describe('fullscreen layout', () => {
     expect(rows.join('\n')).toContain('Start in Always Ask');
     expect(rows.join('\n')).toContain('Do not start');
     expect(rows.join('\n')).toContain('↑↓ navigate · Enter select · Esc cancel');
-    expect(rows.join('\n')).toContain('Best if you want Kimi Code to keep working while you are away');
-    expect(rows.join('\n')).not.toContain('Tools are approved automatically. Kimi Code may still ask you questions.');
+    expect(rows.join('\n')).toContain('Best if you want GanyCode to keep working while you are away');
+    expect(rows.join('\n')).not.toContain('Tools are approved automatically. GanyCode may still ask you questions.');
 
     vt.sendInput(`\u001B[<35;5;${String(secondChoice + 1)}M`);
     await vt.waitForRender();
     rows = screenRows(vt);
     expect(rows.findIndex((row) => row.includes('Switch to Ask When Needed and start'))).toBe(secondChoice);
     expect(rows[secondChoice - 1]).toContain('❯ Switch to Never Ask and start');
-    expect(rows.join('\n')).toContain('Tools are approved automatically. Kimi Code may still ask you questions.');
-    expect(rows.join('\n')).not.toContain('Best if you want Kimi Code to keep working while you are away');
+    expect(rows.join('\n')).toContain('Tools are approved automatically. GanyCode may still ask you questions.');
+    expect(rows.join('\n')).not.toContain('Best if you want GanyCode to keep working while you are away');
 
     vt.sendInput(`\u001B[<0;5;${String(secondChoice + 1)}M`);
     vt.sendInput(`\u001B[<0;5;${String(secondChoice + 1)}m`);

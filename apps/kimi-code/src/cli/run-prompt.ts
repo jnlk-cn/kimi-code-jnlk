@@ -1,3 +1,5 @@
+import { CLI_COMMAND_NAME } from '#/constant/app';
+
 import type { CLIOptions } from './options';
 
 export async function raceWithTimeout(promise: Promise<void>, timeoutMs: number): Promise<void> {
@@ -50,7 +52,7 @@ export function requireConfiguredModel(...models: readonly (string | undefined)[
   const model = configuredModel(...models);
   if (model === undefined) {
     throw new Error(
-      'No model configured. Run `kimi` and use /login to sign in, then retry; or set default_model in config.toml.',
+      `No model configured. Run \`${CLI_COMMAND_NAME}\` and use /login to sign in, then retry; or set default_model in config.toml.`,
     );
   }
   return model;

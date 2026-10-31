@@ -13,6 +13,7 @@ import {
   tryAcquireUpdateInstallLock,
   type UpdateInstallLockHandle,
 } from '#/cli/update/install-lock';
+import { PRODUCT_NAME } from '#/constant/app';
 import {
   hashFileSha256,
   matchesStagedUpdateRequest,
@@ -115,11 +116,11 @@ export async function runUpdateDownloadCommand(
       // Another worker is already downloading this exact version: wait for it
       // and adopt its verified result instead of exiting on a maybe.
       out.write(
-        `A download of Kimi Code ${version} is already in progress; waiting for it to finish…\n`,
+        `A download of ${PRODUCT_NAME} ${version} is already in progress; waiting for it to finish…\n`,
       );
       const wait = await waitForStagedUpdate(version, process.execPath, manual, intent, channel);
       if (wait.status === 'staged') {
-        out.write(`Kimi Code ${version} is downloaded; it applies on the next start.\n`);
+        out.write(`${PRODUCT_NAME} ${version} is downloaded; it applies on the next start.\n`);
         return 0;
       }
       // The holder finished without staging (failed or died): take over. The
@@ -137,7 +138,7 @@ export async function runUpdateDownloadCommand(
       return 1;
     }
   }
-  const label = `Downloading Kimi Code ${version} (${process.platform}-${process.arch})…`;
+  const label = `Downloading ${PRODUCT_NAME} ${version} (${process.platform}-${process.arch})…`;
   const onProgress = createDownloadProgress(out, label);
   try {
     const result = await stageNativeUpdate({
@@ -150,7 +151,7 @@ export async function runUpdateDownloadCommand(
     });
     if (out.isTTY) out.write('\n');
     if (result.status === 'already-staged') {
-      out.write(`Kimi Code ${version} is already downloaded; it applies on the next start.\n`);
+      out.write(`${PRODUCT_NAME} ${version} is already downloaded; it applies on the next start.\n`);
     }
     return 0;
   } catch (error) {

@@ -1,7 +1,7 @@
 import { resolveProgramPath } from '#/environment/programPath';
 import type { RemoteEnvironmentEntry } from '#/remote/declaration/remoteEnvironmentDeclaration';
 
-export const DEFAULT_REMOTE_BIN = '~/.kimi-code/bin/kimi';
+export const DEFAULT_REMOTE_BIN = '~/.ganycode/bin/ganycode';
 export const EXEC_SERVER_SUBCOMMAND = 'exec-server';
 export const EXEC_SERVER_ARGV: readonly string[] = [EXEC_SERVER_SUBCOMMAND, '--listen', 'stdio'];
 

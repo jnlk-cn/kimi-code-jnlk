@@ -873,7 +873,7 @@ export async function applyExperimentalFeatureChanges(
       // TowerFeature assembles its tool/profile contributions once at App
       // scope construction, so a live flag flip cannot install or retract
       // them; only the mode machinery (enter/injection/guards) reacts live.
-      host.showNotice(t('Tower mode takes effect after restarting Kimi Code.'));
+      host.showNotice(t('Tower mode takes effect after restarting GanyCode.'));
     }
     host.track('experimental_features_apply', {
       changed: changes.length,

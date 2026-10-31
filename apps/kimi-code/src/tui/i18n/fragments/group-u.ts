@@ -4,8 +4,8 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Shutting down… (running shutdown hooks)': '正在关闭…（正在执行关闭 hook）',
   'No session yet — one will be created on your first message.':
     '暂无会话 — 发送第一条消息时会自动创建。',
-  'Session "{session}" was created under a different directory.\n  cd "{directory}" && kimi -r {session}':
-    '会话 "{session}" 是在另一个目录下创建的。\n  cd "{directory}" && kimi -r {session}',
+  'Session "{session}" was created under a different directory.\n  cd "{directory}" && ganycode -r {session}':
+    '会话 "{session}" 是在另一个目录下创建的。\n  cd "{directory}" && ganycode -r {session}',
   'agent task': '代理任务',
   'question task': '提问任务',
   'bash task': 'bash 任务',

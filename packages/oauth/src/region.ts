@@ -136,7 +136,7 @@ export interface ResolveKimiRegionOptions {
    * install-channel marker.
    */
   readonly configuredOAuthKey?: string;
-  /** Kimi home dir; defaults to `KIMI_CODE_HOME` or `~/.kimi-code`. */
+  /** Kimi home dir; defaults to `GANYCODE_HOME` / `KIMI_CODE_HOME` or `~/.ganycode`. */
   readonly homeDir?: string;
   /**
    * Set false to skip the install-channel marker (e.g. the desktop app's

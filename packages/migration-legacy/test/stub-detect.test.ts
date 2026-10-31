@@ -28,6 +28,16 @@ describe('isConfigStubOrMissing', () => {
     expect(await isConfigStubOrMissing(join(dir, 'config.toml'))).toBe(true);
   });
 
+  it('returns true when content matches the current GanyCode stub exactly', async () => {
+    const stub =
+      '# ~/.ganycode/config.toml\n' +
+      '# Environment settings for GanyCode.\n' +
+      '# This file starts empty so built-in defaults can apply.\n' +
+      '# Login will populate managed Kimi provider and model entries.\n';
+    await writeFile(join(dir, 'config.toml'), stub, 'utf-8');
+    expect(await isConfigStubOrMissing(join(dir, 'config.toml'))).toBe(true);
+  });
+
   it('returns false when user added a single non-comment line', async () => {
     const modified =
       '# ~/.kimi-code/config.toml\n' +

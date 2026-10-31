@@ -26,7 +26,7 @@ describe('launcher lowering', () => {
         '-o',
         'StrictHostKeyChecking=accept-new',
         'dev-box',
-        `"$HOME"'/.kimi-code/bin/kimi' 'exec-server' '--listen' 'stdio'`,
+        `"$HOME"'/.ganycode/bin/ganycode' 'exec-server' '--listen' 'stdio'`,
       ],
     });
   });
@@ -48,7 +48,7 @@ describe('launcher lowering', () => {
       '-o',
       'StrictHostKeyChecking=accept-new',
       'dev-box',
-      `"$HOME"'/.kimi-code/bin/kimi' 'exec-server' '--listen' 'stdio'`,
+      `"$HOME"'/.ganycode/bin/ganycode' 'exec-server' '--listen' 'stdio'`,
     ]);
   });
 });
@@ -106,7 +106,7 @@ describe('ssh remote command tilde expansion through a local shell', () => {
 
   it('expands the default remoteBin via $HOME', () => {
     const command = resolveLauncher({ type: 'ssh', host: 'dev-box' }).args.at(-1)!;
-    expect(expandBinWord(command)).toBe(`${process.env['HOME']}/.kimi-code/bin/kimi`);
+    expect(expandBinWord(command)).toBe(`${process.env['HOME']}/.ganycode/bin/ganycode`);
   });
 
   it('expands a ~user remoteBin via tilde expansion', () => {
@@ -149,7 +149,7 @@ describe('command launcher environment', () => {
 describe('command launcher executor invocation', () => {
   it('appends the default remoteBin and exec-server after the transport args', () => {
     const resolved = resolveLauncher({ type: 'command', program: process.execPath, args: ['ssh', 'i-1', '--'] });
-    expect(resolved.args).toEqual(['ssh', 'i-1', '--', '~/.kimi-code/bin/kimi', 'exec-server']);
+    expect(resolved.args).toEqual(['ssh', 'i-1', '--', '~/.ganycode/bin/ganycode', 'exec-server']);
   });
 
   it('appends a configured remoteBin', () => {
@@ -164,7 +164,7 @@ describe('command launcher executor invocation', () => {
 
   it('appends to an empty argv', () => {
     expect(resolveLauncher({ type: 'command', program: process.execPath }).args).toEqual([
-      '~/.kimi-code/bin/kimi',
+      '~/.ganycode/bin/ganycode',
       'exec-server',
     ]);
   });
@@ -172,15 +172,15 @@ describe('command launcher executor invocation', () => {
   it.each([
     [['ssh', 'i-1', '--', '/opt/kimi', 'exec-server']],
     [['ssh', 'i-1', '--', '/opt/kimi', 'exec-server', '--listen', 'stdio']],
-    [['compute', 'ssh', 'dev-vm', '--command', '~/.kimi-code/bin/kimi exec-server']],
-    [['compute', 'ssh', 'dev-vm', '--command=~/.kimi-code/bin/kimi exec-server']],
+    [['compute', 'ssh', 'dev-vm', '--command', '~/.ganycode/bin/ganycode exec-server']],
+    [['compute', 'ssh', 'dev-vm', '--command=~/.ganycode/bin/ganycode exec-server']],
   ])('leaves argv that already invokes exec-server untouched: %j', (args) => {
     expect(resolveLauncher({ type: 'command', program: process.execPath, args, remoteBin: '/ignored' }).args).toEqual(args);
   });
 
   it('does not mistake an operand that merely contains exec-server for an invocation', () => {
     const resolved = resolveLauncher({ type: 'command', program: process.execPath, args: ['ssh', 'my-exec-server-01', '--'] });
-    expect(resolved.args.slice(-2)).toEqual(['~/.kimi-code/bin/kimi', 'exec-server']);
+    expect(resolved.args.slice(-2)).toEqual(['~/.ganycode/bin/ganycode', 'exec-server']);
   });
 
   it('rejects a remoteBin that would read as an option', () => {

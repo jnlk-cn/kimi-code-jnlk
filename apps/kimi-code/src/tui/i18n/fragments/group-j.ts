@@ -25,30 +25,30 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Start in Always Ask': '以「每次询问」模式开始',
   'Do not start': '不启动',
   'Return to the input box with your goal command.': '回到输入框，命令仍然保留。',
-  'Best if you want Kimi Code to keep working while you are away. Tools are approved automatically and questions are skipped; only plans in Plan mode wait for your review.':
+  'Best if you want GanyCode to keep working while you are away. Tools are approved automatically and questions are skipped; only plans in Plan mode wait for your review.':
     '适合你离开时希望 GanyCode 持续工作的场景。工具会自动授权，提问会被跳过；只有计划模式下的方案会等你确认。',
   'Best for swarm tasks. Tools are approved automatically and questions are skipped; only plans in Plan mode wait for your review.':
     '适合集群任务。工具会自动授权，提问会被跳过；只有计划模式下的方案会等你确认。',
-  'Tools are approved automatically. Kimi Code may still ask you questions.':
+  'Tools are approved automatically. GanyCode may still ask you questions.':
     '工具会自动授权，GanyCode 仍可能向你提问。',
-  'Tools stay approved automatically. Kimi Code may still ask you questions.':
+  'Tools stay approved automatically. GanyCode may still ask you questions.':
     '工具保持自动授权，GanyCode 仍可能向你提问。',
-  'Keep approvals on. Kimi Code will ask before risky actions, so the goal may stop and wait for you.':
+  'Keep approvals on. GanyCode will ask before risky actions, so the goal may stop and wait for you.':
     '保持审批开启。GanyCode 会在风险操作前询问你，因此目标可能停下来等待你。',
-  'Keep approvals on. Kimi Code may stop and wait for you during the swarm task.':
+  'Keep approvals on. GanyCode may stop and wait for you during the swarm task.':
     '保持审批开启。集群任务进行期间，GanyCode 可能停下来等待你。',
 
   'Start a goal with approvals on?': '在开启审批的情况下启动目标吗？',
   'Start a goal in Ask When Needed mode?': '在「按需询问」模式下启动目标吗？',
   'Start a swarm task with approvals on?': '在开启审批的情况下启动集群任务吗？',
-  'Always Ask mode asks you before Kimi Code runs commands, edits files, or takes other risky actions, and is not suitable for unattended goal work.':
+  'Always Ask mode asks you before GanyCode runs commands, edits files, or takes other risky actions, and is not suitable for unattended goal work.':
     '「每次询问」模式会在 GanyCode 执行命令、编辑文件或进行其他风险操作前询问你，不适合无人值守的目标任务。',
   'You can go back without losing your command.': '你可以返回，命令不会丢失。',
   'Ask When Needed mode approves tools automatically, but can still stop for questions.':
     '「按需询问」模式会自动授权工具，但仍可能停下来向你提问。',
   'Switch to Never Ask if you want questions skipped during goal work.':
     '如果你希望目标执行期间跳过提问，请切换到「从不询问」。',
-  'Always Ask mode asks you before Kimi Code runs commands, edits files, or takes other risky actions, and can block swarm work while agents are running.':
+  'Always Ask mode asks you before GanyCode runs commands, edits files, or takes other risky actions, and can block swarm work while agents are running.':
     '「每次询问」模式会在 GanyCode 执行命令、编辑文件或进行其他风险操作前询问你，代理运行期间可能阻塞集群任务。',
 
   '↑↓ navigate · Enter select · Esc cancel': '↑↓ 移动 · Enter 选择 · Esc 取消',

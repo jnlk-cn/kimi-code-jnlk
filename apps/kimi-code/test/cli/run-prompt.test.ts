@@ -25,15 +25,15 @@ const mocks = vi.hoisted(() => ({
             role: 'meta',
             type: 'session.resume_hint',
             session_id: 'ses_prompt',
-            command: 'kimi -r ses_prompt',
-            content: 'To resume this session: kimi -r ses_prompt',
+            command: 'ganycode -r ses_prompt',
+            content: 'To resume this session: ganycode -r ses_prompt',
           })}\n`,
         );
         return;
       }
-      stderr.write(`kimi version ${version}\n`);
+      stderr.write(`ganycode version ${version}\n`);
       stdout.write('• hello world\n\n');
-      stderr.write('To resume this session: kimi -r ses_prompt\n');
+      stderr.write('To resume this session: ganycode -r ses_prompt\n');
     },
   ),
 }));
@@ -85,8 +85,8 @@ describe('runPrompt', () => {
     await runPrompt(opts(), '1.2.3-test', { stdout, stderr });
 
     expect(mocks.runV2Print).toHaveBeenCalled();
-    expect(stderr.write).toHaveBeenNthCalledWith(1, 'kimi version 1.2.3-test\n');
-    expect(stderr.text().startsWith('kimi version 1.2.3-test\n')).toBe(true);
+    expect(stderr.write).toHaveBeenNthCalledWith(1, 'ganycode version 1.2.3-test\n');
+    expect(stderr.text().startsWith('ganycode version 1.2.3-test\n')).toBe(true);
     expect(stdout.text()).toBe('• hello world\n\n');
   });
 

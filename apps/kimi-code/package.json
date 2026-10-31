@@ -23,6 +23,7 @@
     "tui"
   ],
   "bin": {
+    "ganycode": "dist/main.mjs",
     "kimi": "dist/main.mjs"
   },
   "files": [

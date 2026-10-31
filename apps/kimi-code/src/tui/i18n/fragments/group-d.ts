@@ -75,7 +75,7 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Include your codebase for deeper diagnosis. Sensitive files are automatically excluded — e.g. .env, config files, secret keys. We use attachments only for diagnosis and never share them.':
     '附带你的代码库以便更深入诊断。敏感文件会被自动排除，例如 .env、配置文件、密钥。附件仅用于诊断，我们绝不会分享。',
   'Share diagnostic info to help us investigate?': '愿意分享诊断信息，帮助我们排查吗？',
-  'Your key will be saved to ~/.kimi-code/config.toml': '你的密钥将保存到 ~/.kimi-code/config.toml',
+  'Your key will be saved to ~/.ganycode/config.toml': '你的密钥将保存到 ~/.ganycode/config.toml',
   'The password is used only in this process and is never saved.': '密码仅在本进程中使用，不会被保存。',
   'Enter SSH password for {host}': '输入 {host} 的 SSH 密码',
   'SSH password cannot be empty.': 'SSH 密码不能为空。',

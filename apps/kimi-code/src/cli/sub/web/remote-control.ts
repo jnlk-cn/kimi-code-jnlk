@@ -1,5 +1,7 @@
 import chalk from 'chalk';
 
+import { PRODUCT_NAME } from '#/constant/app';
+
 import { getVersion } from '../../version';
 import { darkColors } from '../../../tui/theme/colors';
 import { supportsHyperlinks, toTerminalHyperlink } from '../../../utils/terminal-hyperlink';
@@ -56,8 +58,8 @@ export function formatRemoteControlOutput(options: RemoteControlOutputOptions): 
   );
   return [
     '',
-    `  ${title('Kimi Remote Control ready')}  ${muted(getVersion())}`,
-    `  ${muted('Use Kimi Code on this machine from your phone or another computer.')}`,
+    `  ${title(`${PRODUCT_NAME} Remote Control ready`)}  ${muted(getVersion())}`,
+    `  ${muted(`Use ${PRODUCT_NAME} on this machine from your phone or another computer.`)}`,
     '',
     `  ${label('1.')} Scan the QR code, or open ${link(options.url)}`,
     `  ${label('2.')} Log in with your Kimi account`,

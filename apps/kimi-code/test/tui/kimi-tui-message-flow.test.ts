@@ -1104,7 +1104,7 @@ describe('KimiTUI message flow', () => {
     ['', '/plug:cmd'],
   ])('shows a wrapped occupied notice and restores the plugin command after cancellation', async (args, expected) => {
     const message =
-      'This session is in use by another Kimi Code process. Stop the session in that process or exit it, then try again.';
+      'This session is in use by another process. Stop the session in that process or exit it, then try again.';
     const session = makeSession({
       activatePluginCommand: vi.fn(async () => {
         throw new KimiError(ErrorCodes.SESSION_OCCUPIED, message);
@@ -1159,7 +1159,7 @@ describe('KimiTUI message flow', () => {
       expect(stripSgr(picker().render(80).join(' '))).toContain('Session still in use');
     });
     expect(stripSgr(picker().render(120).join(' '))).toContain(
-      'If another Kimi Code process is still running, taking over may mix up the history.',
+      'If another GanyCode process is still running, taking over may mix up the history.',
     );
     if (takeOver) picker().handleInput('\u001B[B');
     picker().handleInput('\r');

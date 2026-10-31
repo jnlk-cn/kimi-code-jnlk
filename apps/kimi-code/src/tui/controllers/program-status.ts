@@ -16,7 +16,7 @@ import type { AppState } from '../types';
 const MAX_CHILD_RECORDS = 63;
 const AUTH_BLOCKED: ProgramStatusBlocked = {
   kind: 'auth',
-  message: 'Sign in to Kimi Code',
+  message: `Sign in to ${PRODUCT_NAME}`,
 };
 
 export interface ProgramStatusTerminal {

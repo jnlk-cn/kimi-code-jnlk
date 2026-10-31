@@ -22,7 +22,7 @@
 import type { Command } from 'commander';
 
 import { getVersion } from '#/cli/version';
-import { KIMI_CODE_HOME_ENV } from '#/constant/app';
+import { KIMI_CODE_HOME_ENV, PRODUCT_NAME } from '#/constant/app';
 import { getDataDir } from '#/utils/paths';
 
 import { parseRegionFlag, runLoginFlow } from './login-flow';
@@ -78,7 +78,7 @@ export function registerAcpCommand(parent: Command): void {
         const { runAcpServer } = await import('@moonshot-ai/acp-server');
         await runAcpServer({
           homeDir: getDataDir(),
-          agentInfo: { name: 'Kimi Code CLI', version: getVersion() },
+          agentInfo: { name: `${PRODUCT_NAME} CLI`, version: getVersion() },
           ...(terminalAuthEnv ? { terminalAuthEnv } : {}),
           ...(legacyCommand !== undefined && legacyCommand.length > 0
             ? { terminalAuthLegacyCommand: legacyCommand }

@@ -16,7 +16,13 @@ import { shutdownTelemetry, track } from '@moonshot-ai/kimi-telemetry';
 import chalk from 'chalk';
 import { type Command, Option } from 'commander';
 
-import { CLI_MSH_PLATFORM, CLI_SHUTDOWN_TIMEOUT_MS, CLI_USER_AGENT_PRODUCT, WEB_USER_AGENT_SUFFIX } from '#/constant/app';
+import {
+  CLI_MSH_PLATFORM,
+  CLI_SHUTDOWN_TIMEOUT_MS,
+  CLI_USER_AGENT_PRODUCT,
+  PRODUCT_NAME,
+  WEB_USER_AGENT_SUFFIX,
+} from '#/constant/app';
 import { getNativeWebAssetsDir } from '#/native/web-assets';
 import { darkColors } from '#/tui/theme/colors';
 import { openUrl as defaultOpenUrl } from '#/utils/open-url';
@@ -166,13 +172,13 @@ export function buildWebCommand(
     )
     .option(
       '--web-title <title>',
-      'Set a custom browser tab title for this web UI instance (default: "<workspace dir> | Kimi Code").',
+      `Set a custom browser tab title for this web UI instance (default: "<workspace dir> | ${PRODUCT_NAME}").`,
     );
   if (!forceRemoteControl) {
     withServerOptions.addOption(
       new Option(
         '--rc, --remote-control',
-        'Expose the web UI through Kimi Remote Control.',
+        `Expose the web UI through ${PRODUCT_NAME} Remote Control.`,
       ).default(false),
     );
   }
@@ -292,7 +298,7 @@ function formatReadyLine(
   const notice = dangerousBypassAuth
     ? `${formatDangerNoticeLines().join('\n')}\n`
     : '';
-  return `${notice}Kimi server: ${buildOpenableUrl(origin, token)}\n`;
+  return `${notice}${PRODUCT_NAME} server: ${buildOpenableUrl(origin, token)}\n`;
 }
 
 /**
@@ -496,7 +502,7 @@ export function formatReadyBanner(
   const logo = ['▐█▛█▛█▌', '▐█████▌'] as const;
   const lines: string[] = [
     '',
-    `  ${primary(logo[0])}  ${title('Kimi server ready')}  ${dim(getVersion())}`,
+    `  ${primary(logo[0])}  ${title(`${PRODUCT_NAME} server ready`)}  ${dim(getVersion())}`,
     `  ${primary(logo[1])}  ${dim('Local web UI is available from this machine.')}`,
     '',
   ];

@@ -811,7 +811,7 @@ async function removePlugin(host: SlashCommandHost, id: string): Promise<void> {
   if (isCapabilityPluginId(id)) {
     host.showStatus(
       t(
-        'Note: the runtime binaries were left untouched, but Kimi Code plugin wiring is disabled for new sessions. Restart Kimi Code before reinstalling from the Official tab.',
+        'Note: the runtime binaries were left untouched, but GanyCode plugin wiring is disabled for new sessions. Restart GanyCode before reinstalling from the Official tab.',
       ),
     );
     return;

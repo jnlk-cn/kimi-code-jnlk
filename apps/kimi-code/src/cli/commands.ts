@@ -1,4 +1,4 @@
-import { CLI_COMMAND_NAME } from '#/constant/app';
+import { CLI_COMMAND_NAME, PRODUCT_NAME } from '#/constant/app';
 import { registerMigrateCommand, type MigrateCommandOptions } from '#/migration/index';
 import { registerImportSessionsCommand } from '#/session-import/index';
 import { Command, InvalidArgumentError, Option } from 'commander';
@@ -158,7 +158,7 @@ export function createProgram(
   program
     .command('upgrade')
     .alias('update')
-    .description('Upgrade Kimi Code to the latest version.')
+    .description(`Upgrade ${PRODUCT_NAME} to the latest version.`)
     .option('-y, --yes', 'Skip the confirmation prompt and install the update directly.', false)
     .action(async (options: { yes?: boolean }) => {
       await onUpgrade(options.yes === true);

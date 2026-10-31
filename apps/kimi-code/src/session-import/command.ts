@@ -5,6 +5,7 @@ import type { Command } from 'commander';
 
 import { createCliTelemetryBootstrap } from '#/cli/telemetry';
 import { createKimiCodeHostIdentity } from '#/cli/host-identity';
+import { CLI_COMMAND_NAME, PRODUCT_NAME } from '#/constant/app';
 
 import { importBudget, importSessions, scanImportableSessions, sourceHomes } from './run-import';
 import { ImportSessionsScreenComponent } from './screen';
@@ -15,7 +16,7 @@ export function registerImportSessionsCommand(
 ): void {
   parent
     .command('import-sessions')
-    .description('Import recent Claude Code and Codex sessions into Kimi Code.')
+    .description(`Import recent Claude Code and Codex sessions into ${PRODUCT_NAME}.`)
     .action(async () => {
       process.exitCode = await run();
     });
@@ -24,7 +25,7 @@ export function registerImportSessionsCommand(
 /** `kimi import-sessions`: show only the import page in a bare terminal UI, then exit. */
 export async function runImportSessionsCommand(): Promise<number> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    process.stderr.write('kimi import-sessions needs an interactive terminal.\n');
+    process.stderr.write(`${CLI_COMMAND_NAME} import-sessions needs an interactive terminal.\n`);
     return 1;
   }
   const telemetry: TelemetryClient = { track, withContext: withTelemetryContext, setContext: setTelemetryContext };

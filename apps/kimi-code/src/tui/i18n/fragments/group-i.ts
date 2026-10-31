@@ -43,8 +43,8 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Official plugin': '官方插件',
   'Curated plugin': '精选插件',
   Plugin: '插件',
-  'Control your real browser from Kimi Code — navigate, click, type, and screenshot':
-    '用 Kimi Code 控制你真实的浏览器——导航、点击、输入与截图',
+  'Control your real browser from GanyCode — navigate, click, type, and screenshot':
+    '用 GanyCode 控制你真实的浏览器——导航、点击、输入与截图',
 
   // plugins-selector · MCP servers
   ' MCP servers · {name}': ' MCP 服务器 · {name}',

@@ -36,7 +36,7 @@ describe('welcome banner language', () => {
       .map(strip)
       .join('\n');
     expect(output).toContain('欢迎使用 GanyCode');
-    expect(output).not.toContain('Welcome to Kimi Code');
+    expect(output).not.toContain('Welcome to GanyCode');
     expect(output).toContain('目录：');
   });
 
@@ -47,6 +47,6 @@ describe('welcome banner language', () => {
       .render(120)
       .map(strip)
       .join('\n');
-    expect(output).toContain('Welcome to Kimi Code!');
+    expect(output).toContain('Welcome to GanyCode!');
   });
 });

@@ -366,7 +366,7 @@ describe('handleGoalCommand', () => {
     expect(manualHost.sendNormalUserInput).not.toHaveBeenCalled();
     const text = stripAnsi(mountedPicker(manualHost).render(80).join('\n'));
     expect(text.replaceAll(/\s+/g, ' ')).toContain(
-      'Always Ask mode asks you before Kimi Code runs commands, edits files, or takes other risky actions, and is not suitable for unattended goal work.',
+      'Always Ask mode asks you before GanyCode runs commands, edits files, or takes other risky actions, and is not suitable for unattended goal work.',
     );
     expect(text).toContain('Return to the input box with your goal command');
   });
@@ -377,9 +377,9 @@ describe('handleGoalCommand', () => {
     await handleGoalCommand(manualHost, 'Ship feature X');
 
     const text = stripAnsi(mountedPicker(manualHost).render(80).join('\n'));
-    expect(text).toContain('Best if you want Kimi Code to keep working while you are away');
+    expect(text).toContain('Best if you want GanyCode to keep working while you are away');
     expect(text).not.toContain('Tools and plan changes are approved automatically');
-    expect(text).not.toContain('Keep approvals on. Kimi Code will ask before risky actions');
+    expect(text).not.toContain('Keep approvals on. GanyCode will ask before risky actions');
   });
 
   it('keeps the goal permission notice within narrow terminal widths', async () => {

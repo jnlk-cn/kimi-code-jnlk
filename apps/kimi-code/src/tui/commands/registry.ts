@@ -367,7 +367,7 @@ export const BUILTIN_SLASH_COMMANDS = [
   {
     name: 'feedback',
     aliases: ['bug'],
-    description: 'Send feedback to make Kimi Code better',
+    description: 'Send feedback to make GanyCode better',
     priority: 60,
     availability: 'always',
   },
@@ -453,14 +453,14 @@ export const BUILTIN_SLASH_COMMANDS = [
   {
     name: 'desktop',
     aliases: ['install-desktop'],
-    description: 'Open the Kimi Code desktop app page in your browser',
+    description: 'Open the GanyCode desktop app page in your browser',
     priority: 40,
     availability: 'always',
   },
   {
     name: 'remote-control',
     aliases: ['rc'],
-    description: 'Open the current session through Kimi Remote Control',
+    description: 'Open the current session through GanyCode Remote Control',
     priority: 40,
     availability: 'always',
   },

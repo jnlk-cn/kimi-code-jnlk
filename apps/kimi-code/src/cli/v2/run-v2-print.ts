@@ -96,6 +96,7 @@ import type {
 import { resolve } from 'pathe';
 
 import {
+  CLI_COMMAND_NAME,
   CLI_SHUTDOWN_TIMEOUT_MS,
   CLI_USER_AGENT_PRODUCT,
   PROMPT_CLEANUP_TIMEOUT_MS,
@@ -427,7 +428,7 @@ async function resolveNativeSession(
     if ((await agent.accessor.get(IAgentPlanService).status()) === null) return;
     stderr.write(
       `Session "${sessionId}" is in Plan mode, and its plan cannot be approved in print mode; ` +
-        `review it with \`kimi -r ${sessionId}\`.\n`,
+        `review it with \`${CLI_COMMAND_NAME} -r ${sessionId}\`.\n`,
     );
   };
 
@@ -446,7 +447,7 @@ async function resolveNativeSession(
     if (target.cwd !== undefined && resolve(target.cwd) !== resolve(workDir)) {
       stderr.write(
         `Session "${opts.session}" was created under a different directory.\n` +
-          `  cd "${target.cwd}" && kimi -r ${opts.session}\n\n`,
+          `  cd "${target.cwd}" && ${CLI_COMMAND_NAME} -r ${opts.session}\n\n`,
       );
       throw new Error(`Session "${opts.session}" was created under a different directory.`);
     }
@@ -562,7 +563,7 @@ export function formatTrustGatedMcpWarning(servers: readonly TrustGatedMcpServer
   const list = servers.map((server) => `${server.name} (${server.target})`).join(', ');
   return (
     `Warning: this folder is not trusted; skipped ${servers.length} project-level MCP ${noun}: ${list}.\n` +
-    '  Run `kimi` here and choose "Trust this folder", or set KIMI_CODE_TRUST_WORKSPACE=1, to enable them.\n\n'
+    `  Run \`${CLI_COMMAND_NAME}\` here and choose "Trust this folder", or set KIMI_CODE_TRUST_WORKSPACE=1, to enable them.\n\n`
   );
 }
 

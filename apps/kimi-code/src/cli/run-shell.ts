@@ -17,7 +17,13 @@ import {
   withTelemetryContext,
 } from '@moonshot-ai/kimi-telemetry';
 
-import { CLI_SHUTDOWN_TIMEOUT_MS, CLI_UI_MODE, TUI_HOST_UI_CAPABILITIES } from '#/constant/app';
+import {
+  CLI_COMMAND_NAME,
+  CLI_SHUTDOWN_TIMEOUT_MS,
+  CLI_UI_MODE,
+  PRODUCT_NAME,
+  TUI_HOST_UI_CAPABILITIES,
+} from '#/constant/app';
 import { detectPendingMigration, resolveLegacySourceHome, sameLegacyPath } from '#/migration/index';
 import type { TuiConfig } from '#/tui/config';
 import { loadTuiConfig, TuiConfigParseError } from '#/tui/config';
@@ -117,7 +123,7 @@ export async function runShell(
   const sourceIsTarget = sameLegacyPath(legacySource.sourceHome, harness.homeDir);
   if (sourceIsTarget) {
     process.stderr.write(
-      `  KIMI_SHARE_DIR (${legacySource.sourceHome}) points at the Kimi Code home; legacy migration is disabled. Unset it or point it at the kimi-cli data directory to migrate.\n`,
+      `  KIMI_SHARE_DIR (${legacySource.sourceHome}) points at the ${PRODUCT_NAME} home; legacy migration is disabled. Unset it or point it at the kimi-cli data directory to migrate.\n`,
     );
   }
   const migrationPlan = sourceIsTarget
@@ -265,7 +271,7 @@ export async function runShell(
     process.stdout.write(`${gutter}Bye!\n`);
     const hints: string[] = [];
     if (sessionId !== '' && hasContent) {
-      hints.push(`${gutter}To resume this session: kimi -r ${sessionId}`);
+      hints.push(`${gutter}To resume this session: ${CLI_COMMAND_NAME} -r ${sessionId}`);
     }
     if (tui.exitOpenUrl !== undefined) {
       hints.push(`${gutter}open ${toTerminalHyperlink(tui.exitOpenUrl, tui.exitOpenUrl)}`);

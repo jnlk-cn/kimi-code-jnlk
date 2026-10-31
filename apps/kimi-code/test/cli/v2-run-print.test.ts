@@ -441,7 +441,7 @@ describe('runV2Print', () => {
       meta: { origin: { kind: 'user' }, tracked: true },
     });
     // Version banner is first, then the rendered assistant output.
-    expect(stderr.write).toHaveBeenNthCalledWith(1, 'kimi version 1.2.3-test\n');
+    expect(stderr.write).toHaveBeenNthCalledWith(1, 'ganycode version 1.2.3-test\n');
     expect(stdout.text()).toContain('hello world');
     expect(app.dispose).toHaveBeenCalled();
   });
@@ -805,7 +805,7 @@ describe('runV2Print', () => {
     await runV2Print(opts({ session: 'ses_1' }) as never, '1.2.3-test', { stdout, stderr });
 
     expect(stderr.text()).toContain(
-      'Session "ses_1" is in Plan mode, and its plan cannot be approved in print mode; review it with `kimi -r ses_1`.',
+      'Session "ses_1" is in Plan mode, and its plan cannot be approved in print mode; review it with `ganycode -r ses_1`.',
     );
     const plan = agentServices.get(IAgentPlanService) as { cancel: ReturnType<typeof vi.fn> };
     expect(plan.cancel).not.toHaveBeenCalled();

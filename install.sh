@@ -285,7 +285,7 @@ _update_path() {
     export_line="export PATH=\"${KIMI_INSTALL_DIR}/bin:\$PATH\""
   fi
   if ! grep -qsF "${KIMI_INSTALL_DIR}/bin" "$rc"; then
-    printf '\n# kimi-code\n%s\n' "$export_line" >> "$rc"
+    printf '\n# ganycode\n%s\n' "$export_line" >> "$rc"
     _log "Added ${KIMI_INSTALL_DIR}/bin to PATH in $rc"
   else
     _log "${KIMI_INSTALL_DIR}/bin already configured in $rc"
@@ -614,9 +614,9 @@ main() {
 
   if [ -n "$KIMI_PATH_UPDATED_RC" ]; then
     if [ -t 1 ]; then
-      printf '\033[1;33m==> If `kimi` is not found, restart your shell or run:\033[0m \033[1;4msource %s\033[0m\n' "$KIMI_PATH_UPDATED_RC"
+      printf '\033[1;33m==> If `ganycode` is not found, restart your shell or run:\033[0m \033[1;4msource %s\033[0m\n' "$KIMI_PATH_UPDATED_RC"
     else
-      printf '==> If `kimi` is not found, restart your shell or run: source %s\n' "$KIMI_PATH_UPDATED_RC"
+      printf '==> If `ganycode` is not found, restart your shell or run: source %s\n' "$KIMI_PATH_UPDATED_RC"
     fi
   fi
 }

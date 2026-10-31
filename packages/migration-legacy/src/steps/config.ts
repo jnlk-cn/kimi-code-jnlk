@@ -28,7 +28,7 @@ import '@moonshot-ai/agent-core-v2/agent/tools/task/task-wait/flag';
 import '@moonshot-ai/agent-core-v2/persistence/configSection';
 
 import { atomicWrite } from '../atomic-write.js';
-import { DEFAULT_CONFIG_FILE_TEXT, isTuiStubOrMissing } from '../stub-detect.js';
+import { isConfigStubText, isTuiStubOrMissing } from '../stub-detect.js';
 import { readSourceConfig } from '../source-config.js';
 import {
   targetConfigFile,
@@ -286,7 +286,7 @@ export async function migrateConfigStep(input: ConfigStepInput): Promise<ConfigS
   }
   let targetMode: 'overwrite' | 'merge' | 'sibling';
   let targetParsed: Record<string, unknown> = {};
-  if (targetText === undefined || targetText === DEFAULT_CONFIG_FILE_TEXT) {
+  if (targetText === undefined || isConfigStubText(targetText)) {
     targetMode = 'overwrite';
   } else {
     try {

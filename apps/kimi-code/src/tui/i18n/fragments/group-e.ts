@@ -39,8 +39,8 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Opening the {label} page in your browser…': '正在浏览器中打开 {label} 页面…',
   'If it did not open, visit {url}': '若未打开，请访问 {url}',
   'Removed {id}.': '已移除 {id}。',
-  'Note: the runtime binaries were left untouched, but Kimi Code plugin wiring is disabled for new sessions. Restart Kimi Code before reinstalling from the Official tab.':
-    '注意：运行时二进制文件未被改动，但新会话已停用该插件的 Kimi Code 接线。从 Official 标签页重新安装前请先重启 Kimi Code。',
+  'Note: the runtime binaries were left untouched, but GanyCode plugin wiring is disabled for new sessions. Restart GanyCode before reinstalling from the Official tab.':
+    '注意：运行时二进制文件未被改动，但新会话已停用该插件的 GanyCode 接线。从 Official 标签页重新安装前请先重启 GanyCode。',
   'Plugins ({count})': '插件（{count}）',
   'Run /new or /reload to apply plugin changes.': '运行 /new 或 /reload 以应用插件变更。',
   '*Two steps left to use Kimi Browser Extension:*': '*还需两步即可使用 Kimi 浏览器扩展：*',

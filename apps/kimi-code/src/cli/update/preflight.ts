@@ -261,7 +261,7 @@ export function renderInstallSuccessMessage(plan: ActionableUpdatePlan): string 
 
 function renderBackgroundInstallSuccessNotice(version: string): string {
   const displayVersion = version.startsWith('v') ? version : `v${version}`;
-  return `Kimi Code updated to ${displayVersion}\nChangelog: ${CHANGELOG_URL}\n`;
+  return `${PRODUCT_NAME} updated to ${displayVersion}\nChangelog: ${CHANGELOG_URL}\n`;
 }
 
 /** Resolved once per preflight: which feed to read and whether rollout gating applies. */

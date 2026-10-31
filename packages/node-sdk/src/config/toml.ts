@@ -39,8 +39,8 @@ function camelToSnake(str: string): string {
   return str.replaceAll(/[A-Z]/g, (ch: string) => `_${ch.toLowerCase()}`);
 }
 
-const DEFAULT_CONFIG_FILE_TEXT = `# ~/.kimi-code/config.toml
-# Environment settings for Kimi Code.
+const DEFAULT_CONFIG_FILE_TEXT = `# ~/.ganycode/config.toml
+# Environment settings for GanyCode.
 # This file starts empty so built-in defaults can apply.
 # Login will populate managed Kimi provider and model entries.
 `;

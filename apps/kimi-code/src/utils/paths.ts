@@ -31,9 +31,9 @@ import {
 } from '#/constant/app';
 
 /**
- * Return the root data directory for Kimi Code.
+ * Return the root data directory for GanyCode.
  *
- * Priority: `KIMI_CODE_HOME` env var > `~/.kimi-code`.
+ * Priority: `GANYCODE_HOME` env var > `KIMI_CODE_HOME` > `~/.ganycode`.
  */
 export function getDataDir(): string {
   const envDir = process.env[KIMI_CODE_HOME_ENV] ?? process.env['KIMI_CODE_HOME'];

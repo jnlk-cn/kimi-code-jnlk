@@ -117,6 +117,7 @@ import {
 import { ActivityPaneComponent, type ActivityPaneMode } from './components/panes/activity-pane';
 import { removeLegacySurveySetting, type TuiConfig } from './config';
 import {
+  CLI_COMMAND_NAME,
   LLM_NOT_SET_MESSAGE,
   MAIN_AGENT_ID,
   MAX_AUTO_TITLE_ATTEMPTS,
@@ -865,7 +866,7 @@ export class KimiTUI {
     if (environmentId !== undefined && environmentId !== 'local') {
       return tFormat('Connecting to {environment}…', { environment: environmentId });
     }
-    return t('Preparing Kimi Code…');
+    return t('Preparing GanyCode…');
   }
 
   private startClipboardImageHintController(): void {
@@ -1099,7 +1100,7 @@ export class KimiTUI {
               `${currentTheme.fg(
                 'warning',
                 tFormat(
-                  'Session "{session}" was created under a different directory.\n  cd "{directory}" && kimi -r {session}',
+                  'Session "{session}" was created under a different directory.\n  cd "{directory}" && ganycode -r {session}',
                   { session: startup.sessionFlag, directory: target.workDir },
                 ),
               )}\n\n`,
@@ -3426,7 +3427,7 @@ export class KimiTUI {
 
   private async showResumeOtherWorkDirHint(session: SessionRow): Promise<void> {
     this.hideSessionPicker();
-    const command = `cd ${quoteShellArg(session.work_dir)} && kimi --resume ${quoteShellArg(session.id)}`;
+    const command = `cd ${quoteShellArg(session.work_dir)} && ${CLI_COMMAND_NAME} --resume ${quoteShellArg(session.id)}`;
     const message = tFormat(
       'Current session is in a different working directory.\n  To resume, run: {command}',
       { command },
@@ -4223,7 +4224,7 @@ export class KimiTUI {
     openUrl(auth.verificationUriComplete);
     this.state.transcriptContainer.addChild(
       new DeviceCodeBoxComponent({
-        title: t('Sign in to Kimi Code'),
+        title: t('Sign in to GanyCode'),
         url: auth.verificationUriComplete,
         code: auth.userCode,
         hint: t('Press Ctrl-C to cancel'),
@@ -5193,7 +5194,7 @@ export class KimiTUI {
     this.patchLivePane({ pendingApproval: { data: payload } });
     this.sessionEventHandler.notifications.setPrompt(true);
     notifyTerminalOnce(this.state, `approval:${payload.id}`, {
-      title: t('Kimi Code approval required'),
+      title: t('GanyCode approval required'),
       body: payload.tool_name,
     });
     const panel = new ApprovalPanelComponent(
@@ -5274,7 +5275,7 @@ export class KimiTUI {
     this.patchLivePane({ pendingQuestion: { data: payload } });
     this.sessionEventHandler.notifications.setPrompt(true);
     notifyTerminalOnce(this.state, `question:${payload.id}`, {
-      title: t('Kimi Code needs your answer'),
+      title: t('GanyCode needs your answer'),
       body: payload.questions[0]?.question,
     });
     const dialog = new QuestionDialogComponent(

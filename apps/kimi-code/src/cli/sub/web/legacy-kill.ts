@@ -28,6 +28,7 @@ import { join } from 'node:path';
 
 import type { Command } from 'commander';
 
+import { CLI_COMMAND_NAME } from '#/constant/app';
 import { getDataDir } from '#/utils/paths';
 
 import { authHeaders, serverOrigin, tryResolveServerToken } from './shared';
@@ -50,7 +51,7 @@ export const LEGACY_SERVER_MAX_VERSION = '0.28.0';
 
 /** Deprecation notice printed on every `kimi server kill` run. */
 export const DEPRECATED_KILL_NOTICE =
-  '`kimi server kill` is deprecated: it only stops servers started by a version before 0.28.0. Servers started by `kimi web` run in the foreground — stop them with Ctrl+C.\n';
+  `\`${CLI_COMMAND_NAME} server kill\` is deprecated: it only stops servers started by a version before 0.28.0. Servers started by \`${CLI_COMMAND_NAME} web\` run in the foreground — stop them with Ctrl+C.\n`;
 
 /**
  * The fields of the legacy `<home>/server/lock` this command needs. The full
@@ -83,7 +84,7 @@ export function registerLegacyKillCommand(server: Command): void {
   server
     .command('kill')
     .description(
-      'Deprecated — stop a server started by a version before 0.28.0 (recorded in the legacy server lock). Servers started by `kimi web` run in the foreground — stop them with Ctrl+C.',
+      `Deprecated — stop a server started by a version before 0.28.0 (recorded in the legacy server lock). Servers started by \`${CLI_COMMAND_NAME} web\` run in the foreground — stop them with Ctrl+C.`,
     )
     // Swallow legacy argument shapes (`kimi server kill <serverId>`, flags):
     // the legacy lock records a single server, so they carry no meaning here.

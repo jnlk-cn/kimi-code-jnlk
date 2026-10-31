@@ -37,7 +37,7 @@ function executorAction(launcher: LauncherSpec): string {
     remoteBin === undefined
       ? 'the absolute path your launcher command invokes'
       : `the executor path (${remoteBin})`;
-  return `download the \`kimi\` binary for the target platform from the Kimi Code release CDN and install it at ${location}`;
+  return `download the \`ganycode\` binary for the target platform from the GanyCode release CDN and install it at ${location}`;
 }
 
 function missingExecutorGuidance(launcher: LauncherSpec, failure: 'missing' | 'timeout'): string {

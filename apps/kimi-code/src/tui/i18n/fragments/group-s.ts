@@ -1,7 +1,7 @@
 export const FRAGMENT: Readonly<Record<string, string>> = {
   'Session in use': '会话正在使用中',
   'Session still in use': '会话仍在使用中',
-  'If another Kimi Code process is still running, taking over may mix up the history.':
+  'If another GanyCode process is still running, taking over may mix up the history.':
     '如果仍有另一个 GanyCode 进程在运行，接管可能会混淆历史记录。',
   Retry: '重试',
   'send again now': '立即重新发送',

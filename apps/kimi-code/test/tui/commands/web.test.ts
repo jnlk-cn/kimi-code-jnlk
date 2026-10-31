@@ -138,7 +138,7 @@ describe('handleWebCommand', () => {
       'http://127.0.0.1:58627/sessions/ses-1#token=tok-1',
     );
     const written = writeSpy.mock.calls.map((call) => String(call[0])).join('');
-    expect(written).toContain('Kimi server ready');
+    expect(written).toContain('GanyCode server ready');
     expect(written).toContain('Ctrl+C');
     expect(written).toContain('/sessions/ses-1');
     writeSpy.mockRestore();
@@ -161,7 +161,7 @@ describe('handleRemoteControlCommand', () => {
         nonce: 'holder',
         local_origin: 'http://127.0.0.1:58627',
         device_id: 'device-1',
-        url: 'https://code-rc.kimi.com/devices/device-1/?rc=1&from=kimi_code_cli',
+        url: 'https://code-rc.kimi.com/devices/device-1/?rc=1&from=ganycode_cli',
         started_at: Date.now(),
       }),
     );
@@ -193,9 +193,9 @@ describe('handleRemoteControlCommand', () => {
     const tempRoot = mkdtempSync(join(tmpdir(), 'kimi-rc-qrcode-'));
     const dataDir = join(tempRoot, 'custom-home');
     const entryUrl =
-      'https://code-rc.kimi.com/devices/device-1/?rc=1&from=kimi_code_cli';
+      'https://code-rc.kimi.com/devices/device-1/?rc=1&from=ganycode_cli';
     const sessionUrl =
-      'https://code-rc.kimi.com/devices/device-1/sessions/ses-1?rc=1&from=kimi_code_cli';
+      'https://code-rc.kimi.com/devices/device-1/sessions/ses-1?rc=1&from=ganycode_cli';
     const pngPath = join(dataDir, 'rc-qrcode.png');
     mocks.getDataDir.mockReturnValue(dataDir);
     mocks.tryResolveServerToken.mockReturnValue('local-server-token');
@@ -237,7 +237,7 @@ describe('handleRemoteControlCommand', () => {
       );
       expect(mocks.openUrl).toHaveBeenCalledWith(sessionUrl);
       const written = writeSpy.mock.calls.map((call) => String(call[0])).join('');
-      expect(written).toContain('Kimi Remote Control ready');
+      expect(written).toContain('GanyCode Remote Control ready');
       expect(written).toContain(indentedQr(sessionUrl));
       expect(written).not.toContain(indentedQr(entryUrl));
       expect(isAbsolute(pngPath)).toBe(true);
@@ -267,7 +267,7 @@ describe('handleRemoteControlCommand', () => {
     const tempRoot = mkdtempSync(join(tmpdir(), 'kimi-rc-entry-'));
     const dataDir = join(tempRoot, 'custom-home');
     const entryUrl =
-      'https://code-rc.kimi.com/devices/device-1/?rc=1&from=kimi_code_cli';
+      'https://code-rc.kimi.com/devices/device-1/?rc=1&from=ganycode_cli';
     mocks.getDataDir.mockReturnValue(dataDir);
     mocks.tryResolveServerToken.mockReturnValue('local-server-token');
     const close = vi.fn(async () => {});

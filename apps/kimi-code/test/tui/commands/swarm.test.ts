@@ -130,7 +130,7 @@ describe('handleSwarmCommand', () => {
     expect(host.sendNormalUserInput).not.toHaveBeenCalled();
     const text = stripAnsi(mountedPicker(host).render(80).join('\n'));
     expect(text.replaceAll(/\s+/g, ' ')).toContain(
-      'Always Ask mode asks you before Kimi Code runs commands, edits files, or takes other risky actions, and can block swarm work while agents are running.',
+      'Always Ask mode asks you before GanyCode runs commands, edits files, or takes other risky actions, and can block swarm work while agents are running.',
     );
     mountedPicker(host).handleInput(ENTER);
 
@@ -226,7 +226,7 @@ describe('handleSwarmCommand', () => {
     expect(host.sendNormalUserInput).not.toHaveBeenCalled();
     const text = stripAnsi(mountedPicker(host).render(80).join('\n'));
     expect(text.replaceAll(/\s+/g, ' ')).toContain(
-      'Always Ask mode asks you before Kimi Code runs commands, edits files, or takes other risky actions, and can block swarm work while agents are running.',
+      'Always Ask mode asks you before GanyCode runs commands, edits files, or takes other risky actions, and can block swarm work while agents are running.',
     );
     expect(text).toContain('Switch to Ask When Needed and start');
     expect(text).not.toContain('Do not start');

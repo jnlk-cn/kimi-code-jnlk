@@ -21,7 +21,7 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   '↵ confirm': '↵ 确认',
 
   // feedback-input-dialog
-  'Send feedback to Kimi Code': '向 Kimi Code 发送反馈',
+  'Send feedback to GanyCode': '向 GanyCode 发送反馈',
   "Tell us what's working or what's not.": '告诉我们哪里好用、哪里不好用。',
   'Feedback cannot be empty.': '反馈内容不能为空。',
 

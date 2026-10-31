@@ -59,8 +59,8 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Experimental features updated. Session reloaded.': '实验性功能已更新，会话已重新加载。',
   'Start a new session to use Updates if this session was created with the feature disabled.':
     '如果本会话创建时该功能处于关闭状态，请新建会话后再使用 Updates。',
-  'Tower mode takes effect after restarting Kimi Code.': '重启 GanyCode 后 tower 模式才会生效。',
-  'TUI mode takes effect after restarting Kimi Code.': '重启 GanyCode 后界面模式才会生效。',
+  'Tower mode takes effect after restarting GanyCode.': '重启 GanyCode 后 tower 模式才会生效。',
+  'TUI mode takes effect after restarting GanyCode.': '重启 GanyCode 后界面模式才会生效。',
 
   'Automatic updates already enabled.': '自动更新已开启。',
   'Automatic updates already disabled.': '自动更新已关闭。',

@@ -8,12 +8,14 @@
 
 import type { Command } from 'commander';
 
+import { PRODUCT_NAME } from '#/constant/app';
+
 import { parseRegionFlag, runLoginFlow } from './login-flow';
 
 export function registerLoginCommand(parent: Command): void {
   parent
     .command('login')
-    .description('Authenticate with Kimi Code CLI via the device-code flow.')
+    .description(`Authenticate with ${PRODUCT_NAME} CLI via the device-code flow.`)
     .option(
       '--region <region>',
       'Login region: "mainland-cn" (kimi.com) or "global" (kimi.ai).',

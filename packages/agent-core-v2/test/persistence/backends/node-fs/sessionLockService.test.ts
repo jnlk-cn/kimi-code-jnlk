@@ -102,6 +102,16 @@ describe('SessionLockService', () => {
 
   it.each([
     {
+      platform: 'ganycode_cli',
+      userAgentSuffix: undefined,
+      displayName: 'GanyCode CLI',
+    },
+    {
+      platform: 'ganycode_cli',
+      userAgentSuffix: 'web',
+      displayName: 'GanyCode Web',
+    },
+    {
       platform: 'kimi_code_cli',
       userAgentSuffix: undefined,
       displayName: 'Kimi Code CLI',
@@ -191,19 +201,19 @@ describe('SessionLockService', () => {
     serviceA.hold('warmup');
     serviceA.release('warmup');
     writeFileSync(lockPath(homeDir, SID), JSON.stringify(foreign), { mode: 0o600 });
-    expect(() => serviceA.hold(SID)).toThrowError(/in use by another Kimi Code process/);
+    expect(() => serviceA.hold(SID)).toThrowError(/in use by another process/);
     expect(readLockFile(homeDir, SID).token).toBe('foreign-token');
   });
 
   it('takeover evicts a live holder and leaves the new lock alone when the old holder releases', () => {
     serviceB.hold(SID);
-    expect(() => serviceA.hold(SID)).toThrowError(/in use by another Kimi Code process/);
+    expect(() => serviceA.hold(SID)).toThrowError(/in use by another process/);
     serviceA.takeover(SID);
     serviceA.hold(SID);
     const token = readLockFile(homeDir, SID).token;
     serviceB.release(SID);
     expect(readLockFile(homeDir, SID).token).toBe(token);
-    expect(() => serviceB.hold(SID)).toThrowError(/in use by another Kimi Code process/);
+    expect(() => serviceB.hold(SID)).toThrowError(/in use by another process/);
     serviceA.release(SID);
   });
 
@@ -289,7 +299,7 @@ describe('SessionLockService', () => {
     serviceA.hold(SID);
     serviceA.release(SID);
     expect(existsSync(lockPath(homeDir, SID))).toBe(true);
-    expect(() => serviceB.hold(SID)).toThrowError(/in use by another Kimi Code process/);
+    expect(() => serviceB.hold(SID)).toThrowError(/in use by another process/);
     lease.release();
     expect(existsSync(lockPath(homeDir, SID))).toBe(false);
     expect(() => serviceB.hold(SID)).not.toThrow();

@@ -1,6 +1,11 @@
 import { DEFAULT_OAUTH_PROVIDER_NAME } from '#/constant/app';
 
-export { DEFAULT_OAUTH_PROVIDER_NAME, OAUTH_LOGIN_REQUIRED_CODE, PRODUCT_NAME } from '#/constant/app';
+export {
+  CLI_COMMAND_NAME,
+  DEFAULT_OAUTH_PROVIDER_NAME,
+  OAUTH_LOGIN_REQUIRED_CODE,
+  PRODUCT_NAME,
+} from '#/constant/app';
 
 export const LLM_NOT_SET_MESSAGE = 'LLM not set, send "/login" to login';
 export const NO_ACTIVE_SESSION_MESSAGE = 'No active session. Send a message to start one.';
@@ -9,7 +14,7 @@ export const CTRL_C_HINT = 'Press Ctrl+C again to exit';
 export const SHUTTING_DOWN_HINT = 'Shutting down… (running shutdown hooks)';
 export const MAIN_AGENT_ID = 'main';
 export const OAUTH_LOGIN_REQUIRED_STARTUP_NOTICE = 'OAuth login expired. Send /login to login.';
-export const TUI_MODE_RESTART_NOTICE = 'TUI mode takes effect after restarting the app.';
+export const TUI_MODE_RESTART_NOTICE = 'TUI mode takes effect after restarting GanyCode.';
 export const SESSIONLESS_STARTUP_NOTICE =
   'No session yet — one will be created on your first message.';
 export const TOWER_TEARDOWN_PROMPT =

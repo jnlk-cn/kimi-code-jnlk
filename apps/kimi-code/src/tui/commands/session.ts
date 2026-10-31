@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { detectInstallSource } from '#/cli/update/source';
+import { CLI_COMMAND_NAME } from '#/constant/app';
 import { t, tFormat } from '#/tui/i18n';
 import { copyTextToClipboard } from '#/utils/clipboard/clipboard-text';
 import { detectShellEnvironment } from '#/utils/process/shell-env';
@@ -109,7 +110,7 @@ function forkResumeCommand(workDir: string, forkId: string): string {
   // wrong working directory. `pushd` switches drive + directory in both
   // cmd.exe and PowerShell (`cd /d` would break PowerShell).
   const changeDir = process.platform === 'win32' ? `pushd ${dir}` : `cd ${dir}`;
-  return `${changeDir} && kimi --resume ${quoteShellArg(forkId)}`;
+  return `${changeDir} && ${CLI_COMMAND_NAME} --resume ${quoteShellArg(forkId)}`;
 }
 
 export async function handleExportMdCommand(host: SlashCommandHost, args: string): Promise<void> {

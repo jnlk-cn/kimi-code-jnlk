@@ -407,10 +407,7 @@ try {
   # 5. PATH
   Add-ToUserPath $binDir
 
-  # 6. Migrate previous Python kimi-cli installations: rename the first kimi
-  #    on PATH to kimi-legacy (preserve fallback) and drop later duplicates
-  #    so the new CLI is not shadowed.
-  Invoke-LegacyMigration
+  # 6. GanyCode never renames an existing kimi install.
 
   Write-Step "Done. Open a new terminal and run: ganycode --version"
 } finally {

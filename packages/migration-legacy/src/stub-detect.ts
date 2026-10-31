@@ -1,12 +1,24 @@
 import { readFile } from 'node:fs/promises';
 import { parse as parseToml } from 'smol-toml';
 
-// Verbatim from packages/kimi-core/src/harness/configs/toml.ts:42
+// Verbatim from packages/kimi-core/src/harness/configs/toml.ts:42 — the stub written by
+// builds that still used the `.kimi-code` home.
 export const DEFAULT_CONFIG_FILE_TEXT =
   '# ~/.kimi-code/config.toml\n' +
   '# Runtime settings for Kimi Code.\n' +
   '# This file starts empty so built-in defaults can apply.\n' +
   '# Login will populate managed Kimi provider and model entries.\n';
+
+// Verbatim from packages/node-sdk/src/config/toml.ts — the stub this build writes.
+const DEFAULT_CONFIG_FILE_TEXT_CURRENT =
+  '# ~/.ganycode/config.toml\n' +
+  '# Environment settings for GanyCode.\n' +
+  '# This file starts empty so built-in defaults can apply.\n' +
+  '# Login will populate managed Kimi provider and model entries.\n';
+
+export function isConfigStubText(text: string): boolean {
+  return text === DEFAULT_CONFIG_FILE_TEXT || text === DEFAULT_CONFIG_FILE_TEXT_CURRENT;
+}
 
 // Verbatim from apps/kimi-code/src/tui/config.ts:renderTuiConfig(DEFAULT_TUI_CONFIG)
 export const DEFAULT_TUI_RENDER =
@@ -30,7 +42,7 @@ export async function isConfigStubOrMissing(configPath: string): Promise<boolean
   } catch {
     return true; // missing = ok to overwrite
   }
-  return text === DEFAULT_CONFIG_FILE_TEXT;
+  return isConfigStubText(text);
 }
 
 export async function isTuiStubOrMissing(tuiPath: string): Promise<boolean> {
