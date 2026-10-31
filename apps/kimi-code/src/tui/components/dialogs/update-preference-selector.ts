@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
 const UPDATE_PREFERENCE_OPTIONS: readonly ChoiceOption[] = [
@@ -22,8 +24,12 @@ export interface UpdatePreferenceSelectorOptions {
 export class UpdatePreferenceSelectorComponent extends ChoicePickerComponent {
   constructor(opts: UpdatePreferenceSelectorOptions) {
     super({
-      title: 'Automatic updates',
-      options: [...UPDATE_PREFERENCE_OPTIONS],
+      title: t('Automatic updates'),
+      options: UPDATE_PREFERENCE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+        description: option.description === undefined ? undefined : t(option.description),
+      })),
       currentValue: opts.currentValue ? 'on' : 'off',
       onSelect: (value) => {
         opts.onSelect(value === 'on');

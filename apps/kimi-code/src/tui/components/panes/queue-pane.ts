@@ -3,6 +3,7 @@ import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import { SELECT_POINTER } from '../../constant/symbols';
 import type { QueuedMessage } from '../../types';
 import { DockSection, type DockPart } from '#/tui/components/chrome/dock-section';
+import { tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export interface QueuePaneOptions {
@@ -18,11 +19,13 @@ const ELLIPSIS = '…';
 export class QueuePaneComponent extends DockSection {
   private messages: readonly QueuedMessage[] = [];
   private hint: string | undefined;
+  private queuedTotal = 0;
 
   setOptions(options: QueuePaneOptions): void {
     this.messages = options.messages;
     if (options.messages.length === 0) {
       this.hint = undefined;
+      this.queuedTotal = 0;
       return;
     }
     // Bash commands (`! …`) are not steerable, and a queued /compact
@@ -34,16 +37,22 @@ export class QueuePaneComponent extends DockSection {
     const hasSteerable = steerableWindow.some((m) => m.mode !== 'bash');
     const canSteer = options.canSteerImmediately && hasSteerable;
     // A docked list shows only a few rows, so name the total once it scrolls.
-    const count =
+    this.queuedTotal =
       this.layout !== undefined && options.messages.length > this.layout.maxBodyRows
-        ? `${String(options.messages.length)} queued · `
-        : '';
+        ? options.messages.length
+        : 0;
     this.hint =
       options.isCompacting && !options.isStreaming
-        ? `  ${count}↑ to edit · will send after compaction`
+        ? '{count}↑ to edit · will send after compaction'
         : canSteer
-          ? `  ${count}↑ to edit · ctrl-s to steer immediately`
-          : `  ${count}↑ to edit · will send after current task`;
+          ? '{count}↑ to edit · ctrl-s to steer immediately'
+          : '{count}↑ to edit · will send after current task';
+  }
+
+  private formatHint(): string {
+    const count =
+      this.queuedTotal === 0 ? '' : tFormat('{count} queued · ', { count: this.queuedTotal });
+    return '  ' + tFormat(this.hint ?? '', { count });
   }
 
   protected renderPart(part: DockPart, width: number): string[] {
@@ -56,7 +65,7 @@ export class QueuePaneComponent extends DockSection {
       case 'foot':
         return this.hint === undefined
           ? []
-          : [currentTheme.fg('textDim', truncateToWidth(this.hint, width, ELLIPSIS))];
+          : [currentTheme.fg('textDim', truncateToWidth(this.formatHint(), width, ELLIPSIS))];
     }
   }
 }

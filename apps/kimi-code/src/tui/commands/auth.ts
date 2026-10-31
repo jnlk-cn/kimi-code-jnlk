@@ -15,6 +15,7 @@ import { log } from '@moonshot-ai/kimi-code-sdk';
 import type { ChoiceOption } from '../components/dialogs/choice-picker';
 import { DEFAULT_OAUTH_PROVIDER_NAME } from '../constant/kimi-tui';
 import { KIMI_PROVIDER_DISPLAY_NAME } from '#/constant/app';
+import { t, tFormat } from '#/tui/i18n';
 import { formatErrorMessage } from '../utils/event-payload';
 import {
   KIMI_CODE_GLOBAL_PLATFORM_VALUE,
@@ -81,13 +82,17 @@ async function handleKimiCodeOAuthLogin(
     });
     refreshKimiRegion();
     if (host.state.appState.model.trim().length > 0) host.setAuthRequired(false);
-    spinner?.stop({ ok: true, label: 'Logged in.' });
+    spinner?.stop({ ok: true, label: t('Logged in.') });
     spinner = undefined;
     try {
       await host.authFlow.refreshConfigAfterLogin();
     } catch (refreshError) {
       const message = formatErrorMessage(refreshError);
-      host.showError(`Authentication successful, but failed to refresh config: ${message}`);
+      host.showError(
+        tFormat('Authentication successful, but failed to refresh config: {error}', {
+          error: message,
+        }),
+      );
       return;
     }
     host.track('login', {
@@ -96,20 +101,20 @@ async function handleKimiCodeOAuthLogin(
       already_logged_in: alreadyLoggedIn,
     });
     if (alreadyLoggedIn) {
-      host.showStatus('Already logged in. Model configuration refreshed.', 'success');
+      host.showStatus(t('Already logged in. Model configuration refreshed.'), 'success');
     }
   } catch (error) {
     const cancelled = controller.signal.aborted;
     const denied = error instanceof OAuthAccessDeniedError;
     spinner?.stop({
       ok: false,
-      label: cancelled || denied ? 'Login cancelled.' : 'Login failed.',
+      label: cancelled || denied ? t('Login cancelled.') : t('Login failed.'),
     });
     spinner = undefined;
     if (cancelled) return;
     const message = formatErrorMessage(error);
     if (denied) {
-      host.showError(`Login cancelled: ${message}`);
+      host.showError(tFormat('Login cancelled: {error}', { error: message }));
       return;
     }
     log.warn('login failed', {
@@ -118,7 +123,7 @@ async function handleKimiCodeOAuthLogin(
       sessionId: host.session?.id,
       error,
     });
-    host.showError(`Login failed: ${message}`);
+    host.showError(tFormat('Login failed: {error}', { error: message }));
   } finally {
     if (host.cancelInFlight === cancelLogin) {
       host.cancelInFlight = undefined;
@@ -152,13 +157,13 @@ async function handleOpenPlatformLogin(
   } catch (error) {
     if (controller.signal.aborted) return;
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to verify API key: ${msg}`);
+    host.showError(tFormat('Failed to verify API key: {error}', { error: msg }));
     if (
       error instanceof OpenPlatformApiError &&
       error.status === 401
     ) {
       host.showStatus(
-        'Hint: If your API key was obtained from Kimi Code, please select "Kimi Code" instead.',
+        t('Hint: If your API key was obtained from Kimi Code, please select "Kimi Code" instead.'),
       );
     }
     return;
@@ -169,7 +174,7 @@ async function handleOpenPlatformLogin(
   }
 
   if (models.length === 0) {
-    host.showError('No models available for this platform.');
+    host.showError(t('No models available for this platform.'));
     return;
   }
 
@@ -203,7 +208,12 @@ async function handleOpenPlatformLogin(
 
   await host.authFlow.refreshConfigAfterLogin();
   host.track('login', { provider: platform.id, method: 'api_key' });
-  host.showStatus(`Setup complete: ${platform.name} · ${selection.model.id}`);
+  host.showStatus(
+    tFormat('Setup complete: {platform} · {model}', {
+      platform: platform.name,
+      model: selection.model.id,
+    }),
+  );
 }
 
 export async function handleLogoutCommand(host: SlashCommandHost): Promise<void> {
@@ -223,7 +233,7 @@ export async function handleLogoutCommand(host: SlashCommandHost): Promise<void>
     options.push({
       value: DEFAULT_OAUTH_PROVIDER_NAME,
       label: KIMI_PROVIDER_DISPLAY_NAME,
-      description: 'OAuth login',
+      description: t('OAuth login'),
     });
   }
   for (const id of apiKeyProviderIds) {
@@ -236,7 +246,7 @@ export async function handleLogoutCommand(host: SlashCommandHost): Promise<void>
   }
 
   if (options.length === 0) {
-    host.showStatus('Nothing to logout.');
+    host.showStatus(t('Nothing to logout.'));
     return;
   }
 
@@ -265,5 +275,5 @@ export async function handleLogoutCommand(host: SlashCommandHost): Promise<void>
 
   host.track('logout', { provider: target });
   const label = target === DEFAULT_OAUTH_PROVIDER_NAME ? KIMI_PROVIDER_DISPLAY_NAME : target;
-  host.showStatus(`Logged out from ${label}.`);
+  host.showStatus(tFormat('Logged out from {label}.', { label }));
 }

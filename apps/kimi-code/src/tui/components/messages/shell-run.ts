@@ -1,6 +1,7 @@
 import { Container, Text } from '@moonshot-ai/pi-tui';
 
 import { SHELL_OUTPUT_PREVIEW_LINES } from '#/tui/constant/rendering';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 import { formatBashOutputForDisplay, sanitizeShellOutput } from '#/tui/utils/shell-output';
@@ -176,7 +177,7 @@ export class ShellRunComponent extends Container {
   private renderText(): string {
     try {
       if (this.backgrounded) {
-        return `  ${currentTheme.fg('textDim', 'Moved to background.')}`;
+        return `  ${currentTheme.fg('textDim', t('Moved to background.'))}`;
       }
       const elapsed = Math.floor((Date.now() - this.startedAt) / 1000);
       const dim = (s: string): string => currentTheme.fg('textDim', s);
@@ -186,9 +187,9 @@ export class ShellRunComponent extends Container {
       let body: string;
       let extra = 0;
       if (trimmed.length === 0) {
-        body = `  ${dim('Running…')}`;
+        body = `  ${dim(t('Running…'))}`;
       } else if (this.expanded) {
-        const notice = this.combinedTruncated ? `  ${dim(TRUNCATED_RUNNING_NOTICE)}\n` : '';
+        const notice = this.combinedTruncated ? `  ${dim(t(TRUNCATED_RUNNING_NOTICE))}\n` : '';
         body =
           notice +
           trimmed
@@ -201,11 +202,11 @@ export class ShellRunComponent extends Container {
         extra = Math.max(0, lines.length - RUNNING_TAIL_LINES);
         body = tail.map((line) => `  ${dim(line)}`).join('\n');
       }
-      const timing = `  ${dim(`${extra > 0 ? `+${extra} lines ` : ''}(${elapsed}s)`)}`;
-      const hint = `  ${dim('(ctrl+b to run in background)')}`;
+      const timing = `  ${dim(`${extra > 0 ? tFormat('+{count} lines ', { count: extra }) : ''}(${elapsed}s)`)}`;
+      const hint = `  ${dim(t('(ctrl+b to run in background)'))}`;
       return `${body}\n${timing}\n${hint}`;
     } catch {
-      return '  (output unavailable)';
+      return `  ${t('(output unavailable)')}`;
     }
   }
 }

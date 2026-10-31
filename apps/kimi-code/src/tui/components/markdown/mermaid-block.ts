@@ -8,6 +8,7 @@ import {
   type TuiMouseEventResult,
 } from '@moonshot-ai/pi-tui';
 
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { KimiMarkdownOptions } from '#/tui/components/markdown/markdown';
 import {
@@ -73,9 +74,11 @@ export class MermaidBlock implements Component {
     } else {
       const reason =
         draw.status === 'error'
-          ? COULD_NOT_DRAW_MESSAGE
+          ? t(COULD_NOT_DRAW_MESSAGE)
           : draw.art !== null
-            ? `mermaid diagram too wide to render (needs ${draw.art.width} columns)`
+            ? tFormat('mermaid diagram too wide to render (needs {columns} columns)', {
+                columns: draw.art.width,
+              })
             : undrawnDiagramReason(this.fenceBody);
       content.push(currentTheme.fg('warning', truncateToWidth(reason, contentWidth, '…')));
       this.codeMarkdown ??= new PiMarkdown(this.fenceRaw, 0, 0, this.theme, undefined, this.options);
@@ -141,9 +144,9 @@ export class MermaidBlock implements Component {
   }
 
   private copyLabel(): string {
-    if (this.copyState === 'copied') return COPIED_LABEL;
-    if (this.copyState === 'failed') return COPY_FAILED_LABEL;
-    return COPY_SOURCE_LABEL;
+    if (this.copyState === 'copied') return t(COPIED_LABEL);
+    if (this.copyState === 'failed') return t(COPY_FAILED_LABEL);
+    return t(COPY_SOURCE_LABEL);
   }
 
   private copySource(): void {

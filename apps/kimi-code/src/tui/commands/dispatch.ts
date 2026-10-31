@@ -4,6 +4,7 @@ import type { ReverseRpcModalOwner } from '../reverse-rpc/modal-coordinator';
 
 import type { KimiHarness, Session } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
 import type { ColorToken, ThemeName } from '#/tui/theme';
 
 import { LLM_NOT_SET_MESSAGE } from '../constant/kimi-tui';
@@ -281,7 +282,7 @@ async function executeSlashCommand(
         reason: intent.reason,
         command: intent.commandName,
       });
-      host.showError(`Invalid slash command: /${intent.commandName}`);
+      host.showError(tFormat('Invalid slash command: /{command}', { command: intent.commandName }));
       return;
     case 'plugin-command': {
       if (host.state.appState.model.trim().length === 0) {
@@ -318,7 +319,7 @@ async function executeSlashCommand(
       if (intent.enqueue === true) {
         if (!host.enqueueCompactCommand(intent.args)) {
           host.track('input_command_invalid', { reason: 'duplicate-compact', command: intent.name });
-          host.showError('A /compact is already queued.');
+          host.showError(t('A /compact is already queued.'));
           host.restoreInputText(input);
           return;
         }
@@ -394,7 +395,7 @@ async function handleBuiltInSlashCommand(
       // awaited creation lands on a running turn.
       if (name === 'compact' && busyReason === 'streaming' && !host.state.appState.isCompacting) {
         if (!host.enqueueCompactCommand(args)) {
-          host.showError('A /compact is already queued.');
+          host.showError(t('A /compact is already queued.'));
           // Same restore as the adjacent blocked path, guarded the same way.
           if (canRestoreSubmittedInput(host)) host.restoreInputText(input);
         }
@@ -569,7 +570,7 @@ async function handleBuiltInSlashCommand(
       await handleRemoteControlCommand(host);
       return;
     default:
-      host.showError(`Unknown slash command: /${String(name)}`);
+      host.showError(tFormat('Unknown slash command: /{command}', { command: String(name) }));
       return;
   }
 }

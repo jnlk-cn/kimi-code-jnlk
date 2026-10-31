@@ -1,6 +1,7 @@
 import { truncateToWidth, type Component } from '@moonshot-ai/pi-tui';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export type SwarmModeMarkerState = 'active' | 'inactive' | 'ended';
@@ -24,10 +25,10 @@ export class SwarmModeMarkerComponent implements Component {
 function swarmMarkerLabel(state: SwarmModeMarkerState): string {
   switch (state) {
     case 'active':
-      return 'Swarm activated';
+      return t('Swarm activated');
     case 'inactive':
-      return 'Swarm deactivated';
+      return t('Swarm deactivated');
     case 'ended':
-      return 'Swarm ended';
+      return t('Swarm ended');
   }
 }

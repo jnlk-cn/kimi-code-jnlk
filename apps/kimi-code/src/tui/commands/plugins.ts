@@ -11,6 +11,7 @@ import {
 import { Spacer } from '@moonshot-ai/pi-tui';
 
 import { Markdown } from '#/tui/components/markdown/markdown';
+import { t, tFormat } from '#/tui/i18n';
 
 import {
   PluginInstallTrustConfirmComponent,
@@ -119,19 +120,24 @@ export async function handlePluginsCommand(host: SlashCommandHost, rawArgs: stri
     if (sub === 'install') {
       const source = rest.join(' ').trim();
       if (source.length === 0) {
-        host.showError('Usage: /plugins install <local-path-or-zip-url>');
+        host.showError(t('Usage: /plugins install <local-path-or-zip-url>'));
         return;
       }
       if (!(await confirmInstallTrust(host, source, isOfficialPluginSource(source)))) {
-        host.showStatus('Install cancelled.');
+        host.showStatus(t('Install cancelled.'));
         return;
       }
-      const spinner = host.showProgressSpinner(`Installing plugin from ${truncateForStatus(source)}…`);
+      const spinner = host.showProgressSpinner(
+        tFormat('Installing plugin from {source}…', { source: truncateForStatus(source) }),
+      );
       try {
         await installPluginFromSource(host, source);
-        spinner.stop({ ok: true, label: `Install finished — see details below.` });
+        spinner.stop({ ok: true, label: t('Install finished — see details below.') });
       } catch (error) {
-        spinner.stop({ ok: false, label: `Install failed: ${formatErrorMessage(error)}` });
+        spinner.stop({
+          ok: false,
+          label: tFormat('Install failed: {error}', { error: formatErrorMessage(error) }),
+        });
         throw error;
       }
       return;
@@ -162,12 +168,17 @@ export async function handlePluginsCommand(host: SlashCommandHost, rawArgs: stri
       const id = rest[1];
       const server = rest[2];
       if ((action !== 'enable' && action !== 'disable') || id === undefined || server === undefined) {
-        host.showError('Usage: /plugins mcp enable|disable <id> <server>');
+        host.showError(t('Usage: /plugins mcp enable|disable <id> <server>'));
         return;
       }
       await session.setPluginMcpServerEnabled(id, server, action === 'enable');
       host.showStatus(
-        `${action === 'enable' ? 'Enabled' : 'Disabled'} MCP server ${server} for ${id}. Run /reload or /new to apply.`,
+        tFormat(
+          action === 'enable'
+            ? 'Enabled MCP server {server} for {id}. Run /reload or /new to apply.'
+            : 'Disabled MCP server {server} for {id}. Run /reload or /new to apply.',
+          { server, id },
+        ),
       );
       return;
     }
@@ -183,11 +194,11 @@ export async function handlePluginsCommand(host: SlashCommandHost, rawArgs: stri
     if (sub === 'remove') {
       const id = rest[0];
       if (id === undefined) {
-        host.showError('Usage: /plugins remove <id>');
+        host.showError(t('Usage: /plugins remove <id>'));
         return;
       }
       if (!(await confirmRemovePlugin(host, id))) {
-        host.showStatus(`Remove cancelled: ${id}.`);
+        host.showStatus(tFormat('Remove cancelled: {id}.', { id }));
         return;
       }
       await removePlugin(host, id);
@@ -202,9 +213,18 @@ export async function handlePluginsCommand(host: SlashCommandHost, rawArgs: stri
       await renderPluginInfo(host, sub);
       return;
     }
-    host.showError(`Unknown /plugins action: ${sub}. Run /plugins to choose interactively.`);
+    host.showError(
+      tFormat('Unknown /plugins action: {action}. Run /plugins to choose interactively.', {
+        action: sub,
+      }),
+    );
   } catch (error) {
-    host.showError(`/plugins ${sub ?? ''} failed: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('/plugins {action} failed: {error}', {
+        action: sub ?? '',
+        error: formatErrorMessage(error),
+      }),
+    );
   }
 }
 
@@ -251,7 +271,8 @@ async function showPluginsPicker(
   try {
     plugins = await (await resolvePluginApi(host)).listPlugins();
   } catch (error) {
-    host.showError(`Failed to load plugins: ${formatErrorMessage(error)}`);
+    const message = formatErrorMessage(error);
+    host.showError(tFormat('Failed to load plugins: {error}', { error: message }));
     return;
   }
 
@@ -280,7 +301,8 @@ async function showPluginsPicker(
       // editor itself, so do not pre-restore here — that would flash the editor
       // for in-place actions like toggling a plugin.
       void handlePluginsPanelSelection(host, panel, selection).catch((error: unknown) => {
-        host.showError(`/plugins failed: ${formatErrorMessage(error)}`);
+        const message = formatErrorMessage(error);
+        host.showError(tFormat('/plugins failed: {error}', { error: message }));
       });
     },
     onCancel: () => {
@@ -400,7 +422,8 @@ async function showPluginMcpPicker(
   try {
     info = await (await resolvePluginApi(host)).getPluginInfo(id);
   } catch (error) {
-    host.showError(`Failed to load plugin MCP servers: ${formatErrorMessage(error)}`);
+    const message = formatErrorMessage(error);
+    host.showError(tFormat('Failed to load plugin MCP servers: {error}', { error: message }));
     return;
   }
 
@@ -413,7 +436,8 @@ async function showPluginMcpPicker(
         // Every MCP action re-mounts a picker, so let the handler do the
         // mounting — pre-restoring the editor here would flash on toggle.
         void handlePluginMcpSelection(host, selection).catch((error: unknown) => {
-          host.showError(`/plugins mcp failed: ${formatErrorMessage(error)}`);
+          const message = formatErrorMessage(error);
+          host.showError(tFormat('/plugins mcp failed: {error}', { error: message }));
         });
       },
       onCancel: () => {
@@ -548,7 +572,8 @@ async function installCapabilityFromPanel(
     log.warn('capability install failed to start', { capabilityId: entry.id, error });
     panel.clearInstalling();
     host.state.ui.requestRender();
-    host.showError(`Failed to install ${label}: ${formatErrorMessage(error)}`);
+    const message = formatErrorMessage(error);
+    host.showError(tFormat('Failed to install {label}: {error}', { label, error: message }));
     host.restoreEditor();
     return;
   }
@@ -564,13 +589,20 @@ async function installCapabilityFromPanel(
   // plain plugin install flow.
   host.restoreEditor();
   if (result === undefined) {
-    host.showStatus(`${label} installation is still running in the background.`);
+    host.showStatus(
+      tFormat('{label} installation is still running in the background.', { label }),
+    );
     return;
   }
   logCapabilityStatus(result);
   if (result.install.error !== undefined) {
-    host.showError(`${label} installation failed: ${result.install.error}`);
-    host.showStatus('Fix the reported error, then install again from /plugins.', 'warning');
+    host.showError(
+      tFormat('{label} installation failed: {error}', {
+        label,
+        error: result.install.error,
+      }),
+    );
+    host.showStatus(t('Fix the reported error, then install again from /plugins.'), 'warning');
     return;
   }
   if (result.state !== 'ready') {
@@ -579,22 +611,25 @@ async function installCapabilityFromPanel(
       result.steps.some((step) => step.id === 'permissions' && step.state !== 'ok');
     if (permissionsRequired) {
       host.showStatus(
-        'Grant Accessibility and Screen Recording in System Settings → Privacy & Security.',
+        t('Grant Accessibility and Screen Recording in System Settings → Privacy & Security.'),
         'warning',
       );
     } else {
       host.showError(
-        `${label} installation did not complete. Check the logs and install again from /plugins.`,
+        tFormat(
+          '{label} installation did not complete. Check the logs and install again from /plugins.',
+          { label },
+        ),
       );
     }
-    host.showStatus(PLUGIN_RELOAD_HINT, 'warning');
+    host.showStatus(t(PLUGIN_RELOAD_HINT), 'warning');
     return;
   }
   if (entry.id === 'kimi-webbridge') {
-    host.showNotice(`${label} is installed.`);
+    host.showNotice(tFormat('{label} is installed.', { label }));
     host.state.transcriptContainer.addChild(new Spacer(1));
     host.state.transcriptContainer.addChild(
-      new Markdown(WEBBRIDGE_POST_INSTALL_MARKDOWN, 2, 0, createMarkdownTheme(), undefined, {
+      new Markdown(webbridgePostInstallMarkdown(), 2, 0, createMarkdownTheme(), undefined, {
         ...createMarkdownOptions(),
         copySource: true,
       }),
@@ -602,8 +637,8 @@ async function installCapabilityFromPanel(
     host.state.ui.requestRender();
     return;
   }
-  host.showStatus(`${label} is installed.`);
-  host.showStatus(PLUGIN_RELOAD_HINT, 'warning');
+  host.showStatus(tFormat('{label} is installed.', { label }));
+  host.showStatus(t(PLUGIN_RELOAD_HINT), 'warning');
 }
 
 async function installFromPanel(
@@ -614,7 +649,7 @@ async function installFromPanel(
   official: boolean,
 ): Promise<void> {
   if (!(await confirmInstallTrust(host, label, official))) {
-    host.showStatus(`Install cancelled: ${label}.`);
+    host.showStatus(tFormat('Install cancelled: {label}.', { label }));
     host.restoreEditor();
     return;
   }
@@ -624,7 +659,7 @@ async function installFromPanel(
   if (official) {
     panel.setInstalling(truncateForStatus(label));
   } else {
-    host.showStatus(`Installing or updating ${label} from marketplace…`);
+    host.showStatus(tFormat('Installing or updating {label} from marketplace…', { label }));
   }
   host.state.ui.requestRender();
   try {
@@ -638,7 +673,8 @@ async function installFromPanel(
       // instead of being dropped back at the editor.
       host.mountEditorReplacement(panel);
     }
-    host.showError(`Failed to install ${label}: ${formatErrorMessage(error)}`);
+    const message = formatErrorMessage(error);
+    host.showError(tFormat('Failed to install {label}: {error}', { label, error: message }));
     return;
   }
   // Close the panel after installing so the result status and the
@@ -662,12 +698,18 @@ async function applyPluginEnabled(
   }
   const mcpHint =
     enabled && info !== undefined && info.mcpServerCount > info.enabledMcpServerCount
-      ? ` Some MCP servers are disabled; re-enable with /plugins mcp enable ${id} <server>.`
+      ? ` ${tFormat(
+          'Some MCP servers are disabled; re-enable with /plugins mcp enable {id} <server>.',
+          { id },
+        )}`
       : '';
   if (showStatus) {
-    host.showStatus(`${enabled ? 'Enabled' : 'Disabled'} ${id}. Run /reload or /new to apply.${mcpHint}`);
+    const stateMessage = enabled
+      ? tFormat('Enabled {id}. Run /reload or /new to apply.', { id })
+      : tFormat('Disabled {id}. Run /reload or /new to apply.', { id });
+    host.showStatus(`${stateMessage}${mcpHint}`);
   }
-  const inlineMcpHint = mcpHint.length > 0 ? ' · MCP servers disabled' : '';
+  const inlineMcpHint = mcpHint.length > 0 ? ` · ${t('MCP servers disabled')}` : '';
   return `${pluginInlineChangeHint()}${inlineMcpHint}`;
 }
 
@@ -688,7 +730,7 @@ async function handlePluginsPanelSelection(
     }
     case 'remove':
       if (!(await confirmRemovePlugin(host, selection.id))) {
-        host.showStatus(`Remove cancelled: ${selection.id}.`);
+        host.showStatus(tFormat('Remove cancelled: {id}.', { id: selection.id }));
         await showPluginsPicker(host, { initialTab: 'installed', selectedId: selection.id });
         return;
       }
@@ -731,8 +773,11 @@ async function handlePluginsPanelSelection(
     case 'open-url':
       host.restoreEditor();
       openUrl(selection.url);
-      host.showStatus(`Opening the ${selection.label} page in your browser…`, 'success');
-      host.showStatus(`If it did not open, visit ${selection.url}`);
+      host.showStatus(
+        tFormat('Opening the {label} page in your browser…', { label: selection.label }),
+        'success',
+      );
+      host.showStatus(tFormat('If it did not open, visit {url}', { url: selection.url }));
       return;
   }
 }
@@ -762,14 +807,16 @@ async function handlePluginMcpSelection(
 
 async function removePlugin(host: SlashCommandHost, id: string): Promise<void> {
   await (await resolvePluginApi(host)).removePlugin(id);
-  host.showStatus(`Removed ${id}.`);
+  host.showStatus(tFormat('Removed {id}.', { id }));
   if (isCapabilityPluginId(id)) {
     host.showStatus(
-      'Note: the runtime binaries were left untouched, but Kimi Code plugin wiring is disabled for new sessions. Restart Kimi Code before reinstalling from the Official tab.',
+      t(
+        'Note: the runtime binaries were left untouched, but Kimi Code plugin wiring is disabled for new sessions. Restart Kimi Code before reinstalling from the Official tab.',
+      ),
     );
     return;
   }
-  host.showStatus(PLUGIN_RELOAD_HINT, 'warning');
+  host.showStatus(t(PLUGIN_RELOAD_HINT), 'warning');
 }
 
 async function renderPluginsList(
@@ -777,7 +824,7 @@ async function renderPluginsList(
   plugins?: readonly PluginSummary[],
 ): Promise<void> {
   const currentPlugins = plugins ?? (await (await resolvePluginApi(host)).listPlugins());
-  const title = ` Plugins (${currentPlugins.length}) `;
+  const title = ` ${tFormat('Plugins ({count})', { count: currentPlugins.length })} `;
   const panel = new UsagePanelComponent(
     () => buildPluginsListLines({ plugins: currentPlugins }),
     'primary',
@@ -812,16 +859,18 @@ async function installPluginFromSource(
 
 const PLUGIN_RELOAD_HINT = 'Run /new or /reload to apply plugin changes.';
 
-const WEBBRIDGE_POST_INSTALL_MARKDOWN = [
-  '*Two steps left to use Kimi Browser Extension:*',
-  '1. Install the browser extension',
-  '',
-  '   - [Chrome Web Store](https://chromewebstore.google.com/detail/kimi-webbridge/fldmhceldgbpfpkbgopacenieobmligc)',
-  '   - [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kimi-webbridge/bnlffdbcfnanfbknnlaflhlhkocccckg)',
-  '   - [Manual installation guide](https://www.kimi.com/code/docs/kimi-code-cli/customization/plugins.html#install-the-browser-extension)',
-  '',
-  '2. Run `/reload` or `/new` to apply it.',
-].join('\n');
+function webbridgePostInstallMarkdown(): string {
+  return [
+    t('*Two steps left to use Kimi Browser Extension:*'),
+    t('1. Install the browser extension'),
+    '',
+    '   - [Chrome Web Store](https://chromewebstore.google.com/detail/kimi-webbridge/fldmhceldgbpfpkbgopacenieobmligc)',
+    '   - [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kimi-webbridge/bnlffdbcfnanfbknnlaflhlhkocccckg)',
+    `   - [${t('Manual installation guide')}](https://www.kimi.com/code/docs/kimi-code-cli/customization/plugins.html#install-the-browser-extension)`,
+    '',
+    t('2. Run `/reload` or `/new` to apply it.'),
+  ].join('\n');
+}
 
 const PLUGIN_QUOTA_NOTE = 'Note: This plugin consumes your quota.';
 
@@ -831,18 +880,22 @@ function showPluginInstallResult(
   summary: PluginSummary,
 ): void {
   const previous = beforeList.find((entry) => entry.id === summary.id);
-  const serverWord = summary.mcpServerCount === 1 ? 'server' : 'servers';
   const mcpHint =
     summary.mcpServerCount > 0
-      ? ` Declares ${summary.mcpServerCount} MCP ${serverWord}; enabled by default and configurable from /plugins.`
+      ? ` ${tFormat(
+          summary.mcpServerCount === 1
+            ? 'Declares {count} MCP server; enabled by default and configurable from /plugins.'
+            : 'Declares {count} MCP servers; enabled by default and configurable from /plugins.',
+          { count: summary.mcpServerCount },
+        )}`
       : '';
   const action = describeInstallAction(previous, summary);
   host.showStatus(`${action} (${summary.id}).${mcpHint}`);
-  host.showStatus(PLUGIN_RELOAD_HINT, 'warning');
+  host.showStatus(t(PLUGIN_RELOAD_HINT), 'warning');
   // Gate on provenance, not just the id: a local/GitHub fork whose manifest
   // reuses a billed plugin's id is not the official quota-consuming build.
   if (QUOTA_CONSUMING_PLUGIN_IDS.includes(summary.id) && isOfficialPluginInstall(summary)) {
-    host.showStatus(PLUGIN_QUOTA_NOTE, 'warning');
+    host.showStatus(t(PLUGIN_QUOTA_NOTE), 'warning');
   }
 }
 
@@ -856,19 +909,34 @@ function describeInstallAction(
     return ` ${prev} → ${cur ?? '-'}`;
   };
   if (previous === undefined) {
-    return `Installed ${next.displayName}${versionFromTo(undefined, next.version)} ${sourcePhrase(sourceLabel)}`;
+    return tFormat('Installed {name}{version} {source}', {
+      name: next.displayName,
+      version: versionFromTo(undefined, next.version),
+      source: sourcePhrase(sourceLabel),
+    });
   }
   if (sourceIdentity(previous) !== sourceIdentity(next)) {
     const prevSourceLabel = formatPluginSourceLabel(previous);
-    return `Migrated ${next.displayName}: ${prevSourceLabel} → ${sourceLabel}${versionFromTo(previous.version, next.version)}`;
+    return tFormat('Migrated {name}: {from} → {to}{version}', {
+      name: next.displayName,
+      from: prevSourceLabel,
+      to: sourceLabel,
+      version: versionFromTo(previous.version, next.version),
+    });
   }
-  return `Updated ${next.displayName}${versionFromTo(previous.version, next.version)} ${sourcePhrase(sourceLabel)}`;
+  return tFormat('Updated {name}{version} {source}', {
+    name: next.displayName,
+    version: versionFromTo(previous.version, next.version),
+    source: sourcePhrase(sourceLabel),
+  });
 }
 
 // formatPluginSourceLabel already prefixes zip-url hosts with "via", so adding
 // "from" would read as "from via <host>". Only prepend "from" otherwise.
 function sourcePhrase(sourceLabel: string): string {
-  return sourceLabel.startsWith('via ') ? sourceLabel : `from ${sourceLabel}`;
+  return sourceLabel.startsWith('via ')
+    ? sourceLabel
+    : tFormat('from {source}', { source: sourceLabel });
 }
 
 function sourceIdentity(plugin: PluginSummary): string {
@@ -885,8 +953,14 @@ function truncateForStatus(input: string): string {
 
 async function reloadPlugins(host: SlashCommandHost): Promise<void> {
   const summary = await (await resolvePluginApi(host)).reloadPlugins();
-  const line = `Reload: +${summary.added.length} -${summary.removed.length}` +
-    (summary.errors.length > 0 ? ` (${summary.errors.length} errors)` : '');
+  const counts = tFormat('Reload: +{added} -{removed}', {
+    added: summary.added.length,
+    removed: summary.removed.length,
+  });
+  const line =
+    summary.errors.length > 0
+      ? `${counts} ${tFormat('({count} errors)', { count: summary.errors.length })}`
+      : counts;
   host.showStatus(line);
   // Rebuild the TUI's plugin slash-command list from the reloaded service so
   // newly added/enabled commands resolve in this session-less UI right away.
@@ -902,5 +976,5 @@ function resolvePluginInstallSource(source: string, workDir: string): string {
 }
 
 function pluginInlineChangeHint(): string {
-  return 'run /reload or /new to apply';
+  return t('run /reload or /new to apply');
 }

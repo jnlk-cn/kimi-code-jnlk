@@ -12,6 +12,7 @@ import {
 } from '@moonshot-ai/pi-tui';
 import { formatSessionLabel } from '#/migration/index';
 import { CURRENT_MARK, SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '#/tui/utils/printable-key';
 import { SearchableList } from '#/tui/utils/searchable-list';
@@ -33,13 +34,13 @@ function formatRelativeTime(ts: number): string {
   // so they use the same millisecond unit as `Date.now()`.
   if (!Number.isFinite(ts) || ts <= 0) return '';
   const diffSec = Math.floor(Math.max(0, Date.now() - ts) / 1000);
-  if (diffSec < 60) return 'just now';
+  if (diffSec < 60) return t('just now');
   const minutes = Math.floor(diffSec / 60);
-  if (minutes < 60) return `${String(minutes)}m ago`;
+  if (minutes < 60) return tFormat('{count}m ago', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)}h ago`;
+  if (hours < 24) return tFormat('{count}h ago', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${String(days)}d ago`;
+  return tFormat('{count}d ago', { count: days });
 }
 
 function homeAlias(path: string): string {
@@ -317,8 +318,8 @@ export class SessionPickerComponent extends Container implements Focusable {
     const label = singleLine(
       formatSessionLabel({ title: rawTitle, metadata: state.session.metadata }),
     );
-    const prefix = state.phase === 'confirm' ? 'Delete session "' : 'Deleting session "';
-    const suffix = state.phase === 'confirm' ? '"? [y/N]' : '"…';
+    const prefix = state.phase === 'confirm' ? t('Delete session "') : t('Deleting session "');
+    const suffix = state.phase === 'confirm' ? t('"? [y/N]') : t('"…');
     const labelBudget = Math.max(0, width - visibleWidth(prefix) - visibleWidth(suffix));
     const shown = truncateToWidth(label, labelBudget, ELLIPSIS);
     // The suffix carries the confirm/cancel keys: it survives by truncating
@@ -351,25 +352,25 @@ export class SessionPickerComponent extends Container implements Focusable {
   // prevents the "Rendered line exceeds terminal width" crash (issue #240).
   private renderLines(width: number): string[] {
     const lines: string[] = [currentTheme.fg('primary', '─'.repeat(width))];
-    const title = this.scope === 'all' ? 'All sessions' : 'Sessions';
+    const title = this.scope === 'all' ? t('All sessions') : t('Sessions');
     const scopeHint =
       this.onToggleScope === undefined
         ? undefined
         : this.scope === 'all'
-          ? 'Ctrl+A current cwd'
-          : 'Ctrl+A all';
+          ? t('Ctrl+A current cwd')
+          : t('Ctrl+A all');
 
     if (this.loading) {
       lines.push(currentTheme.boldFg('primary', truncateToWidth(title, width, ELLIPSIS)));
       lines.push(
-        currentTheme.fg('textMuted', truncateToWidth('Loading sessions…', width, ELLIPSIS)),
+        currentTheme.fg('textMuted', truncateToWidth(t('Loading sessions…'), width, ELLIPSIS)),
       );
       lines.push(currentTheme.fg('primary', '─'.repeat(width)));
       return lines;
     }
 
     if (this.sessions.length === 0) {
-      const hintParts = [scopeHint, 'Esc cancel'].filter(
+      const hintParts = [scopeHint, t('Esc cancel')].filter(
         (item): item is string => item !== undefined,
       );
       lines.push(currentTheme.boldFg('primary', truncateToWidth(title, width, ELLIPSIS)));
@@ -378,7 +379,7 @@ export class SessionPickerComponent extends Container implements Focusable {
       );
       lines.push('');
       lines.push(
-        currentTheme.fg('textMuted', truncateToWidth('No sessions found.', width, ELLIPSIS)),
+        currentTheme.fg('textMuted', truncateToWidth(t('No sessions found.'), width, ELLIPSIS)),
       );
       lines.push(currentTheme.fg('primary', '─'.repeat(width)));
       return lines;
@@ -386,30 +387,35 @@ export class SessionPickerComponent extends Container implements Focusable {
 
     const view = this.list.view();
     const titleSuffix =
-      view.query.length === 0 ? currentTheme.fg('textMuted', '  (type to search)') : '';
+      view.query.length === 0 ? currentTheme.fg('textMuted', t('  (type to search)')) : '';
     const hintParts = [
-      ...(view.query.length > 0 ? ['Backspace clear'] : []),
-      '↑↓ navigate',
+      ...(view.query.length > 0 ? [t('Backspace clear')] : []),
+      t('↑↓ navigate'),
       scopeHint,
-      ...(this.onDeleteRequest !== undefined ? ['Ctrl+X delete'] : []),
-      'Enter select',
-      'Esc cancel',
+      ...(this.onDeleteRequest !== undefined ? [t('Ctrl+X delete')] : []),
+      t('Enter select'),
+      t('Esc cancel'),
     ].filter((item): item is string => item !== undefined);
 
     lines.push(currentTheme.boldFg('primary', title) + titleSuffix);
     lines.push(currentTheme.fg('textMuted', hintParts.join(' · ')));
     if (this.selectInFlight) {
-      lines.push(currentTheme.fg('textMuted', `${this.spinner.current} Resuming session…`));
+      lines.push(
+        currentTheme.fg(
+          'textMuted',
+          tFormat('{spinner} Resuming session…', { spinner: this.spinner.current }),
+        ),
+      );
     }
     lines.push('');
 
     if (view.query.length > 0) {
-      lines.push(currentTheme.fg('primary', 'Search: ') + currentTheme.fg('text', view.query));
+      lines.push(currentTheme.fg('primary', t('Search: ')) + currentTheme.fg('text', view.query));
     }
 
     const loadedSessions = this.loadedSessions(view.items);
     if (loadedSessions.length === 0) {
-      lines.push(currentTheme.fg('textMuted', truncateToWidth('No matches', width, ELLIPSIS)));
+      lines.push(currentTheme.fg('textMuted', truncateToWidth(t('No matches'), width, ELLIPSIS)));
       lines.push(currentTheme.fg('primary', '─'.repeat(width)));
       return lines;
     }
@@ -444,21 +450,31 @@ export class SessionPickerComponent extends Container implements Focusable {
     ) {
       lines.push('');
       const moreSuffix = this.loadingMore
-        ? ' · loading more…'
+        ? t(' · loading more…')
         : this.hasMore
           ? view.query.length > 0
-            ? ' · searching all…'
-            : ' · scroll for more'
+            ? t(' · searching all…')
+            : t(' · scroll for more')
           : '';
       const totalSuffix =
         view.query.length > 0
-          ? `${String(loadedSessions.length)} loaded / ${String(filteredCount)} matches`
+          ? tFormat('{loaded} loaded / {total} matches', {
+              loaded: loadedSessions.length,
+              total: filteredCount,
+            })
           : this.hasMore || this.loadingMore
-            ? `${String(loadedSessions.length)} loaded`
+            ? tFormat('{count} loaded', { count: loadedSessions.length })
             : loadedSessions.length === this.sessions.length
-              ? `${String(loadedSessions.length)} sessions`
-              : `${String(loadedSessions.length)} loaded / ${String(this.sessions.length)} sessions`;
-      const footer = `Showing ${String(visibleStart + 1)}-${String(visibleStart + visibleSessions.length)} of ${totalSuffix}${moreSuffix}`;
+              ? tFormat('{count} sessions', { count: loadedSessions.length })
+              : tFormat('{loaded} loaded / {total} sessions', {
+                  loaded: loadedSessions.length,
+                  total: this.sessions.length,
+                });
+      const footer =
+        tFormat('Showing {range} of {total}', {
+          range: `${String(visibleStart + 1)}-${String(visibleStart + visibleSessions.length)}`,
+          total: totalSuffix,
+        }) + moreSuffix;
       lines.push(currentTheme.fg('textMuted', truncateToWidth(footer, width, ELLIPSIS)));
     }
 

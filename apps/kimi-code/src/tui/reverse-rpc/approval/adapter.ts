@@ -2,6 +2,7 @@ import type { ApprovalRequest, ApprovalResponse, ToolInputDisplay } from '@moons
 
 import type { ApprovalPanelResponse } from '#/tui/components/dialogs/approval-panel';
 import { goalStartOptions } from '#/tui/components/dialogs/goal-start-permission-prompt';
+import { t, tFormat } from '#/tui/i18n';
 import type { ApprovalPanelChoice, ApprovalPanelData, DisplayBlock } from '#/tui/reverse-rpc/types';
 
 const DEFAULT_APPROVAL_CHOICES: ApprovalPanelChoice[] = [
@@ -178,7 +179,7 @@ function describeApproval(display: ToolInputDisplay, action: string): string {
     case 'plan_review':
       return '';
     case 'goal_start':
-      return 'Start a goal?';
+      return t('Start a goal?');
     case 'generic':
       if (typeof display.detail === 'string' && display.detail.length > 0) {
         return display.detail;
@@ -187,25 +188,31 @@ function describeApproval(display: ToolInputDisplay, action: string): string {
     case 'command':
       return display.description ?? display.command ?? action;
     case 'diff':
-      return `edit ${display.path ?? ''}`.trim();
+      return tFormat('edit {path}', { path: display.path ?? '' }).trim();
     case 'file_io':
       return `${display.operation ?? 'file'} ${display.path ?? ''}`.trim();
     case 'task_stop':
-      return `stop task: ${display.task_description ?? display.task_id ?? ''}`.trim();
+      return tFormat('stop task: {target}', {
+        target: display.task_description ?? display.task_id ?? '',
+      }).trim();
     case 'agent_call':
-      return `spawn ${display.agent_name ?? 'agent'}`;
+      return tFormat('spawn {name}', { name: display.agent_name ?? t('agent') });
     case 'skill_call':
-      return `invoke skill ${display.skill_name ?? ''}`.trim();
+      return tFormat('invoke skill {name}', { name: display.skill_name ?? '' }).trim();
     case 'url_fetch':
-      return `fetch ${display.url ?? ''}`.trim();
+      return tFormat('fetch {url}', { url: display.url ?? '' }).trim();
     case 'search':
-      return `search: ${display.query ?? ''}`.trim();
+      return tFormat('search: {query}', { query: display.query ?? '' }).trim();
     case 'todo_list':
-      return `update todo list (${String(display.items?.length ?? 0)} items)`;
+      return tFormat('update todo list ({count} items)', {
+        count: display.items?.length ?? 0,
+      });
     case 'task':
-      return `${display.status ?? 'background'} task ${display.task_id ?? ''}: ${
-        display.description ?? ''
-      }`.trim();
+      return tFormat('{status} task {id}: {description}', {
+        status: display.status ?? 'background',
+        id: display.task_id ?? '',
+        description: display.description ?? '',
+      }).trim();
     default:
       return action;
   }
@@ -318,15 +325,18 @@ function adaptDisplay(display: ToolInputDisplay): DisplayBlock[] {
       return [
         {
           type: 'brief',
-          text: `Stop task ${display.task_id ?? ''}: ${display.task_description ?? ''}`,
+          text: tFormat('Stop task {id}: {description}', {
+            id: display.task_id ?? '',
+            description: display.task_description ?? '',
+          }),
         },
       ];
     case 'plan_review':
       return [];
     case 'goal_start': {
-      const lines = [`Start goal: ${display.objective}`];
+      const lines = [tFormat('Start goal: {objective}', { objective: display.objective })];
       if (typeof display.completionCriterion === 'string' && display.completionCriterion.length > 0) {
-        lines.push(`Done when: ${display.completionCriterion}`);
+        lines.push(tFormat('Done when: {criterion}', { criterion: display.completionCriterion }));
       }
       return [{ type: 'brief', text: lines.join('\n') }];
     }
@@ -349,7 +359,7 @@ function adaptChoices(toolName: string, display: ToolInputDisplay): ApprovalPane
     return adaptGoalStartChoices(display);
   }
 
-  return DEFAULT_APPROVAL_CHOICES.map((choice) => cloneChoice(choice));
+  return DEFAULT_APPROVAL_CHOICES.map(translateChoice);
 }
 
 function adaptGoalStartChoices(
@@ -361,16 +371,16 @@ function adaptGoalStartChoices(
   return goalStartOptions(display.mode).map((option) =>
     option.value === 'cancel'
       ? {
-          label: option.label,
+          label: t(option.label),
           response: 'cancelled',
           selected_label: 'cancel',
-          description: option.description,
+          description: t(option.description),
         }
       : {
-          label: option.label,
+          label: t(option.label),
           response: 'approved',
           selected_label: option.value,
-          description: option.description,
+          description: t(option.description),
         },
   );
 }
@@ -384,10 +394,10 @@ function adaptPlanReviewChoices(display: ToolInputDisplay): ApprovalPanelChoice[
           selected_label: option.label,
           description: option.description,
         }))
-      : [{ label: 'Approve', response: 'approved' as const, selected_label: 'Approve' }];
-  return [...optionChoices, ...PLAN_REJECT_CHOICES].map((choice) => cloneChoice(choice));
+      : [{ label: t('Approve'), response: 'approved' as const, selected_label: 'Approve' }];
+  return [...optionChoices, ...PLAN_REJECT_CHOICES.map(translateChoice)];
 }
 
-function cloneChoice(choice: ApprovalPanelChoice): ApprovalPanelChoice {
-  return { ...choice };
+function translateChoice(choice: ApprovalPanelChoice): ApprovalPanelChoice {
+  return { ...choice, label: t(choice.label) };
 }

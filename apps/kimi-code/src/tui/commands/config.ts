@@ -15,7 +15,7 @@ import {
   type ExperimentalFeatureDraftChange,
 } from '../components/dialogs/experiments-selector';
 import { LanguageSelectorComponent } from '../components/dialogs/language-selector';
-import { resolveUiLanguage, setUiLanguage, tFormat } from '../i18n';
+import { resolveUiLanguage, setUiLanguage, t, tFormat } from '../i18n';
 import { writeAgentPreferences } from '../utils/agent-preferences-io';
 import { MermaidPreferenceSelectorComponent } from '../components/dialogs/mermaid-preference-selector';
 import { TerminalPreferenceSelectorComponent } from '../components/dialogs/terminal-preference-selector';
@@ -97,14 +97,14 @@ export function currentTuiConfig(host: Pick<SlashCommandHost, 'state'>): TuiConf
 export async function handlePlanCommand(host: SlashCommandHost, args: string): Promise<void> {
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
 
   const subcmd = args.trim().toLowerCase();
   if (subcmd === 'clear') {
     await session.clearPlan();
-    host.showNotice('Plan cleared');
+    host.showNotice(t('Plan cleared'));
     return;
   }
 
@@ -113,14 +113,14 @@ export async function handlePlanCommand(host: SlashCommandHost, args: string): P
   else if (subcmd === 'on') enabled = true;
   else if (subcmd === 'off') enabled = false;
   else {
-    host.showError(`Unknown plan subcommand: ${subcmd}`);
+    host.showError(tFormat('Unknown plan subcommand: {subcommand}', { subcommand: subcmd }));
     return;
   }
 
   // The session may already be in the requested mode (e.g. it was created
   // with config.defaultPlanMode applied), and re-entering plan mode throws.
   if (host.state.appState.planMode === enabled) {
-    host.showNotice(`Plan mode is already ${enabled ? 'on' : 'off'}`);
+    host.showNotice(t(enabled ? 'Plan mode is already on' : 'Plan mode is already off'));
     return;
   }
 
@@ -134,15 +134,17 @@ async function applyPlanMode(host: SlashCommandHost, session: Session, enabled: 
     if (enabled) {
       const plan = await session.getPlan().catch(() => null);
       host.showNotice(
-        'Plan mode: ON',
-        plan?.path !== undefined ? `Plan will be created here: ${plan.path}` : undefined,
+        t('Plan mode: ON'),
+        plan?.path !== undefined
+          ? tFormat('Plan will be created here: {path}', { path: String(plan.path) })
+          : undefined,
       );
       return;
     }
-    host.showNotice('Plan mode: OFF');
+    host.showNotice(t('Plan mode: OFF'));
   } catch (error) {
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to set plan mode: ${msg}`);
+    host.showError(tFormat('Failed to set plan mode: {error}', { error: msg }));
   }
 }
 
@@ -180,7 +182,7 @@ export async function handleThemeCommand(host: SlashCommandHost, args: string): 
   if (!isBuiltInTheme(theme)) {
     const custom = await loadCustomThemeMerged(theme);
     if (custom === null) {
-      host.showError(`Unknown theme: ${theme}`);
+      host.showError(tFormat('Unknown theme: {theme}', { theme }));
       return;
     }
   }
@@ -195,7 +197,7 @@ export async function handleModelCommand(host: SlashCommandHost, args: string): 
     return;
   }
   if (host.state.appState.availableModels[alias] === undefined) {
-    host.showError(`Unknown model alias: ${alias}`);
+    host.showError(tFormat('Unknown model alias: {alias}', { alias }));
     return;
   }
   await showModelPicker(host, alias);
@@ -210,19 +212,22 @@ export async function handleSecondaryModelCommand(host: SlashCommandHost, args: 
   delete models[PRIMARY_SUBAGENT_MODEL_CHOICE];
   if (alias === PRIMARY_SUBAGENT_MODEL_CHOICE) {
     host.showError(
-      `"${PRIMARY_SUBAGENT_MODEL_CHOICE}" is reserved by the subagent model pool — rename the [models] alias to use it here.`,
+      tFormat(
+        '"{choice}" is reserved by the subagent model pool — rename the [models] alias to use it here.',
+        { choice: PRIMARY_SUBAGENT_MODEL_CHOICE },
+      ),
     );
     return;
   }
   if (Object.keys(models).length === 0) {
     host.showNotice(
-      'No models configured',
-      'Run /login to sign in to Kimi, or /provider to add another provider from a model catalog.',
+      t('No models configured'),
+      t('Run /login to sign in to Kimi, or /provider to add another provider from a model catalog.'),
     );
     return;
   }
   if (alias.length > 0 && models[alias] === undefined) {
-    host.showError(`Unknown model alias: ${alias}`);
+    host.showError(tFormat('Unknown model alias: {alias}', { alias }));
     return;
   }
   const secondary = (await host.harness.getConfig()).secondaryModel;
@@ -236,7 +241,7 @@ export async function handleEffortCommand(host: SlashCommandHost, args: string):
   const alias = host.state.appState.model;
   const model = host.state.appState.availableModels[alias];
   if (model === undefined) {
-    host.showError('No model selected. Run /model to select one first.');
+    host.showError(t('No model selected. Run /model to select one first.'));
     return;
   }
   const effective = effectiveModelForHost(host, model);
@@ -252,13 +257,20 @@ export async function handleEffortCommand(host: SlashCommandHost, args: string):
     const protocol = effective.protocol ?? providerType;
     if (protocol !== 'anthropic') {
       host.showError(
-        `Unsupported thinking effort "${arg}" for ${alias}. Available: ${segments.join(', ')}`,
+        tFormat('Unsupported thinking effort "{effort}" for {model}. Available: {options}', {
+          effort: arg,
+          model: alias,
+          options: segments.join(', '),
+        }),
       );
       return;
     }
-    const knownEfforts = effective.supportEfforts?.join(', ') ?? 'none declared';
+    const knownEfforts = effective.supportEfforts?.join(', ') ?? t('none declared');
     host.showStatus(
-      `Thinking effort "${arg}" is not listed for ${alias} (known: ${knownEfforts}). Sending "${arg}" unchanged; the configured provider will validate it.`,
+      tFormat(
+        'Thinking effort "{effort}" is not listed for {model} (known: {known}). Sending "{effort}" unchanged; the configured provider will validate it.',
+        { effort: arg, model: alias, known: knownEfforts },
+      ),
       'warning',
     );
   }
@@ -276,7 +288,7 @@ function showEffortPicker(
     new EffortSelectorComponent({
       efforts: segments,
       currentValue,
-      warning: hasConversationHistory(host) ? EFFORT_SWITCH_CACHE_WARNING : undefined,
+      warning: hasConversationHistory(host) ? t(EFFORT_SWITCH_CACHE_WARNING) : undefined,
       descriptions: model.provider === DEFAULT_OAUTH_PROVIDER_NAME ? effortDescriptions() : undefined,
       onSelect: (effort) => {
         host.restoreEditor();
@@ -361,10 +373,16 @@ async function refreshModelsForPicker(host: SlashCommandHost): Promise<void> {
     );
     if (result === undefined) return;
     for (const f of result.failed) {
-      host.showStatus(`Skipped refreshing ${f.provider}: ${f.reason}`, 'warning');
+      host.showStatus(
+        tFormat('Skipped refreshing {provider}: {reason}', { provider: f.provider, reason: f.reason }),
+        'warning',
+      );
     }
   } catch (error) {
-    host.showStatus(`Skipped refreshing models: ${formatErrorMessage(error)}`, 'warning');
+    host.showStatus(
+      tFormat('Skipped refreshing models: {error}', { error: formatErrorMessage(error) }),
+      'warning',
+    );
   }
 }
 
@@ -387,7 +405,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 async function applyEditorChoice(host: SlashCommandHost, value: string): Promise<void> {
   const previous = host.state.appState.editorCommand ?? '';
   if (value === previous && value.length > 0) {
-    host.showStatus(`Editor unchanged: ${value.length > 0 ? value : 'auto-detect'}`);
+    host.showStatus(tFormat('Editor unchanged: {editor}', { editor: value }));
     return;
   }
 
@@ -399,7 +417,7 @@ async function applyEditorChoice(host: SlashCommandHost, value: string): Promise
     });
   } catch (error) {
     host.showStatus(
-      `Failed to save editor: ${formatErrorMessage(error)}`,
+      tFormat('Failed to save editor: {error}', { error: formatErrorMessage(error) }),
       'error',
     );
     return;
@@ -408,8 +426,8 @@ async function applyEditorChoice(host: SlashCommandHost, value: string): Promise
   host.setAppState({ editorCommand });
   host.showStatus(
     value.length > 0
-      ? `Editor set to "${value}".`
-      : 'Editor set to auto-detect ($VISUAL / $EDITOR).',
+      ? tFormat('Editor set to "{editor}".', { editor: value })
+      : t('Editor set to auto-detect ($VISUAL / $EDITOR).'),
   );
 }
 
@@ -442,8 +460,8 @@ export async function showModelPicker(host: SlashCommandHost, selectedValue: str
   const entries = Object.entries(models);
   if (entries.length === 0) {
     host.showNotice(
-      'No models configured',
-      'Run /login to sign in to Kimi, or /provider to add another provider from a model catalog.',
+      t('No models configured'),
+      t('Run /login to sign in to Kimi, or /provider to add another provider from a model catalog.'),
     );
     return;
   }
@@ -453,7 +471,7 @@ export async function showModelPicker(host: SlashCommandHost, selectedValue: str
       currentValue: host.state.appState.model,
       selectedValue,
       currentThinkingEffort: host.state.appState.thinkingEffort,
-      warning: hasConversationHistory(host) ? MODEL_SWITCH_CACHE_WARNING : undefined,
+      warning: hasConversationHistory(host) ? t(MODEL_SWITCH_CACHE_WARNING) : undefined,
       effortDescriptions: effortDescriptions(),
       onSelect: ({ alias, thinking }) => {
         host.restoreEditor();
@@ -589,17 +607,19 @@ export async function compactForModelSwitch(
     const outcome = await settled;
     if (outcome === 'completed' && host.session === session) return true;
     if (outcome === 'completed') {
-      host.showNotice('Model switch aborted — session changed.');
+      host.showNotice(t('Model switch aborted — session changed.'));
     } else if (outcome === 'timeout') {
-      host.showError('Timed out waiting for compaction — model unchanged.');
+      host.showError(t('Timed out waiting for compaction — model unchanged.'));
     } else if (outcome === 'cancelled') {
-      host.showNotice('Compaction cancelled — model unchanged.');
+      host.showNotice(t('Compaction cancelled — model unchanged.'));
     } else {
-      host.showNotice('Model switch aborted — model unchanged.');
+      host.showNotice(t('Model switch aborted — model unchanged.'));
     }
     return false;
   } catch (error) {
-    host.showError(`Failed to compact: ${formatErrorMessage(error)}. Model unchanged.`);
+    host.showError(
+      tFormat('Failed to compact: {error}. Model unchanged.', { error: formatErrorMessage(error) }),
+    );
     return false;
   } finally {
     clearTimeout(timer);
@@ -652,7 +672,7 @@ function showSecondaryModelPicker(
       // Subagent pool bindings carry no explicit thinking level, so the picker
       // hides the Thinking footer instead of offering a no-op choice.
       thinkingControl: false,
-      title: ' Select a secondary model (subagents)',
+      title: t(' Select a secondary model (subagents)'),
       onSelect: ({ alias }) => {
         host.restoreEditor();
         void performSecondaryModelSave(host, alias);
@@ -686,11 +706,15 @@ async function performSecondaryModelSave(host: SlashCommandHost, alias: string):
     }
     await host.harness.setConfig({ secondaryModel: patch });
   } catch (error) {
-    host.showError(`Failed to save secondary model: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('Failed to save secondary model: {error}', { error: formatErrorMessage(error) }),
+    );
     return;
   }
   host.showStatus(
-    `Secondary model set to ${displayName}. Newly spawned subagents will use it by default.`,
+    tFormat('Secondary model set to {model}. Newly spawned subagents will use it by default.', {
+      model: displayName,
+    }),
     'success',
   );
 }
@@ -713,7 +737,7 @@ function showThemePicker(host: SlashCommandHost): void {
 async function applyThemeChoice(host: SlashCommandHost, theme: ThemeName): Promise<void> {
   if (theme === host.state.appState.theme) {
     if (theme === 'auto') host.refreshTerminalThemeTracking();
-    host.showStatus(`Theme unchanged: "${theme}".`);
+    host.showStatus(tFormat('Theme unchanged: "{theme}".', { theme }));
     return;
   }
 
@@ -723,7 +747,7 @@ async function applyThemeChoice(host: SlashCommandHost, theme: ThemeName): Promi
   if (!isBuiltInTheme(theme)) {
     const palette = await loadCustomThemeMerged(theme);
     if (palette === null) {
-      host.showStatus(`Theme "${theme}" could not be loaded.`, 'error');
+      host.showStatus(tFormat('Theme "{theme}" could not be loaded.', { theme }), 'error');
       return;
     }
   }
@@ -735,7 +759,7 @@ async function applyThemeChoice(host: SlashCommandHost, theme: ThemeName): Promi
     });
   } catch (error) {
     host.showStatus(
-      `Failed to save theme: ${formatErrorMessage(error)}`,
+      tFormat('Failed to save theme: {error}', { error: formatErrorMessage(error) }),
       'error',
     );
     return;
@@ -747,8 +771,14 @@ async function applyThemeChoice(host: SlashCommandHost, theme: ThemeName): Promi
   await host.applyTheme(theme, resolved);
   host.refreshTerminalThemeTracking();
   host.track('theme_switch', { theme });
-  const detail = theme === 'auto' ? ` (tracking terminal; current: ${resolved})` : '';
-  host.showStatus(`Theme set to "${theme}"${detail}.`);
+  host.showStatus(
+    theme === 'auto'
+      ? tFormat('Theme set to "{theme}" (tracking terminal; current: {mode}).', {
+          theme,
+          mode: resolved ?? '',
+        })
+      : tFormat('Theme set to "{theme}".', { theme }),
+  );
 }
 
 export function showPermissionPicker(host: SlashCommandHost, initialMode?: PermissionMode): void {
@@ -787,7 +817,11 @@ export async function showExperimentsPanel(host: SlashCommandHost): Promise<void
   try {
     features = await host.harness.getExperimentalFeatures();
   } catch (error) {
-    host.showError(`Failed to load experimental features: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('Failed to load experimental features: {error}', {
+        error: formatErrorMessage(error),
+      }),
+    );
     return;
   }
   mountExperimentsPanel(host, features);
@@ -799,7 +833,7 @@ export async function applyExperimentalFeatureChanges(
 ): Promise<void> {
   if (changes.length === 0) {
     host.showStatus(
-      'No experimental feature changes to apply.',
+      t('No experimental feature changes to apply.'),
       'textMuted',
     );
     return;
@@ -820,24 +854,26 @@ export async function applyExperimentalFeatureChanges(
       const reloadedSession = await host.harness.reloadSession({ id: host.session.id });
       await host.reloadCurrentSessionView(
         reloadedSession,
-        'Experimental features updated. Session reloaded.',
+        t('Experimental features updated. Session reloaded.'),
       );
     } else {
-      host.showStatus('Experimental features updated.', 'success');
+      host.showStatus(t('Experimental features updated.'), 'success');
     }
     if (
       host.session !== undefined &&
       changes.some((change) => change.id === 'notify_user' && change.enabled)
     ) {
       host.showNotice(
-        'Start a new session to use Updates if this session was created with the feature disabled.',
+        t(
+          'Start a new session to use Updates if this session was created with the feature disabled.',
+        ),
       );
     }
     if (changes.some((change) => change.id === 'tower')) {
       // TowerFeature assembles its tool/profile contributions once at App
       // scope construction, so a live flag flip cannot install or retract
       // them; only the mode machinery (enter/injection/guards) reacts live.
-      host.showNotice('Tower mode takes effect after restarting Kimi Code.');
+      host.showNotice(t('Tower mode takes effect after restarting Kimi Code.'));
     }
     host.track('experimental_features_apply', {
       changed: changes.length,
@@ -848,7 +884,11 @@ export async function applyExperimentalFeatureChanges(
         .join(','),
     });
   } catch (error) {
-    host.showError(`Failed to update experimental features: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('Failed to update experimental features: {error}', {
+        error: formatErrorMessage(error),
+      }),
+    );
   }
 }
 
@@ -886,7 +926,9 @@ export async function applyUpdatePreferenceChoice(
   autoInstall: boolean,
 ): Promise<void> {
   if (autoInstall === host.state.appState.upgrade.autoInstall) {
-    host.showStatus(`Automatic updates already ${autoInstall ? 'enabled' : 'disabled'}.`);
+    host.showStatus(
+      t(autoInstall ? 'Automatic updates already enabled.' : 'Automatic updates already disabled.'),
+    );
     return;
   }
 
@@ -898,7 +940,9 @@ export async function applyUpdatePreferenceChoice(
     });
   } catch (error) {
     host.showStatus(
-      `Failed to save automatic update setting: ${formatErrorMessage(error)}`,
+      tFormat('Failed to save automatic update setting: {error}', {
+        error: formatErrorMessage(error),
+      }),
       'error',
     );
     return;
@@ -906,12 +950,16 @@ export async function applyUpdatePreferenceChoice(
 
   host.setAppState({ upgrade });
   host.track('upgrade_preference_changed', { auto_install: autoInstall });
-  host.showStatus(`Automatic updates ${autoInstall ? 'enabled' : 'disabled'}.`);
+  host.showStatus(t(autoInstall ? 'Automatic updates enabled.' : 'Automatic updates disabled.'));
 }
 
 async function applyPermissionChoice(host: SlashCommandHost, mode: PermissionMode): Promise<void> {
   if (mode === host.state.appState.permissionMode) {
-    host.showStatus(`Permission mode unchanged: ${PERMISSION_MODE_DISPLAY_NAMES[mode]}.`);
+    host.showStatus(
+      tFormat('Permission mode unchanged: {mode}.', {
+        mode: t(PERMISSION_MODE_DISPLAY_NAMES[mode]),
+      }),
+    );
     return;
   }
 
@@ -923,14 +971,16 @@ async function applyPermissionChoice(host: SlashCommandHost, mode: PermissionMod
     // the lazy-created session.
   } catch (error) {
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to set permission mode: ${msg}`);
+    host.showError(tFormat('Failed to set permission mode: {error}', { error: msg }));
     return;
   }
 
   host.setAppState({ permissionMode: mode });
-  host.showNotice(`Permission mode: ${PERMISSION_MODE_DISPLAY_NAMES[mode]}`);
+  host.showNotice(
+    tFormat('Permission mode: {mode}', { mode: t(PERMISSION_MODE_DISPLAY_NAMES[mode]) }),
+  );
   if (mode !== 'manual') {
-    host.showStatus(PERMISSION_MODE_DESCRIPTIONS[mode], 'warning');
+    host.showStatus(t(PERMISSION_MODE_DESCRIPTIONS[mode]), 'warning');
   }
 }
 
@@ -968,7 +1018,9 @@ export async function applySurveyPreferenceChoice(
 ): Promise<void> {
   const disableFeedbackSurvey = !enabled;
   if (disableFeedbackSurvey === (host.state.appState.disableFeedbackSurvey === true)) {
-    host.showStatus(`Feedback survey already ${enabled ? 'enabled' : 'disabled'}.`);
+    host.showStatus(
+      t(enabled ? 'Feedback survey already enabled.' : 'Feedback survey already disabled.'),
+    );
     return;
   }
 
@@ -976,14 +1028,16 @@ export async function applySurveyPreferenceChoice(
     await host.harness.setConfig({ disableFeedbackSurvey });
   } catch (error) {
     host.showStatus(
-      `Failed to save session rating setting: ${formatErrorMessage(error)}`,
+      tFormat('Failed to save session rating setting: {error}', {
+        error: formatErrorMessage(error),
+      }),
       'error',
     );
     return;
   }
 
   host.setAppState({ disableFeedbackSurvey });
-  host.showStatus(`Feedback survey ${enabled ? 'enabled' : 'disabled'}.`);
+  host.showStatus(t(enabled ? 'Feedback survey enabled.' : 'Feedback survey disabled.'));
 }
 
 export async function handleLanguageCommand(host: SlashCommandHost, args: string): Promise<void> {
@@ -993,7 +1047,12 @@ export async function handleLanguageCommand(host: SlashCommandHost, args: string
     return;
   }
   if (!CONVERSATION_LANGUAGES.includes(value)) {
-    host.showError(`Unknown language: ${value}. Use one of: ${CONVERSATION_LANGUAGES.join(', ')}`);
+    host.showError(
+      tFormat('Unknown language: {value}. Use one of: {options}', {
+        value,
+        options: CONVERSATION_LANGUAGES.join(', '),
+      }),
+    );
     return;
   }
   await applyLanguageChoice(host, value);
@@ -1006,7 +1065,12 @@ export async function handleTerminalCommand(host: SlashCommandHost, args: string
     return;
   }
   if (!TERMINAL_PREFERENCES.includes(value)) {
-    host.showError(`Unknown shell preference: ${value}. Use one of: ${TERMINAL_PREFERENCES.join(', ')}`);
+    host.showError(
+      tFormat('Unknown shell preference: {value}. Use one of: {options}', {
+        value,
+        options: TERMINAL_PREFERENCES.join(', '),
+      }),
+    );
     return;
   }
   await applyTerminalPreferenceChoice(host, value);
@@ -1047,7 +1111,7 @@ export async function applyLanguageChoice(
   language: ConversationLanguage,
 ): Promise<void> {
   if (language === (currentTuiConfig(host).language ?? 'auto')) {
-    host.showStatus(`Reply language already ${language}.`);
+    host.showStatus(tFormat('Reply language already {language}.', { language }));
     return;
   }
   try {
@@ -1063,7 +1127,7 @@ export async function applyLanguageChoice(
   host.setAppState({ language });
   setUiLanguage(resolveUiLanguage(language));
   host.state.ui.requestRender(true);
-  host.showStatus(`Reply language set to ${language}.`);
+  host.showStatus(tFormat('Reply language set to {language}.', { language }));
 }
 
 export async function applyTerminalPreferenceChoice(
@@ -1071,7 +1135,7 @@ export async function applyTerminalPreferenceChoice(
   preference: TerminalPreference,
 ): Promise<void> {
   if (preference === (currentTuiConfig(host).terminalPreference ?? 'default')) {
-    host.showStatus(`Shell preference already ${preference}.`);
+    host.showStatus(tFormat('Shell preference already {preference}.', { preference }));
     return;
   }
   try {
@@ -1087,8 +1151,10 @@ export async function applyTerminalPreferenceChoice(
   host.setAppState({ terminalPreference: preference });
   host.showStatus(
     preference === 'default'
-      ? 'Shell preference cleared; the agent picks the shell itself.'
-      : `Shell preference set to ${preference} (a hint for the agent, not enforced).`,
+      ? t('Shell preference cleared; the agent picks the shell itself.')
+      : tFormat('Shell preference set to {preference} (a hint for the agent, not enforced).', {
+          preference,
+        }),
   );
 }
 
@@ -1126,7 +1192,9 @@ export async function applyMermaidPreferenceChoice(
 ): Promise<void> {
   const mermaid: MermaidRenderMode = enabled ? 'final' : 'off';
   if (mermaid === (host.state.appState.markdown?.mermaid ?? DEFAULT_MARKDOWN_CONFIG.mermaid)) {
-    host.showStatus(`Mermaid diagrams already ${enabled ? 'enabled' : 'disabled'}.`);
+    host.showStatus(
+      t(enabled ? 'Mermaid diagrams already enabled.' : 'Mermaid diagrams already disabled.'),
+    );
     return;
   }
 
@@ -1138,7 +1206,9 @@ export async function applyMermaidPreferenceChoice(
     });
   } catch (error) {
     host.showStatus(
-      `Failed to save mermaid diagram setting: ${formatErrorMessage(error)}`,
+      tFormat('Failed to save mermaid diagram setting: {error}', {
+        error: formatErrorMessage(error),
+      }),
       'error',
     );
     return;
@@ -1148,7 +1218,7 @@ export async function applyMermaidPreferenceChoice(
   host.setAppState({ markdown });
   host.state.transcriptContainer.invalidate();
   host.state.ui.requestRender(true);
-  host.showStatus(`Mermaid diagrams ${enabled ? 'enabled' : 'disabled'}.`);
+  host.showStatus(t(enabled ? 'Mermaid diagrams enabled.' : 'Mermaid diagrams disabled.'));
 }
 
 export function showTuiModePicker(host: SlashCommandHost): void {
@@ -1178,7 +1248,7 @@ type TuiModeHost = {
 
 export async function applyTuiModeChoice(host: TuiModeHost, tuiMode: TuiMode): Promise<void> {
   if (tuiMode === (host.state.appState.tuiMode ?? 'regular')) {
-    host.showStatus(`TUI mode already ${tuiMode}.`);
+    host.showStatus(tFormat('TUI mode already {mode}.', { mode: tuiMode }));
     return;
   }
 
@@ -1188,14 +1258,17 @@ export async function applyTuiModeChoice(host: TuiModeHost, tuiMode: TuiMode): P
       tuiMode,
     });
   } catch (error) {
-    host.showStatus(`Failed to save TUI mode: ${formatErrorMessage(error)}`, 'error');
+    host.showStatus(
+      tFormat('Failed to save TUI mode: {error}', { error: formatErrorMessage(error) }),
+      'error',
+    );
     return;
   }
 
   host.setAppState({ tuiMode });
-  host.showStatus(`TUI mode set to ${tuiMode}.`, 'success');
+  host.showStatus(tFormat('TUI mode set to {mode}.', { mode: tuiMode }), 'success');
   if (tuiMode !== host.state.ui.mode) {
-    host.showNotice(TUI_MODE_RESTART_NOTICE);
+    host.showNotice(t(TUI_MODE_RESTART_NOTICE));
   }
 }
 

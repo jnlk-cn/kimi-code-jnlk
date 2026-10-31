@@ -9,6 +9,7 @@ import {
 
 import type { ThinkingEffort } from '@moonshot-ai/kimi-code-sdk';
 
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 import { effortLabel } from './model-selector';
@@ -74,13 +75,13 @@ export class EffortSelectorComponent extends Container implements Focusable {
   }
 
   override render(width: number): string[] {
-    const hintParts = ['←→ switch', 'Enter select'];
-    if (this.opts.onSessionOnlySelect !== undefined) hintParts.push('Alt+S session-only');
-    hintParts.push('Esc cancel');
+    const hintParts = [t('←→ switch'), t('Enter select')];
+    if (this.opts.onSessionOnlySelect !== undefined) hintParts.push(t('Alt+S session-only'));
+    hintParts.push(t('Esc cancel'));
 
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
-      currentTheme.boldFg('primary', ` ${this.opts.title ?? 'Select thinking effort'}`),
+      currentTheme.boldFg('primary', ` ${this.opts.title ?? t('Select thinking effort')}`),
       currentTheme.fg('textMuted', ` ${hintParts.join(' · ')}`),
     ];
     if (this.opts.warning !== undefined) {

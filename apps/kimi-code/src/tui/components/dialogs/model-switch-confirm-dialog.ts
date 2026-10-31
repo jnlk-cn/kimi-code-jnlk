@@ -12,6 +12,7 @@ import {
   type Focusable,
 } from '@moonshot-ai/pi-tui';
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { SearchableList } from '#/tui/utils/searchable-list';
 import type { ModelSwitchAction } from '#/utils/model-switch-confirm-config';
@@ -68,12 +69,19 @@ export class ModelSwitchConfirmDialogComponent extends Container implements Focu
     super();
     this.opts = opts;
     this.list = new SearchableList({
-      items:
+      items: (
         opts.kind === 'effort'
           ? EFFORT_SESSION_OPTIONS
           : opts.sessionType === 'old'
             ? OLD_SESSION_OPTIONS
-            : NEW_SESSION_OPTIONS,
+            : NEW_SESSION_OPTIONS
+      ).map(
+        (option): ModelSwitchOption => ({
+          ...option,
+          label: t(option.label),
+          description: option.description === undefined ? undefined : t(option.description),
+        }),
+      ),
       toSearchText: (o) => o.label,
       initialIndex: 0,
       searchable: false,
@@ -97,8 +105,11 @@ export class ModelSwitchConfirmDialogComponent extends Container implements Focu
     const view = this.list.view();
     const title =
       this.opts.kind === 'effort'
-        ? `Switch effort from ${this.opts.fromModel} to ${this.opts.toModel}?`
-        : MODEL_TITLE;
+        ? tFormat('Switch effort from {from} to {to}?', {
+            from: this.opts.fromModel,
+            to: this.opts.toModel,
+          })
+        : t(MODEL_TITLE);
     const titleSuffix =
       this.opts.kind === 'effort'
         ? ''
@@ -106,7 +117,7 @@ export class ModelSwitchConfirmDialogComponent extends Container implements Focu
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
       currentTheme.boldFg('primary', ` ${title}`) + titleSuffix,
-      currentTheme.fg('textMuted', ' ↑↓ navigate · Enter select · Esc cancel'),
+      currentTheme.fg('textMuted', ` ${t('↑↓ navigate · Enter select · Esc cancel')}`),
       '',
     ];
     if (this.opts.hint !== undefined) {

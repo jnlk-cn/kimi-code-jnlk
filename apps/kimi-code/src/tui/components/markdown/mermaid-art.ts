@@ -1,5 +1,6 @@
 import { diagramKind, render, type DiagramKind, type MermaidArt, type Role } from 'lovely-mermaid';
 
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export type MermaidDrawResult =
@@ -17,11 +18,11 @@ export function drawMermaid(source: string): MermaidDrawResult {
 export const COULD_NOT_DRAW_MESSAGE = 'could not draw this mermaid diagram';
 
 export function undrawnDiagramReason(source: string): string {
-  if (safeDiagramKind(source) !== null) return COULD_NOT_DRAW_MESSAGE;
+  if (safeDiagramKind(source) !== null) return t(COULD_NOT_DRAW_MESSAGE);
   const identifier = firstDiagramIdentifier(source);
   return identifier === undefined
-    ? COULD_NOT_DRAW_MESSAGE
-    : `${identifier} diagrams are not drawn in the terminal`;
+    ? t(COULD_NOT_DRAW_MESSAGE)
+    : tFormat('{identifier} diagrams are not drawn in the terminal', { identifier });
 }
 
 function safeDiagramKind(source: string): DiagramKind | null {

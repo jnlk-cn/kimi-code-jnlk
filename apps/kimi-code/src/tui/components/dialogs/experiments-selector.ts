@@ -9,6 +9,7 @@ import {
 import type { ExperimentalFeatureState } from '@moonshot-ai/kimi-code-sdk';
 
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '#/tui/utils/printable-key';
 import { SearchableList } from '#/tui/utils/searchable-list';
@@ -66,25 +67,25 @@ export class ExperimentsSelectorComponent extends Container implements Focusable
   override render(width: number): string[] {
     const view = this.list.view();
     const titleSuffix =
-      view.query.length === 0 ? currentTheme.fg('textMuted', '  (type to search)') : '';
-    const hintParts = ['↑↓ navigate'];
-    if (view.page.pageCount > 1) hintParts.push('PgUp/PgDn page');
-    hintParts.push('Space toggle', 'Enter apply', 'Esc cancel');
-    if (view.query.length > 0) hintParts.push('Backspace clear');
+      view.query.length === 0 ? currentTheme.fg('textMuted', `  ${t('(type to search)')}`) : '';
+    const hintParts = [t('↑↓ navigate')];
+    if (view.page.pageCount > 1) hintParts.push(t('PgUp/PgDn page'));
+    hintParts.push(t('Space toggle'), t('Enter apply'), t('Esc cancel'));
+    if (view.query.length > 0) hintParts.push(t('Backspace clear'));
 
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
-      currentTheme.boldFg('primary', ' Experimental features') + titleSuffix,
+      currentTheme.boldFg('primary', ` ${t('Experimental features')}`) + titleSuffix,
       currentTheme.fg('textMuted', ` ${hintParts.join(' · ')}`),
       '',
     ];
 
     if (view.query.length > 0) {
-      lines.push(currentTheme.fg('primary', ` Search: `) + currentTheme.fg('text', view.query));
+      lines.push(currentTheme.fg('primary', ` ${t('Search:')} `) + currentTheme.fg('text', view.query));
     }
 
     if (view.items.length === 0) {
-      lines.push(currentTheme.fg('textMuted', '   No matches'));
+      lines.push(currentTheme.fg('textMuted', `   ${t('No matches')}`));
     }
 
     for (let i = view.page.start; i < view.page.end; i++) {
@@ -105,7 +106,7 @@ export class ExperimentsSelectorComponent extends Container implements Focusable
       lines.push(
         currentTheme.fg(
           'textMuted',
-          ` ▼ ${String(view.items.length - view.page.end)} more`,
+          ` ${tFormat('▼ {count} more', { count: view.items.length - view.page.end })}`,
         ),
       );
     }
@@ -146,9 +147,11 @@ export class ExperimentsSelectorComponent extends Container implements Focusable
   private renderApplyButton(): string {
     const changes = this.draftChanges();
     const count = changes.length;
-    const label = '[ Apply changes and reload ]';
+    const label = `[ ${t('Apply changes and reload')} ]`;
     const summary =
-      count === 0 ? 'no changes' : `${String(count)} ${count === 1 ? 'change' : 'changes'}`;
+      count === 0
+        ? t('no changes')
+        : `${String(count)} ${count === 1 ? t('change') : t('changes')}`;
     const button = count === 0
       ? currentTheme.fg('textDim', label)
       : currentTheme.boldFg('primary', label);
@@ -167,10 +170,10 @@ export class ExperimentsSelectorComponent extends Container implements Focusable
     const prefix = currentTheme.fg(selected ? 'primary' : 'textDim', `  ${pointer} `);
     const label = selected ? currentTheme.boldFg('primary', feature.title) : currentTheme.fg('text', feature.title);
     const enabled = this.effectiveEnabled(feature);
-    const status = enabled ? 'enabled' : 'disabled';
+    const status = enabled ? t('enabled') : t('disabled');
     const statusText = enabled ? currentTheme.fg('success', status) : currentTheme.fg('textDim', status);
     const detail = this.isDraftChanged(feature)
-      ? `${featureDetail(feature)} · modified`
+      ? `${featureDetail(feature)} · ${t('modified')}`
       : featureDetail(feature);
     const lines = [
       `${prefix}${label}  ${statusText}`,
@@ -199,13 +202,13 @@ function featureDetail(feature: ExperimentalFeatureState): string {
 function sourceLabel(feature: ExperimentalFeatureState): string {
   switch (feature.source) {
     case 'master-env':
-      return 'locked by KIMI_CODE_EXPERIMENTAL_FLAG';
+      return tFormat('locked by {name}', { name: 'KIMI_CODE_EXPERIMENTAL_FLAG' });
     case 'env':
-      return `locked by ${feature.env}`;
+      return tFormat('locked by {name}', { name: feature.env });
     case 'config':
-      return 'config';
+      return t('config');
     case 'default':
-      return 'default';
+      return t('default');
   }
 }
 

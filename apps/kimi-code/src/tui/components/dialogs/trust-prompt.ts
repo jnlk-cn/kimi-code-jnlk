@@ -11,6 +11,7 @@ import {
 import type { WorkspaceTrustInfo } from '@moonshot-ai/kimi-code-sdk';
 
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme, type ColorToken } from '#/tui/theme';
 import { pageView } from '#/tui/utils/paging';
 import { isSettlingClick } from '#/tui/utils/terminal-focus';
@@ -102,8 +103,8 @@ export class TrustPromptComponent implements Component, Focusable {
     const availableRows = Math.max(0, Math.floor(this.opts.getAvailableRows?.() ?? Infinity));
     const header = [
       rule,
-      currentTheme.boldFg('primary', ' Trust this folder?'),
-      currentTheme.fg('textMuted', ' ↑↓ navigate · Enter select · Esc exit'),
+      currentTheme.boldFg('primary', ` ${t('Trust this folder?')}`),
+      currentTheme.fg('textMuted', ` ${t('↑↓ navigate · Enter select · Esc exit')}`),
       '',
     ];
     const body = [
@@ -113,12 +114,12 @@ export class TrustPromptComponent implements Component, Focusable {
     ];
     const footer = [
       ...wrap(
-        'Trust is remembered for this folder, including future project config changes.',
+        t('Trust is remembered for this folder, including future project config changes.'),
         1,
         width,
         'textMuted',
       ),
-      ...wrap('Tool approvals follow your permission settings.', 1, width, 'textMuted'),
+      ...wrap(t('Tool approvals follow your permission settings.'), 1, width, 'textMuted'),
       '',
     ];
     const optionRows: number[] = [];
@@ -126,15 +127,15 @@ export class TrustPromptComponent implements Component, Focusable {
       const selected = i === this.selectedIndex;
       const pointer = selected ? SELECT_POINTER : ' ';
       const label = selected
-        ? currentTheme.boldFg('primary', option.label)
-        : currentTheme.fg('text', option.label);
+        ? currentTheme.boldFg('primary', t(option.label))
+        : currentTheme.fg('text', t(option.label));
       optionRows.push(footer.length);
       footer.push(currentTheme.fg(selected ? 'primary' : 'textDim', `  ${pointer} `) + label);
     }
     footer.push(rule);
     this.canConfirm = header.length + footer.length + 2 <= availableRows;
     if (!this.canConfirm) {
-      return [header[1]!, ' Enlarge terminal to review sources. Esc exit.']
+      return [header[1]!, ` ${t('Enlarge terminal to review sources. Esc exit.')}`]
         .slice(0, availableRows)
         .map((line) => truncateToWidth(line, width));
     }
@@ -147,7 +148,12 @@ export class TrustPromptComponent implements Component, Focusable {
     const lines = [...header, ...body.slice(page.start, page.end)];
     while (lines.length < header.length + this.disclosurePageSize) lines.push('');
     if (page.pageCount > 1)
-      lines.push(currentTheme.fg('textMuted', ` ←→ page · ${page.page + 1} / ${page.pageCount}`));
+      lines.push(
+        currentTheme.fg(
+          'textMuted',
+          ` ${tFormat('←→ page · {page} / {total}', { page: page.page + 1, total: page.pageCount })}`,
+        ),
+      );
     this.optionRows = optionRows.map((row) => lines.length + row);
     lines.push(...footer);
     return lines.map((line) => truncateToWidth(line, width));
@@ -165,9 +171,13 @@ export class TrustPromptComponent implements Component, Focusable {
     if (gatedMcpServers.length > 0) {
       lines.push(
         ...wrap(
-          `Start ${gatedMcpServers.length} MCP ${
-            gatedMcpServers.length === 1 ? 'server' : 'servers'
-          } automatically`,
+          gatedMcpServers.length === 1
+            ? tFormat('Start {count} MCP server automatically', {
+                count: gatedMcpServers.length,
+              })
+            : tFormat('Start {count} MCP servers automatically', {
+                count: gatedMcpServers.length,
+              }),
           1,
           width,
           'warning',
@@ -176,7 +186,9 @@ export class TrustPromptComponent implements Component, Focusable {
       const origins = [...new Set(gatedMcpServers.map((server) => server.origin))];
       lines.push(
         ...wrap(
-          `Config: ${origins.map((path) => relativize(this.opts.workDir, path)).join(', ')}`,
+          tFormat('Config: {paths}', {
+            paths: origins.map((path) => relativize(this.opts.workDir, path)).join(', '),
+          }),
           3,
           width,
           'textMuted',
@@ -187,9 +199,13 @@ export class TrustPromptComponent implements Component, Focusable {
     if (gatedAdditionalDirs.length > 0) {
       lines.push(
         ...wrap(
-          `Access ${gatedAdditionalDirs.length} ${
-            gatedAdditionalDirs.length === 1 ? 'folder' : 'folders'
-          } outside this project`,
+          gatedAdditionalDirs.length === 1
+            ? tFormat('Access {count} folder outside this project', {
+                count: gatedAdditionalDirs.length,
+              })
+            : tFormat('Access {count} folders outside this project', {
+                count: gatedAdditionalDirs.length,
+              }),
           1,
           width,
           'warning',
@@ -198,9 +214,11 @@ export class TrustPromptComponent implements Component, Focusable {
       if (additionalDirSources.length > 0) {
         lines.push(
           ...wrap(
-            `Config: ${additionalDirSources
-              .map((path) => relativize(this.opts.workDir, path))
-              .join(', ')}`,
+            tFormat('Config: {paths}', {
+              paths: additionalDirSources
+                .map((path) => relativize(this.opts.workDir, path))
+                .join(', '),
+            }),
             3,
             width,
             'textMuted',
@@ -214,13 +232,17 @@ export class TrustPromptComponent implements Component, Focusable {
         instructionSources.agentsMdPaths.length > 0 || instructionSources.skills.length > 0;
       const subject = hasInstructions
         ? instructionSources.agentProfiles.length > 0
-          ? 'instructions and agent profiles'
-          : 'instructions'
-        : 'agent profiles';
-      lines.push(...wrap(`Load project ${subject}`, 1, width, 'text'));
+          ? t('instructions and agent profiles')
+          : t('instructions')
+        : t('agent profiles');
+      lines.push(...wrap(tFormat('Load project {subject}', { subject }), 1, width, 'text'));
       lines.push(
         ...wrap(
-          `Check: ${instructionSources.paths.map((path) => relativize(this.opts.workDir, path)).join(' · ')}`,
+          tFormat('Check: {paths}', {
+            paths: instructionSources.paths
+              .map((path) => relativize(this.opts.workDir, path))
+              .join(' · '),
+          }),
           3,
           width,
           'textMuted',
@@ -231,7 +253,12 @@ export class TrustPromptComponent implements Component, Focusable {
     for (const warning of warnings) lines.push(...wrap(warning, 1, width, 'warning'));
     if (lines.length === 0)
       lines.push(
-        ...wrap('No project integrations or instructions to activate.', 1, width, 'textMuted'),
+        ...wrap(
+          t('No project integrations or instructions to activate.'),
+          1,
+          width,
+          'textMuted',
+        ),
         '',
       );
     return lines;

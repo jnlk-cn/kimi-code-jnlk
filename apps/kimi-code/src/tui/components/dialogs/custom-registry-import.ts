@@ -20,6 +20,7 @@ import {
   type Focusable,
 } from '@moonshot-ai/pi-tui';
 
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export interface CustomRegistryImportValue {
@@ -143,16 +144,16 @@ export class CustomRegistryImportDialogComponent extends Container implements Fo
     const pad = '  ';
 
     const border = (s: string): string => currentTheme.fg('primary', s);
-    const titleStyled = currentTheme.boldFg('textStrong', TITLE);
-    const subtitleText = this.hint === 'url-empty' ? SUBTITLE_URL_EMPTY : SUBTITLE_DEFAULT;
+    const titleStyled = currentTheme.boldFg('textStrong', t(TITLE));
+    const subtitleText = t(this.hint === 'url-empty' ? SUBTITLE_URL_EMPTY : SUBTITLE_DEFAULT);
     const subtitleStyled = currentTheme.fg('textDim', subtitleText);
     const footerStyled = currentTheme.fg(
       'textDim',
-      this.activeField === 'url' ? FOOTER_NOT_LAST : FOOTER_LAST,
+      t(this.activeField === 'url' ? FOOTER_NOT_LAST : FOOTER_LAST),
     );
 
-    const urlLabelText = 'Registry URL';
-    const tokenLabelText = 'Bearer token (optional)';
+    const urlLabelText = t('Registry URL');
+    const tokenLabelText = t('Bearer token (optional)');
     const urlLabelStyled =
       this.activeField === 'url'
         ? currentTheme.boldFg('accent', urlLabelText)

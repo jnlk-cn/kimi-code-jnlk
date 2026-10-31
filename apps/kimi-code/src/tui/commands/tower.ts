@@ -1,5 +1,7 @@
 import type { Session } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import { TOWER_TEARDOWN_PROMPT } from '../constant/kimi-tui';
 import { formatErrorMessage } from '../utils/event-payload';
 import type { SlashCommandHost } from './dispatch';
@@ -23,9 +25,11 @@ export async function handleTowerCommand(host: SlashCommandHost, args: string): 
       // The SDK returns the engine-rendered summary; its first line is the
       // state headline, which the notice lifts into the title.
       const [title, ...rest] = (await session.getTowerStatus()).split('\n');
-      host.showNotice(title ?? 'Tower status', rest.length > 0 ? rest.join('\n') : undefined);
+      host.showNotice(title ?? t('Tower status'), rest.length > 0 ? rest.join('\n') : undefined);
     } catch (error) {
-      host.showError(`Failed to read tower status: ${formatErrorMessage(error)}`);
+      host.showError(
+        tFormat('Failed to read tower status: {error}', { error: formatErrorMessage(error) }),
+      );
     }
     return;
   }
@@ -43,7 +47,11 @@ async function startTowerWithBase(host: SlashCommandHost, base: string): Promise
   // local branch). Only the agent can never enter the mode by itself.
   const wasActive = host.state.appState.towerMode;
   if (!(await setTowerMode(host, true, base))) return;
-  host.showNotice(wasActive ? `Tower base: ${base}` : `Tower mode: ON (base: ${base})`);
+  host.showNotice(
+    wasActive
+      ? tFormat('Tower base: {base}', { base })
+      : tFormat('Tower mode: ON (base: {base})', { base }),
+  );
 }
 
 async function applyTowerMode(host: SlashCommandHost, enabled: boolean): Promise<void> {
@@ -52,10 +60,12 @@ async function applyTowerMode(host: SlashCommandHost, enabled: boolean): Promise
   // must not leave the authoritative mode unchanged.
   if (!(await setTowerMode(host, enabled))) return;
   if (wasActive === enabled) {
-    host.showStatus(`Tower mode is already ${enabled ? 'on' : 'off'}.`);
+    host.showStatus(
+      enabled ? t('Tower mode is already on.') : t('Tower mode is already off.'),
+    );
     return;
   }
-  host.showNotice(enabled ? 'Tower mode: ON' : 'Tower mode: OFF');
+  host.showNotice(enabled ? t('Tower mode: ON') : t('Tower mode: OFF'));
 }
 
 async function setTowerMode(
@@ -76,14 +86,18 @@ async function setTowerMode(
       host.setAppState({ towerMode: effective });
       host.showError(
         enabled
-          ? 'Tower mode could not be enabled — another session owns this workspace tower, or the experiment is off / was just turned on and needs a restart.'
-          : 'Tower mode could not be disabled.',
+          ? t(
+              'Tower mode could not be enabled — another session owns this workspace tower, or the experiment is off / was just turned on and needs a restart.',
+            )
+          : t('Tower mode could not be disabled.'),
       );
       return false;
     }
   } catch (error) {
     host.showError(
-      `Failed to ${enabled ? 'enable' : 'disable'} tower mode: ${formatErrorMessage(error)}`,
+      enabled
+        ? tFormat('Failed to enable tower mode: {error}', { error: formatErrorMessage(error) })
+        : tFormat('Failed to disable tower mode: {error}', { error: formatErrorMessage(error) }),
     );
     return false;
   }

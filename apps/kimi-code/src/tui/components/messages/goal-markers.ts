@@ -11,6 +11,7 @@ import { truncateToWidth, type Component } from '@moonshot-ai/pi-tui';
 import type { GoalChange } from '@moonshot-ai/kimi-code-sdk';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorToken } from '#/tui/theme';
 
@@ -139,7 +140,7 @@ function markerSpec(
         return prominentMarker(resumedHeadline(actor), 'primary');
       case 'blocked':
         // The system stopped pursuing the goal; resumable via `/goal resume`.
-        return { headline: 'Goal blocked', accentToken: 'warning' };
+        return { headline: t('Goal blocked'), accentToken: 'warning' };
       default:
         return null;
     }
@@ -163,18 +164,22 @@ function prominentMarker(headline: string, accentToken: ColorToken) {
 }
 
 function pausedHeadline(reason: string | undefined, actor: GoalMarkerActor | undefined): string {
-  if (reason === 'Paused after interruption') return "Goal paused due to user's interruption";
-  if (actor === 'user') return 'Goal paused by the user.';
+  if (reason === 'Paused after interruption') {
+    return t("Goal paused due to user's interruption");
+  }
+  if (actor === 'user') return t('Goal paused by the user.');
   if (reason?.startsWith('Paused ') === true) return `Goal ${lowercaseFirst(reason)}`;
-  if (reason !== undefined && reason.length > 0) return `Goal paused: ${reason}`;
-  if (actor === 'model') return 'Goal paused by the agent.';
-  return 'Goal paused';
+  if (reason !== undefined && reason.length > 0) {
+    return tFormat('Goal paused: {reason}', { reason });
+  }
+  if (actor === 'model') return t('Goal paused by the agent.');
+  return t('Goal paused');
 }
 
 function resumedHeadline(actor: GoalMarkerActor | undefined): string {
-  if (actor === 'user') return 'Goal resumed by the user.';
-  if (actor === 'model') return 'Goal resumed by the agent.';
-  return 'Goal resumed';
+  if (actor === 'user') return t('Goal resumed by the user.');
+  if (actor === 'model') return t('Goal resumed by the agent.');
+  return t('Goal resumed');
 }
 
 function lowercaseFirst(text: string): string {

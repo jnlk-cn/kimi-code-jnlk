@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { detectInstallSource } from '#/cli/update/source';
+import { t, tFormat } from '#/tui/i18n';
 import { copyTextToClipboard } from '#/utils/clipboard/clipboard-text';
 import { detectShellEnvironment } from '#/utils/process/shell-env';
 import { quoteShellArg } from '#/utils/shell-quote';
@@ -23,8 +24,8 @@ export async function handleTitleCommand(host: SlashCommandHost, args: string): 
     const current = host.state.appState.sessionTitle;
     host.showStatus(
       current !== null && current.length > 0
-        ? `Session title: ${current}`
-        : `Session title: (not set) — id: ${host.state.appState.sessionId}`,
+        ? tFormat('Session title: {title}', { title: current })
+        : tFormat('Session title: (not set) — id: {id}', { id: host.state.appState.sessionId }),
     );
     return;
   }
@@ -42,10 +43,10 @@ export async function handleTitleCommand(host: SlashCommandHost, args: string): 
     await host.harness.renameSession({ id: session.id, title: newTitle });
   } catch (error) {
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to set title: ${msg}`);
+    host.showError(tFormat('Failed to set title: {error}', { error: msg }));
     return;
   }
-  host.showStatus(`Session title set to: ${newTitle}`);
+  host.showStatus(tFormat('Session title set to: {title}', { title: newTitle }));
 }
 
 export async function handleForkCommand(host: SlashCommandHost, args: string): Promise<void> {
@@ -63,7 +64,12 @@ export async function handleForkCommand(host: SlashCommandHost, args: string): P
       await forked.close();
     } catch (error) {
       const msg = formatErrorMessage(error);
-      host.showError(`Session forked (${forkId}), but failed to release its environment: ${msg}`);
+      host.showError(
+        tFormat('Session forked ({forkId}), but failed to release its environment: {error}', {
+          forkId,
+          error: msg,
+        }),
+      );
       return;
     }
     // Stay in the source session: switching to the fork would close the
@@ -79,19 +85,20 @@ export async function handleForkCommand(host: SlashCommandHost, args: string): P
       // (same wording convention as /copy).
       clipboardNote =
         method === 'native'
-          ? 'Command copied to clipboard'
-          : 'Command copied via terminal escape sequence (unverified)';
+          ? t('Command copied to clipboard')
+          : t('Command copied via terminal escape sequence (unverified)');
     } catch {
-      clipboardNote = 'Failed to copy command to clipboard';
+      clipboardNote = t('Failed to copy command to clipboard');
     }
     host.showStatus(
-      `Session forked (${forkId}). Still in the original session; switch to the fork via /sessions.\n` +
-        `  To enter the fork in a new process, run: ${command}\n` +
-        `  ${clipboardNote}`,
+      tFormat(
+        'Session forked ({forkId}). Still in the original session; switch to the fork via /sessions.\n  To enter the fork in a new process, run: {command}\n  {note}',
+        { forkId, command, note: clipboardNote },
+      ),
     );
   } catch (error) {
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to fork session: ${msg}`);
+    host.showError(tFormat('Failed to fork session: {error}', { error: msg }));
   }
 }
 
@@ -112,11 +119,11 @@ export async function handleExportMdCommand(host: SlashCommandHost, args: string
     return;
   }
 
-  host.showStatus('Exporting session as Markdown…');
+  host.showStatus(t('Exporting session as Markdown…'));
   try {
     const context = await session.getContext();
     if (context.history.length === 0) {
-      host.showError('No messages to export.');
+      host.showError(t('No messages to export.'));
       return;
     }
 
@@ -142,10 +149,13 @@ export async function handleExportMdCommand(host: SlashCommandHost, args: string
     await writeFile(outputPath, md, 'utf-8');
 
     const linked = toTerminalHyperlink(outputPath, pathToFileURL(outputPath).href);
-    host.showNotice(`Exported ${String(context.history.length)} messages`, linked);
+    host.showNotice(
+      tFormat('Exported {count} messages', { count: context.history.length }),
+      linked,
+    );
   } catch (error) {
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to export session: ${msg}`);
+    host.showError(tFormat('Failed to export session: {error}', { error: msg }));
   }
 }
 
@@ -156,7 +166,7 @@ export async function handleExportDebugZipCommand(host: SlashCommandHost): Promi
     return;
   }
 
-  host.showStatus('Exporting session…');
+  host.showStatus(t('Exporting session…'));
   try {
     const installSource = await detectInstallSource();
     const shellEnv = detectShellEnvironment();
@@ -168,10 +178,10 @@ export async function handleExportDebugZipCommand(host: SlashCommandHost): Promi
       includeGlobalLog: true,
     });
     const linked = toTerminalHyperlink(result.zipPath, pathToFileURL(result.zipPath).href);
-    host.showNotice('Export complete', linked);
+    host.showNotice(t('Export complete'), linked);
   } catch (error) {
     const msg = formatErrorMessage(error);
-    host.showError(`Failed to export session: ${msg}`);
+    host.showError(tFormat('Failed to export session: {error}', { error: msg }));
   }
 }
 
@@ -197,7 +207,7 @@ export async function handleInitCommand(host: SlashCommandHost): Promise<void> {
       return;
     }
     const msg = error instanceof Error ? error.message : String(error);
-    host.failSessionRequest(`Init failed: ${msg}`);
+    host.failSessionRequest(tFormat('Init failed: {error}', { error: msg }));
   } finally {
     host.deferUserMessages = false;
   }

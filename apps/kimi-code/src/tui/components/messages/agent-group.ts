@@ -19,6 +19,7 @@ import type { TUI } from '@moonshot-ai/pi-tui';
 import { Container, Spacer, Text } from '@moonshot-ai/pi-tui';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { formatTokenCount } from '#/utils/usage/usage-format';
 
@@ -135,7 +136,7 @@ export class AgentGroupComponent extends Container {
       this.appendLines(snap, isLast);
     });
     if (this.shouldShowDetachHint(snapshots)) {
-      this.bodyContainer.addChild(new Text(currentTheme.dim(DETACH_HINT_TEXT), 2, 0));
+      this.bodyContainer.addChild(new Text(currentTheme.dim(t(DETACH_HINT_TEXT)), 2, 0));
     }
 
     this.lastFlushPhases.clear();
@@ -161,8 +162,11 @@ export class AgentGroupComponent extends Container {
       const types = new Set(snapshots.map((s) => s.agentName).filter((n) => n !== undefined));
       const headerLabel =
         types.size === 1
-          ? `${String(total)} ${[...types][0]} agents finished`
-          : `${String(total)} agents finished`;
+          ? tFormat('{count} {type} agents finished', {
+              count: total,
+              type: [...types][0] ?? 'agent',
+            })
+          : tFormat('{count} agents finished', { count: total });
       const totalTools = snapshots.reduce((acc, s) => acc + s.toolCount, 0);
       const totalTokens = snapshots.reduce((acc, s) => acc + s.tokens, 0);
       const tail = formatHeaderTail({ toolCount: totalTools, tokens: totalTokens, elapsedSeconds });
@@ -171,8 +175,8 @@ export class AgentGroupComponent extends Container {
 
     const parts = formatBreakdownParts(counts);
     const headerText = parts.length > 0
-      ? `Running ${String(total)} agents (${parts.join(', ')})`
-      : `Running ${String(total)} agents`;
+      ? tFormat('Running {count} agents ({detail})', { count: total, detail: parts.join(', ') })
+      : tFormat('Running {count} agents', { count: total });
     const tail = formatHeaderTail({ toolCount: 0, tokens: 0, elapsedSeconds });
     return `${bullet}${currentTheme.boldFg('primary', headerText)}${tail}`;
   }
@@ -183,7 +187,7 @@ export class AgentGroupComponent extends Container {
     // First-level branch line.
     const branch1 = isLast ? '└─' : '├─';
     const agentType = snap.agentName ?? 'agent';
-    const desc = snap.toolCallDescription || '(no description)';
+    const desc = snap.toolCallDescription || t('(no description)');
     const tail = formatLineTail(snap);
     const namePart = currentTheme.fg('primary', agentType);
     const descPart = dim(`· ${desc}`);
@@ -195,8 +199,8 @@ export class AgentGroupComponent extends Container {
     const branch2 = isLast ? '   ' : '│  ';
     if (snap.phase === 'failed') {
       // Show one error line; error messages can be long.
-      const errLine = (snap.errorText ?? 'Failed').split('\n').at(0) ?? 'Failed';
-      const errStr = currentTheme.fg('error', `Error: ${errLine}`);
+      const errLine = (snap.errorText ?? t('Failed')).split('\n').at(0) ?? t('Failed');
+      const errStr = currentTheme.fg('error', tFormat('Error: {message}', { message: errLine }));
       this.bodyContainer.addChild(new Text(`  ${branch2}    ${errStr}`, 0, 0));
       return;
     }
@@ -205,7 +209,7 @@ export class AgentGroupComponent extends Container {
       return;
     }
     // Running or not-yet-started agents show latest activity, with a fallback.
-    const activity = snap.latestActivity ?? fallbackActivityForPhase(snap.phase);
+    const activity = snap.latestActivity ?? t(fallbackActivityForPhase(snap.phase));
     this.bodyContainer.addChild(new Text(`  ${branch2}    ${dim(activity)}`, 0, 0));
   }
 
@@ -291,12 +295,14 @@ function countPhases(snapshots: readonly ToolCallSubagentSnapshot[]): PhaseCount
 
 function formatBreakdownParts(counts: PhaseCounts): string[] {
   const parts: string[] = [];
-  if (counts.done > 0) parts.push(`${String(counts.done)} done`);
-  if (counts.failed > 0) parts.push(`${String(counts.failed)} failed`);
-  if (counts.backgrounded > 0) parts.push(`${String(counts.backgrounded)} backgrounded`);
-  if (counts.running > 0) parts.push(`${String(counts.running)} running`);
-  if (counts.waiting > 0) parts.push(`${String(counts.waiting)} waiting`);
-  if (counts.starting > 0) parts.push(`${String(counts.starting)} starting`);
+  if (counts.done > 0) parts.push(tFormat('{count} done', { count: counts.done }));
+  if (counts.failed > 0) parts.push(tFormat('{count} failed', { count: counts.failed }));
+  if (counts.backgrounded > 0) {
+    parts.push(tFormat('{count} backgrounded', { count: counts.backgrounded }));
+  }
+  if (counts.running > 0) parts.push(tFormat('{count} running', { count: counts.running }));
+  if (counts.waiting > 0) parts.push(tFormat('{count} waiting', { count: counts.waiting }));
+  if (counts.starting > 0) parts.push(tFormat('{count} starting', { count: counts.starting }));
   return parts;
 }
 
@@ -304,28 +310,32 @@ function formatStats(snap: ToolCallSubagentSnapshot): string {
   const parts: string[] = [];
   if (snap.model !== undefined) parts.push(snap.model);
   if (snap.effort !== undefined) parts.push(snap.effort);
-  parts.push(`${String(snap.toolCount)} tool${snap.toolCount === 1 ? '' : 's'}`);
+  parts.push(formatToolCount(snap.toolCount));
   if (snap.elapsedSeconds !== undefined) parts.push(formatElapsed(snap.elapsedSeconds));
   if (snap.tokens > 0) parts.push(formatTokens(snap.tokens));
   return currentTheme.dim(` · ${parts.join(' · ')}`);
+}
+
+function formatToolCount(count: number): string {
+  return tFormat(count === 1 ? '{count} tool' : '{count} tools', { count });
 }
 
 function formatLineTail(snap: ToolCallSubagentSnapshot): string {
   const separator = currentTheme.dim(' · ');
   switch (snap.phase) {
     case 'done':
-      return separator + currentTheme.fg('success', '✓ Completed');
+      return separator + currentTheme.fg('success', t('✓ Completed'));
     case 'failed':
-      return separator + currentTheme.fg('error', '✗ Failed');
+      return separator + currentTheme.fg('error', t('✗ Failed'));
     case 'backgrounded':
-      return separator + currentTheme.dim('◐ backgrounded');
+      return separator + currentTheme.dim(t('◐ backgrounded'));
     case 'queued':
-      return separator + currentTheme.fg('primary', 'Waiting');
+      return separator + currentTheme.fg('primary', t('Waiting'));
     case 'running':
-      return separator + currentTheme.fg('primary', 'Running');
+      return separator + currentTheme.fg('primary', t('Running'));
     case 'spawning':
     case undefined:
-      return separator + currentTheme.fg('primary', 'Starting');
+      return separator + currentTheme.fg('primary', t('Starting'));
   }
 }
 
@@ -351,7 +361,7 @@ function formatHeaderTail(args: {
   readonly elapsedSeconds: number | undefined;
 }): string {
   const parts: string[] = [];
-  if (args.toolCount > 0) parts.push(`${String(args.toolCount)} tool${args.toolCount === 1 ? '' : 's'}`);
+  if (args.toolCount > 0) parts.push(formatToolCount(args.toolCount));
   if (args.tokens > 0) parts.push(formatTokens(args.tokens));
   if (args.elapsedSeconds !== undefined) parts.push(formatElapsed(args.elapsedSeconds));
   return parts.length > 0 ? currentTheme.dim(` · ${parts.join(' · ')}`) : '';

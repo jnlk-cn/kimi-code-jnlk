@@ -14,6 +14,18 @@ import { FRAGMENT as GROUP_E } from './fragments/group-e';
 import { FRAGMENT as GROUP_F } from './fragments/group-f';
 import { FRAGMENT as GROUP_G } from './fragments/group-g';
 import { FRAGMENT as GROUP_H } from './fragments/group-h';
+import { FRAGMENT as GROUP_I } from './fragments/group-i';
+import { FRAGMENT as GROUP_J } from './fragments/group-j';
+import { FRAGMENT as GROUP_K } from './fragments/group-k';
+import { FRAGMENT as GROUP_L } from './fragments/group-l';
+import { FRAGMENT as GROUP_M } from './fragments/group-m';
+import { FRAGMENT as GROUP_N } from './fragments/group-n';
+import { FRAGMENT as GROUP_O } from './fragments/group-o';
+import { FRAGMENT as GROUP_P } from './fragments/group-p';
+import { FRAGMENT as GROUP_Q } from './fragments/group-q';
+import { FRAGMENT as GROUP_R } from './fragments/group-r';
+import { FRAGMENT as GROUP_S } from './fragments/group-s';
+import { FRAGMENT as GROUP_T } from './fragments/group-t';
 import { ZH_CN_DICTIONARY } from './zh-CN';
 
 export type UiLanguage = 'en' | 'zh-CN';
@@ -34,6 +46,18 @@ const dictionaries: Record<UiLanguage, Readonly<Record<string, string>>> = {
     ...GROUP_F,
     ...GROUP_G,
     ...GROUP_H,
+    ...GROUP_I,
+    ...GROUP_J,
+    ...GROUP_K,
+    ...GROUP_L,
+    ...GROUP_M,
+    ...GROUP_N,
+    ...GROUP_O,
+    ...GROUP_P,
+    ...GROUP_Q,
+    ...GROUP_R,
+    ...GROUP_S,
+    ...GROUP_T,
   },
 };
 

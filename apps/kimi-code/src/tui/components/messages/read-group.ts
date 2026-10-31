@@ -25,6 +25,7 @@ import type { TUI } from '@moonshot-ai/pi-tui';
 import { Container, Spacer, Text } from '@moonshot-ai/pi-tui';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 import type { ToolCallComponent, ToolCallReadSnapshot } from './tool-call';
@@ -162,30 +163,38 @@ export class ReadGroupComponent extends Container {
   ): HeaderContent {
     if (pending > 0) {
       const bullet = currentTheme.fg('text', STATUS_BULLET);
-      const label = currentTheme.boldFg('primary', `Reading ${String(total)} files…`);
+      const label = currentTheme.boldFg(
+        'primary',
+        tFormat('Reading {count} files…', { count: total }),
+      );
       return `${bullet}${label}`;
     }
 
     // All reads have finished, either successfully or with failures.
     if (failed === total) {
       const bullet = currentTheme.fg('error', '✗ ');
-      const label = currentTheme.boldFg('error', `Read ${String(total)} files`);
-      return `${bullet}${label}${currentTheme.fg('error', ' · failed')}`;
+      const label = currentTheme.boldFg('error', tFormat('Read {count} files', { count: total }));
+      return `${bullet}${label}${currentTheme.fg('error', t(' · failed'))}`;
     }
 
     // Three segments so a narrow row drops the line count before the failure
     // count: with the per-file body hidden while collapsed, that tail is the
     // only sign that some of the reads failed.
     const bullet = currentTheme.fg('success', STATUS_BULLET);
-    const label = currentTheme.boldFg('primary', `Read ${String(total)} files`);
+    const label = currentTheme.boldFg('primary', tFormat('Read {count} files', { count: total }));
     return {
       head: `${bullet}${label}`,
       flex: {
-        text: ` · ${String(totalLines)} ${totalLines === 1 ? 'line' : 'lines'}`,
+        text: tFormat(totalLines === 1 ? ' · {count} line' : ' · {count} lines', {
+          count: totalLines,
+        }),
         style: dimHeaderStyle,
         keep: 'head',
       },
-      tail: failed > 0 ? currentTheme.fg('error', ` · ${String(failed)} failed`) : '',
+      tail:
+        failed > 0
+          ? currentTheme.fg('error', tFormat(' · {count} failed', { count: failed }))
+          : '',
     };
   }
 
@@ -197,11 +206,13 @@ export class ReadGroupComponent extends Container {
 
     let tail: string;
     if (snap.phase === 'pending') {
-      tail = dim(' · reading…');
+      tail = dim(t(' · reading…'));
     } else if (snap.phase === 'failed') {
-      tail = currentTheme.fg('error', ' · failed');
+      tail = currentTheme.fg('error', t(' · failed'));
     } else {
-      tail = dim(` · ${String(snap.lines)} ${snap.lines === 1 ? 'line' : 'lines'}`);
+      tail = dim(
+        tFormat(snap.lines === 1 ? ' · {count} line' : ' · {count} lines', { count: snap.lines }),
+      );
     }
     return `  ${branch} ${pathPart}${tail}`;
   }

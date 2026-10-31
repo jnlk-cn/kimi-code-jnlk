@@ -2,7 +2,7 @@ import {
   Key,
   matchesKey,
   truncateToWidth,
-  visibleWidth,
+  wrapTextWithAnsi,
   type Focusable,
   type TuiMouseEvent,
   type TuiMouseEventResult,
@@ -10,6 +10,7 @@ import {
 
 import { DockSection, type DockLayout, type DockPart } from '#/tui/components/chrome/dock-section';
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { isSettlingClick } from '#/tui/utils/terminal-focus';
 
@@ -38,6 +39,7 @@ export class StartPermissionPromptComponent<
   TChoice extends StartPermissionChoice = StartPermissionChoice,
 > extends DockSection implements Focusable {
   focused = false;
+  private readonly opts: StartPermissionPromptOptions<TChoice>;
   private selectedIndex = 0;
   private choiceRows: readonly number[] = [];
   /** Option under the pointer: highlighted and previewed, but not selected. */
@@ -45,8 +47,18 @@ export class StartPermissionPromptComponent<
   /** A click this soon after the prompt appeared was aimed at what was there before. */
   private readonly shownAt = Date.now();
 
-  constructor(private readonly opts: StartPermissionPromptOptions<TChoice>) {
+  constructor(opts: StartPermissionPromptOptions<TChoice>) {
     super(opts.layout);
+    this.opts = {
+      ...opts,
+      title: t(opts.title),
+      noticeLines: opts.noticeLines.map((line) => t(line)),
+      options: opts.options.map((option) => ({
+        ...option,
+        label: t(option.label),
+        description: t(option.description),
+      })),
+    };
   }
 
   handleInput(data: string): void {
@@ -80,7 +92,9 @@ export class StartPermissionPromptComponent<
           currentTheme.boldFg('primary', ` ${this.opts.title}`),
         ];
         if (this.layout === undefined) {
-          lines.push(currentTheme.fg('textMuted', ' ↑↓ navigate · Enter select · Esc cancel'));
+          lines.push(
+            currentTheme.fg('textMuted', ` ${t('↑↓ navigate · Enter select · Esc cancel')}`),
+          );
         }
         lines.push('');
         return lines.map((line) => truncateToWidth(line, width));
@@ -89,7 +103,7 @@ export class StartPermissionPromptComponent<
         const lines: string[] = [];
         const textWidth = Math.max(20, width - 2);
         for (const paragraph of this.opts.noticeLines) {
-          for (const line of wrapPlain(paragraph, textWidth)) {
+          for (const line of wrapTextWithAnsi(paragraph, textWidth)) {
             lines.push(` ${styleModeNames(line, 'textMuted')}`);
           }
           lines.push('');
@@ -121,7 +135,7 @@ export class StartPermissionPromptComponent<
           : line,
       );
       if (!docked) {
-        for (const line of wrapPlain(option.description, Math.max(20, width - 4))) {
+        for (const line of wrapTextWithAnsi(option.description, Math.max(20, width - 4))) {
           lines.push(`    ${styleModeNames(line, 'textMuted')}`);
         }
         lines.push('');
@@ -131,7 +145,7 @@ export class StartPermissionPromptComponent<
 
     if (docked) {
       const descriptions = this.opts.options.map((option) =>
-        wrapPlain(option.description, Math.max(20, width - 4)),
+        wrapTextWithAnsi(option.description, Math.max(20, width - 4)),
       );
       const areaHeight = Math.min(3, Math.max(0, ...descriptions.map((rows) => rows.length)));
       if (areaHeight > 0) {
@@ -145,9 +159,11 @@ export class StartPermissionPromptComponent<
           lines.push(`    ${styleModeNames(text, 'textMuted')}`);
         }
       }
-      const scrollHint = this.bodyOverflows(width) ? ' · shift+↑/↓ scroll' : '';
+      const scrollHint = this.bodyOverflows(width) ? ` · ${t('shift+↑/↓ scroll')}` : '';
       lines.push('');
-      lines.push(currentTheme.fg('textMuted', ` ↑↓ navigate · Enter select · Esc cancel${scrollHint}`));
+      lines.push(
+        currentTheme.fg('textMuted', ` ${t('↑↓ navigate · Enter select · Esc cancel')}${scrollHint}`),
+      );
     }
 
     lines.push(currentTheme.fg('primary', '─'.repeat(width)));
@@ -179,29 +195,14 @@ function styleLabel(label: string, selected: boolean): string {
   return styleModeNames(label, 'text');
 }
 
-function styleModeNames(text: string, baseToken: 'text' | 'textMuted'): string {
-  return text
-    .split(/(\b(?:Always Ask|Ask When Needed|Never Ask)\b)/g)
-    .map((part) => {
-      if (part === 'Always Ask' || part === 'Ask When Needed' || part === 'Never Ask') return currentTheme.boldFg('textStrong', part);
-      return currentTheme.fg(baseToken, part);
-    })
-    .join('');
-}
+const MODE_NAMES = ['Always Ask', 'Ask When Needed', 'Never Ask'] as const;
 
-function wrapPlain(text: string, width: number): string[] {
-  const words = text.split(/\s+/).filter((word) => word.length > 0);
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const candidate = current.length === 0 ? word : `${current} ${word}`;
-    if (visibleWidth(candidate) <= width) {
-      current = candidate;
-      continue;
-    }
-    if (current.length > 0) lines.push(current);
-    current = visibleWidth(word) <= width ? word : truncateToWidth(word, width, '…');
-  }
-  if (current.length > 0) lines.push(current);
-  return lines.length > 0 ? lines : [''];
+function styleModeNames(text: string, baseToken: 'text' | 'textMuted'): string {
+  const names = MODE_NAMES.map((name) => t(name));
+  return text
+    .split(new RegExp(`(${names.join('|')})`, 'g'))
+    .map((part) =>
+      names.includes(part) ? currentTheme.boldFg('textStrong', part) : currentTheme.fg(baseToken, part),
+    )
+    .join('');
 }

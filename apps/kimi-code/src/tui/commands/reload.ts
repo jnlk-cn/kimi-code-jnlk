@@ -5,7 +5,7 @@ import { DEFAULT_MARKDOWN_CONFIG, loadTuiConfig, type TuiConfig } from '../confi
 import { TUI_MODE_RESTART_NOTICE } from '../constant/kimi-tui';
 import { setMarkdownMermaidMode, setMarkdownRenderLatex } from '../utils/markdown-options';
 import type { SlashCommandHost } from './dispatch';
-import { resolveUiLanguage, setUiLanguage } from '../i18n';
+import { resolveUiLanguage, setUiLanguage, t } from '../i18n';
 import { setExperimentalFeatures } from './experimental-flags';
 
 export async function handleReloadTuiCommand(host: SlashCommandHost): Promise<void> {
@@ -13,7 +13,7 @@ export async function handleReloadTuiCommand(host: SlashCommandHost): Promise<vo
     host.showStatus(message, 'warning'),
   );
   await applyReloadedTuiConfig(host, tuiConfig);
-  host.showStatus('TUI config reloaded.', 'success');
+  host.showStatus(t('TUI config reloaded.'), 'success');
 }
 
 export async function handleReloadCommand(host: SlashCommandHost): Promise<void> {
@@ -27,7 +27,7 @@ export async function handleReloadCommand(host: SlashCommandHost): Promise<void>
       id: session.id,
       forcePluginSessionStartReminder: true,
     });
-    await host.reloadCurrentSessionView(reloadedSession, 'Session reloaded.');
+    await host.reloadCurrentSessionView(reloadedSession, t('Session reloaded.'));
   }
 
   const config = await host.harness.getConfig({ reload: true });
@@ -51,7 +51,7 @@ export async function handleReloadCommand(host: SlashCommandHost): Promise<void>
     // reach the first lazy-created session instead of staying stale.
     await host.hydrateLazyConfigDefaults();
     host.showStatus(
-      'Environment and TUI config reloaded; no active session.',
+      t('Environment and TUI config reloaded; no active session.'),
       'success',
     );
   }

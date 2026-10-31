@@ -2,6 +2,7 @@ import { Container, Spacer, Text } from '@moonshot-ai/pi-tui';
 
 import type { MoonLoader } from '#/tui/components/chrome/moon-loader';
 import { ACTIVITY_DETAIL_INDENT } from '#/tui/constant/rendering';
+import { tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export type ActivityPaneMode = 'hidden' | 'waiting' | 'thinking' | 'composing' | 'tool' | 'compacting';
@@ -15,7 +16,7 @@ export interface ActivityPaneOptions {
 }
 
 export function formatActivitySpinnerTip(tip: string | undefined): string {
-  return tip === undefined || tip.length === 0 ? '' : ` · Tip: ${tip}`;
+  return tip === undefined || tip.length === 0 ? '' : tFormat(' · Tip: {tip}', { tip });
 }
 
 export class ActivityPaneComponent extends Container {

@@ -10,6 +10,8 @@ import type {
   ToolInputDisplay,
 } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import { isAgentSwarmRejection } from '../components/messages/agent-swarm-progress';
 import { ToolCallComponent } from '../components/messages/tool-call';
 import { ShellRunComponent } from '../components/messages/shell-run';
@@ -126,7 +128,7 @@ export class SessionReplayRenderer {
     try {
       const main = session.getResumeState()?.agents['main'];
       if (main === undefined) {
-        this.host.showError('Session history is unavailable for this session.');
+        this.host.showError(t('Session history is unavailable for this session.'));
         return false;
       }
 
@@ -138,7 +140,9 @@ export class SessionReplayRenderer {
       return true;
     } catch (error) {
       const message = formatErrorMessage(error);
-      this.host.showError(`Failed to replay session history: ${message}`);
+      this.host.showError(
+        tFormat('Failed to replay session history: {error}', { error: message }),
+      );
       return false;
     } finally {
       this.host.setAppState({ isReplaying: false });
@@ -273,7 +277,12 @@ export class SessionReplayRenderer {
         }
         context.suppressNextPlanModeOffNotice = false;
         this.host.appendTranscriptEntry(
-          replayEntry(context, 'status', `Plan mode: ${record.enabled ? 'ON' : 'OFF'}`, 'notice'),
+          replayEntry(
+            context,
+            'status',
+            record.enabled ? t('Plan mode: ON') : t('Plan mode: OFF'),
+            'notice',
+          ),
         );
         return;
       case 'permission_updated':
@@ -583,7 +592,12 @@ export class SessionReplayRenderer {
     context.skillActivationIds.add(skill.activationId);
     sessionEventHandler.seenSkillActivationIds.add(skill.activationId);
     this.host.appendTranscriptEntry({
-      ...replayEntry(context, 'skill_activation', `Activated skill: ${skill.skillName}`, 'plain'),
+      ...replayEntry(
+        context,
+        'skill_activation',
+        tFormat('Activated skill: {skill}', { skill: skill.skillName }),
+        'plain',
+      ),
       skillActivationId: skill.activationId,
       skillName: skill.skillName,
       skillArgs: skill.skillArgs,
@@ -623,7 +637,7 @@ export class SessionReplayRenderer {
     if (record.result === undefined) return;
     if (record.result === 'cancelled') {
       this.host.appendTranscriptEntry({
-        ...replayEntry(context, 'status', 'Compaction cancelled', 'plain'),
+        ...replayEntry(context, 'status', t('Compaction cancelled'), 'plain'),
         compactionData: {
           result: 'cancelled',
           instruction: record.instruction,
@@ -633,7 +647,7 @@ export class SessionReplayRenderer {
     }
 
     this.host.appendTranscriptEntry({
-      ...replayEntry(context, 'status', 'Compaction complete', 'plain'),
+      ...replayEntry(context, 'status', t('Compaction complete'), 'plain'),
       compactionData: {
         summary: record.result.summary,
         tokensBefore: record.result.tokensBefore,
@@ -649,7 +663,7 @@ export class SessionReplayRenderer {
     switch (change.kind) {
       case 'created':
         this.host.appendTranscriptEntry({
-          ...replayEntry(context, 'goal', 'Goal set', 'plain'),
+          ...replayEntry(context, 'goal', t('Goal set'), 'plain'),
           goalData: { kind: 'created' },
         });
         return;
@@ -734,8 +748,10 @@ export class SessionReplayRenderer {
   private renderPermissionUpdate(context: ReplayRenderContext, mode: PermissionMode): void {
     if (mode === 'yolo') {
       this.host.appendTranscriptEntry(
-        replayEntry(context, 'status', 'Ask When Needed mode: ON', 'notice', {
-          detail: 'Routine edits and commands run automatically; risky actions, questions, and plans still ask.',
+        replayEntry(context, 'status', t('Ask When Needed mode: ON'), 'notice', {
+          detail: t(
+            'Routine edits and commands run automatically; risky actions, questions, and plans still ask.',
+          ),
         }),
       );
       return;
@@ -745,8 +761,8 @@ export class SessionReplayRenderer {
         context,
         'status',
         mode === 'manual'
-          ? 'Ask When Needed mode: OFF'
-          : `Permission mode: ${PERMISSION_MODE_DISPLAY_NAMES[mode]}`,
+          ? t('Ask When Needed mode: OFF')
+          : tFormat('Permission mode: {mode}', { mode: PERMISSION_MODE_DISPLAY_NAMES[mode] }),
         'notice',
       ),
     );
@@ -765,13 +781,13 @@ export class SessionReplayRenderer {
     const parts: string[] = [];
     switch (result.decision) {
       case 'approved':
-        parts.push(result.scope === 'session' ? 'Approved for session' : 'Approved');
+        parts.push(result.scope === 'session' ? t('Approved for session') : t('Approved'));
         break;
       case 'rejected':
-        parts.push('Rejected');
+        parts.push(t('Rejected'));
         break;
       case 'cancelled':
-        parts.push('Cancelled');
+        parts.push(t('Cancelled'));
         break;
     }
     parts.push(`: ${record.action}`);
@@ -796,15 +812,17 @@ export class SessionReplayRenderer {
     switch (result.decision) {
       case 'rejected':
         content =
-          result.selectedLabel === 'Revise' ? 'Plan sent back for revision' : 'Plan review rejected';
+          result.selectedLabel === 'Revise'
+            ? t('Plan sent back for revision')
+            : t('Plan review rejected');
         break;
       case 'cancelled':
-        content = 'Plan review cancelled';
+        content = t('Plan review cancelled');
         break;
     }
     const detail =
       result.feedback !== undefined && result.feedback.length > 0
-        ? `Feedback: ${result.feedback}`
+        ? tFormat('Feedback: {feedback}', { feedback: result.feedback })
         : undefined;
     this.host.appendTranscriptEntry(replayEntry(context, 'status', content, 'notice', { detail }));
   }
@@ -908,14 +926,14 @@ function isResumeNormalizationGoalPause(change: GoalReplayLifecycleChange): bool
 function goalLifecycleReplayContent(change: GoalReplayLifecycleChange): string {
   switch (change.status) {
     case 'paused':
-      return 'Goal paused';
+      return t('Goal paused');
     case 'active':
-      return 'Goal resumed';
+      return t('Goal resumed');
     case 'blocked':
-      return 'Goal blocked';
+      return t('Goal blocked');
     case 'complete':
     case undefined:
-      return 'Goal updated';
+      return t('Goal updated');
   }
 }
 

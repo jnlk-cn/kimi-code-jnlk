@@ -11,12 +11,12 @@ import { truncateToWidth, visibleWidth, type Component, type MarkdownTheme } fro
 import chalk from 'chalk';
 
 import { Markdown } from '#/tui/components/markdown/markdown';
+import { t } from '#/tui/i18n';
 import { createMarkdownOptions } from '#/tui/utils/markdown-options';
 import { toTerminalHyperlink } from '#/utils/terminal-hyperlink';
 
 const LEFT_MARGIN = 2; // two-space indent matching other tool call children
 const SIDE_PADDING = 1; // space between the │ and the content on each side
-const TITLE_PREFIX = ' plan: ';
 const TITLE_SUFFIX = ' ';
 
 export interface PlanBoxOptions {
@@ -97,9 +97,10 @@ export class PlanBoxComponent implements Component {
   }
 
   private buildTitle(horzLen: number): string {
-    const fallback = ' plan ';
+    const planLabel = t('plan');
+    const fallback = ` ${planLabel} `;
     const statusSuffix = this.buildStatusSuffix();
-    const fallbackWithStatus = ` plan${statusSuffix} `;
+    const fallbackWithStatus = ` ${planLabel}${statusSuffix} `;
     const budget = Math.max(0, horzLen - 1);
     const fallbackTitle = truncateToWidth(
       visibleWidth(fallbackWithStatus) <= budget ? fallbackWithStatus : fallback,
@@ -113,7 +114,7 @@ export class PlanBoxComponent implements Component {
     const linked = path.isAbsolute(planPath)
       ? toTerminalHyperlink(basename, pathToFileURL(planPath).href)
       : basename;
-    const title = TITLE_PREFIX + linked + statusSuffix + TITLE_SUFFIX;
+    const title = ` ${planLabel}: ${linked}${statusSuffix}${TITLE_SUFFIX}`;
     if (visibleWidth(title) > budget) return fallbackTitle;
     return title;
   }

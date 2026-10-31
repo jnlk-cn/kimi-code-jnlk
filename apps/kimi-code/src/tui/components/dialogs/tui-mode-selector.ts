@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import type { TuiMode } from '../../config';
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
@@ -23,8 +25,12 @@ export interface TuiModeSelectorOptions {
 export class TuiModeSelectorComponent extends ChoicePickerComponent {
   constructor(opts: TuiModeSelectorOptions) {
     super({
-      title: 'TUI mode',
-      options: [...TUI_MODE_OPTIONS],
+      title: t('TUI mode'),
+      options: TUI_MODE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+        description: option.description === undefined ? undefined : t(option.description),
+      })),
       currentValue: opts.currentValue,
       onSelect: (value) => {
         if (value === 'regular' || value === 'fullscreen') opts.onSelect(value);

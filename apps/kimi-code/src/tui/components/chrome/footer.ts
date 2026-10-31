@@ -99,10 +99,10 @@ function tipsForIndex(index: number): { primary: string; pair: string | null } {
   if (n === 0) return { primary: '', pair: null };
   const offset = ((index % n) + n) % n;
   const current = ROTATION[offset]!;
-  if (n === 1 || current.solo) return { primary: current.text, pair: null };
+  if (n === 1 || current.solo) return { primary: t(current.text), pair: null };
   const next = ROTATION[(offset + 1) % n]!;
-  if (next.solo || next.text === current.text) return { primary: current.text, pair: null };
-  return { primary: current.text, pair: current.text + TIP_SEPARATOR + next.text };
+  if (next.solo || next.text === current.text) return { primary: t(current.text), pair: null };
+  return { primary: t(current.text), pair: t(current.text) + TIP_SEPARATOR + t(next.text) };
 }
 
 /**
@@ -138,7 +138,7 @@ function formatGoalBadge(
         : tFormat('{count} turns', { count: goal.turnsUsed });
   const label = `${goal.status} · ${formatBadgeElapsed(wallClockMs ?? goal.wallClockMs)} · ${turns}`;
   return (
-    chalk.hex(colors.textMuted)('[goal ') +
+    chalk.hex(colors.textMuted)(t('[goal ')) +
     chalk.hex(dotColor)('●') +
     chalk.hex(colors.textMuted)(` ${label}]`)
   );
@@ -187,10 +187,13 @@ function shortenCwd(path: string, home: string | undefined): string {
  */
 function formatContextStatus(usage: number, tokens?: number, maxTokens?: number): string {
   if (maxTokens !== undefined && maxTokens > 0 && tokens !== undefined) {
-    const pct = String(usagePercent(tokens, maxTokens));
-    return `context: ${pct}% (${formatTokenCount(tokens)}/${formatTokenCount(maxTokens)})`;
+    return tFormat('context: {percent}% ({used}/{max})', {
+      percent: usagePercent(tokens, maxTokens),
+      used: formatTokenCount(tokens),
+      max: formatTokenCount(maxTokens),
+    });
   }
-  return `context: ${String(usagePercentFromRatio(usage))}%`;
+  return tFormat('context: {percent}%', { percent: usagePercentFromRatio(usage) });
 }
 
 export function formatFooterGitBadge(status: GitStatus, colors: ColorPalette): string {
@@ -422,7 +425,7 @@ export class FooterComponent implements Component {
   /** `ctrl+o expand` / `ctrl+o collapse`, or null when there is nothing to toggle. */
   private expandShortcut(): string | null {
     const hint = this.expandHintProvider?.() ?? null;
-    return hint === null ? null : `ctrl+o ${hint}`;
+    return hint === null ? null : `ctrl+o ${t(hint)}`;
   }
 
   private buildRightText(tips: readonly string[], remaining: number, colors: ColorPalette): string {
@@ -467,8 +470,8 @@ export class FooterComponent implements Component {
     const modes: string[] = [];
     if (state.permissionMode === 'auto') modes.push(chalk.hex(colors.warning).bold(t(PERMISSION_MODE_DISPLAY_NAMES.auto)));
     if (state.permissionMode === 'yolo') modes.push(chalk.hex(colors.warning).bold(t(PERMISSION_MODE_DISPLAY_NAMES.yolo)));
-    if (state.planMode) modes.push(chalk.hex(colors.primary).bold('plan'));
-    if (state.swarmMode) modes.push(chalk.hex(colors.accent).bold('swarm'));
+    if (state.planMode) modes.push(chalk.hex(colors.primary).bold(t('plan')));
+    if (state.swarmMode) modes.push(chalk.hex(colors.accent).bold(t('swarm')));
     if (state.towerMode) modes.push(chalk.hex(colors.accent).bold('tower'));
     if (modes.length > 0) slots['mode'] = [modes.join(' ')];
 
@@ -487,8 +490,8 @@ export class FooterComponent implements Component {
       const thinkingLabel =
         effort !== 'off'
           ? hasEfforts && effort !== 'on'
-            ? ` thinking: ${effort}`
-            : ' thinking'
+            ? ' ' + tFormat('thinking: {effort}', { effort })
+            : ' ' + t('thinking')
           : '';
       const modelLabel = `${model}${thinkingLabel}`;
       let renderedModelLabel = chalk.hex(colors.text)(modelLabel);
@@ -503,15 +506,27 @@ export class FooterComponent implements Component {
     // apart at a glance.
     const taskBadges: string[] = [];
     if (this.backgroundBashTaskCount > 0) {
-      const noun = this.backgroundBashTaskCount === 1 ? 'task' : 'tasks';
       taskBadges.push(
-        chalk.hex(colors.primary)(`[${String(this.backgroundBashTaskCount)} ${noun} running]`),
+        chalk.hex(colors.primary)(
+          tFormat(
+            this.backgroundBashTaskCount === 1
+              ? '[{count} task running]'
+              : '[{count} tasks running]',
+            { count: this.backgroundBashTaskCount },
+          ),
+        ),
       );
     }
     if (this.backgroundAgentCount > 0) {
-      const noun = this.backgroundAgentCount === 1 ? 'agent' : 'agents';
       taskBadges.push(
-        chalk.hex(colors.primary)(`[${String(this.backgroundAgentCount)} ${noun} running]`),
+        chalk.hex(colors.primary)(
+          tFormat(
+            this.backgroundAgentCount === 1
+              ? '[{count} agent running]'
+              : '[{count} agents running]',
+            { count: this.backgroundAgentCount },
+          ),
+        ),
       );
     }
     slots['tasks'] = taskBadges;

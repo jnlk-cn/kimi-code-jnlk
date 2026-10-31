@@ -7,6 +7,7 @@
 
 import chalk from 'chalk';
 
+import { tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export type DiffLineKind = 'context' | 'add' | 'delete';
@@ -141,11 +142,11 @@ export function renderDiffLines(
 
   const hidden = changedLines.length - shown.length;
   if (hidden > 0) {
-    output.push(
-      s.meta(
-        `     … ${String(hidden)} more change${hidden > 1 ? 's' : ''} hidden (ctrl+o to expand)`,
-      ),
-    );
+    const more =
+      hidden > 1
+        ? tFormat('{count} more changes hidden (ctrl+o to expand)', { count: hidden })
+        : tFormat('{count} more change hidden (ctrl+o to expand)', { count: hidden });
+    output.push(s.meta(`     … ${more}`));
   }
 
   return output;
@@ -280,7 +281,11 @@ export function renderDiffLinesClustered(
           truncated = true;
           break;
         }
-        output.push(s.meta(`     … ${String(gap)} unchanged line${gap > 1 ? 's' : ''} …`));
+        const unchanged =
+          gap > 1
+            ? tFormat('{count} unchanged lines …', { count: gap })
+            : tFormat('{count} unchanged line …', { count: gap });
+        output.push(s.meta(`     … ${unchanged}`));
         body++;
       }
     }
@@ -305,11 +310,11 @@ export function renderDiffLinesClustered(
     const hidden = changedCount - shownChanges;
     if (hidden > 0) {
       const hint = opts.expandKeyHint ?? 'ctrl+o';
-      output.push(
-        s.meta(
-          `     … ${String(hidden)} more change${hidden > 1 ? 's' : ''} hidden (${hint} to expand)`,
-        ),
-      );
+      const more =
+        hidden > 1
+          ? tFormat('{count} more changes hidden ({hint} to expand)', { count: hidden, hint })
+          : tFormat('{count} more change hidden ({hint} to expand)', { count: hidden, hint });
+      output.push(s.meta(`     … ${more}`));
     }
   }
 

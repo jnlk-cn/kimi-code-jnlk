@@ -1,3 +1,5 @@
+import { tFormat } from '#/tui/i18n';
+
 import { LLM_NOT_SET_MESSAGE } from '../constant/kimi-tui';
 import { formatErrorMessage } from '../utils/event-payload';
 import { extractInlineSkillActivations } from '../utils/inline-skill-tokens';
@@ -23,6 +25,8 @@ export async function handleBtwCommand(host: SlashCommandHost, args: string): Pr
       activations.length > 0 ? activations : undefined,
     );
   } catch (error) {
-    host.showError(`Failed to start /btw: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('Failed to start /btw: {error}', { error: formatErrorMessage(error) }),
+    );
   }
 }

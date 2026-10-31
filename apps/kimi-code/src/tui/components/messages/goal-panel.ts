@@ -24,6 +24,7 @@ import type { GoalSnapshot, GoalStatus } from '@moonshot-ai/kimi-code-sdk';
 
 import { MESSAGE_INDENT } from '#/tui/constant/rendering';
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorToken } from '#/tui/theme';
 import { formatTokenCount } from '#/utils/usage/usage-format';
@@ -58,7 +59,7 @@ export class GoalSetMessageComponent implements Component {
   invalidate(): void {}
 
   render(width: number): string[] {
-    return renderLifecycleLine('Goal set', width);
+    return renderLifecycleLine(t('Goal set'), width);
   }
 }
 
@@ -67,7 +68,7 @@ export class UpcomingGoalAddedMessageComponent implements Component {
 
   render(width: number): string[] {
     return renderLifecycleLine(
-      'Upcoming goal added. It will start after the current goal is complete.',
+      t('Upcoming goal added. It will start after the current goal is complete.'),
       width,
     );
   }
@@ -125,7 +126,7 @@ export class GoalStatusMessageComponent implements Component {
 
 /** Box title, e.g. ` Goal · active `. */
 export function goalPanelTitle(goal: GoalSnapshot): string {
-  return ` Goal · ${goal.status} `;
+  return ` ${t('Goal')} · ${t(goal.status)} `;
 }
 
 export function buildGoalReportLines(goal: GoalSnapshot, wrapWidth: number = WRAP_WIDTH): string[] {
@@ -155,26 +156,27 @@ export function buildGoalReportLines(goal: GoalSnapshot, wrapWidth: number = WRA
   }
   lines.push('');
 
-  const row = (label: string, val: string): string => `${muted(label.padEnd(LABEL_WIDTH))}${val}`;
+  const row = (label: string, val: string): string =>
+    `${muted(padToWidth(label, LABEL_WIDTH))}${val}`;
 
   if (showReason) {
     lines.push(
       row(
-        'Status',
-        currentTheme.fg(statusColor, goal.status) +
+        t('Status'),
+        currentTheme.fg(statusColor, t(goal.status)) +
           (reason !== undefined ? muted(` — ${reason}`) : ''),
       ),
     );
   }
-  lines.push(row('Running', value(formatGoalElapsed(goal.wallClockMs))));
-  lines.push(row('Turns', value(`${goal.turnsUsed}`)));
-  lines.push(row('Tokens', value(formatTokenCount(goal.tokensUsed))));
+  lines.push(row(t('Running'), value(formatGoalElapsed(goal.wallClockMs))));
+  lines.push(row(t('Turns'), value(`${goal.turnsUsed}`)));
+  lines.push(row(t('Tokens'), value(formatTokenCount(goal.tokensUsed))));
   if (!isComplete) {
     const stop = formatStopRow(goal);
     lines.push(
       stop !== null
-        ? row('Stop', value(stop))
-        : muted('No stop condition — runs until evaluated complete.'),
+        ? row(t('Stop'), value(stop))
+        : muted(t('No stop condition — runs until evaluated complete.')),
     );
   }
   return lines;
@@ -185,15 +187,27 @@ function formatStopRow(goal: GoalSnapshot): string | null {
   const { budget } = goal;
   const parts: string[] = [];
   if (budget.turnBudget !== null) {
-    parts.push(`after ${budget.turnBudget} turns (${goal.turnsUsed}/${budget.turnBudget})`);
+    parts.push(
+      tFormat('after {turns} turns ({used}/{budget})', {
+        turns: budget.turnBudget,
+        used: goal.turnsUsed,
+        budget: budget.turnBudget,
+      }),
+    );
   }
   if (budget.tokenBudget !== null) {
-    parts.push(`at ${formatTokenCount(budget.tokenBudget)} tokens`);
+    parts.push(tFormat('at {tokens} tokens', { tokens: formatTokenCount(budget.tokenBudget) }));
   }
   if (budget.wallClockBudgetMs !== null) {
-    parts.push(`after ${formatGoalElapsed(budget.wallClockBudgetMs)}`);
+    parts.push(
+      tFormat('after {elapsed}', { elapsed: formatGoalElapsed(budget.wallClockBudgetMs) }),
+    );
   }
   return parts.length > 0 ? parts.join(', ') : null;
+}
+
+function padToWidth(text: string, width: number): string {
+  return text + ' '.repeat(Math.max(0, width - visibleWidth(text)));
 }
 
 function statusToken(status: GoalStatus): ColorToken {

@@ -1,5 +1,7 @@
 import type { PermissionMode } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import {
   SwarmStartPermissionPromptComponent,
   type SwarmStartPermissionChoice,
@@ -40,8 +42,11 @@ export async function handleSwarmCommand(host: SlashCommandHost, args: string): 
   }
 
   if (host.state.appState.permissionMode === 'manual') {
-    showSwarmStartPermissionPrompt(host, `/swarm ${prompt}`, 'Swarm task not started.', (choice) =>
-      startSwarmWithPermission(host, prompt, choice),
+    showSwarmStartPermissionPrompt(
+      host,
+      `/swarm ${prompt}`,
+      t('Swarm task not started.'),
+      (choice) => startSwarmWithPermission(host, prompt, choice),
     );
     return;
   }
@@ -85,12 +90,16 @@ async function setPermissionForSwarm(host: SlashCommandHost, mode: PermissionMod
   try {
     await host.requireSession().setPermission(mode);
   } catch (error) {
-    host.showError(`Failed to set permission mode: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('Failed to set permission mode: {error}', { error: formatErrorMessage(error) }),
+    );
     return false;
   }
   host.setAppState({ permissionMode: mode });
-  host.showNotice(`Permission mode: ${PERMISSION_MODE_DISPLAY_NAMES[mode]}`);
-  host.showStatus(PERMISSION_MODE_DESCRIPTIONS[mode], 'warning');
+  host.showNotice(
+    tFormat('Permission mode: {mode}', { mode: t(PERMISSION_MODE_DISPLAY_NAMES[mode]) }),
+  );
+  host.showStatus(t(PERMISSION_MODE_DESCRIPTIONS[mode]), 'warning');
   return true;
 }
 
@@ -108,21 +117,29 @@ async function applySwarmMode(
   commandText: string,
 ): Promise<void> {
   if (enabled && host.state.appState.swarmMode) {
-    host.showStatus('Swarm mode is already on.');
+    host.showStatus(t('Swarm mode is already on.'));
     return;
   }
   if (!enabled && !host.state.appState.swarmMode) {
-    host.showStatus('Swarm mode is already off.');
+    host.showStatus(t('Swarm mode is already off.'));
     return;
   }
   if (enabled && host.state.appState.permissionMode === 'manual') {
-    showSwarmStartPermissionPrompt(host, commandText, 'Swarm mode not enabled.', async (choice) => {
-      if ((choice === 'auto' || choice === 'yolo') && !(await setPermissionForSwarm(host, choice))) {
-        return;
-      }
-      if (!(await setSwarmMode(host, true, 'manual'))) return;
-      renderSwarmActivated(host);
-    });
+    showSwarmStartPermissionPrompt(
+      host,
+      commandText,
+      t('Swarm mode not enabled.'),
+      async (choice) => {
+        if (
+          (choice === 'auto' || choice === 'yolo') &&
+          !(await setPermissionForSwarm(host, choice))
+        ) {
+          return;
+        }
+        if (!(await setSwarmMode(host, true, 'manual'))) return;
+        renderSwarmActivated(host);
+      },
+    );
     return;
   }
   if (!(await setSwarmMode(host, enabled, 'manual'))) return;
@@ -139,7 +156,9 @@ async function setSwarmMode(
     await host.requireSession().setSwarmMode(enabled, trigger);
   } catch (error) {
     host.showError(
-      `Failed to ${enabled ? 'enable' : 'disable'} swarm mode: ${formatErrorMessage(error)}`,
+      enabled
+        ? tFormat('Failed to enable swarm mode: {error}', { error: formatErrorMessage(error) })
+        : tFormat('Failed to disable swarm mode: {error}', { error: formatErrorMessage(error) }),
     );
     return false;
   }
@@ -157,7 +176,7 @@ function swarmModeSubcommand(input: string): boolean | undefined {
 
 function renderSwarmActivated(host: SlashCommandHost): void {
   renderSwarmModeMarker(host, 'active');
-  host.showStatus(SWARM_USAGE_NOTICE, 'warning');
+  host.showStatus(t(SWARM_USAGE_NOTICE), 'warning');
 }
 
 function renderSwarmModeMarker(host: SlashCommandHost, state: SwarmModeMarkerState): void {

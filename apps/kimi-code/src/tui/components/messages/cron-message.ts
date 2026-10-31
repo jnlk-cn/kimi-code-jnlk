@@ -2,6 +2,7 @@ import type { Component } from '@moonshot-ai/pi-tui';
 import { Spacer, Text, visibleWidth } from '@moonshot-ai/pi-tui';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
 import type { CronTranscriptData } from '#/tui/types';
@@ -20,7 +21,7 @@ export class CronMessageComponent implements Component {
   ) {
     const missed = data.missedCount !== undefined;
     this.data = data;
-    this.title = missed ? 'Missed scheduled reminders' : 'Scheduled reminder fired';
+    this.title = t(missed ? 'Missed scheduled reminders' : 'Scheduled reminder fired');
     this.detail = cronDetail(data);
     this.prompt = prompt;
     this.promptText = new Text(currentTheme.fg('text', prompt), 0, 0);
@@ -71,14 +72,16 @@ export class CronMessageComponent implements Component {
 function cronDetail(data: CronTranscriptData): string | undefined {
   const parts: string[] = [];
   if (data.cron !== undefined && data.cron.length > 0) parts.push(data.cron);
-  if (data.jobId !== undefined && data.jobId.length > 0) parts.push(`job ${data.jobId}`);
-  if (data.recurring === false) parts.push('one-shot');
+  if (data.jobId !== undefined && data.jobId.length > 0) {
+    parts.push(tFormat('job {id}', { id: data.jobId }));
+  }
+  if (data.recurring === false) parts.push(t('one-shot'));
   if (data.coalescedCount !== undefined && data.coalescedCount > 1) {
-    parts.push(`${String(data.coalescedCount)} fires coalesced`);
+    parts.push(tFormat('{count} fires coalesced', { count: data.coalescedCount }));
   }
   if (data.missedCount !== undefined) {
-    parts.push(`${String(data.missedCount)} missed`);
+    parts.push(tFormat('{count} missed', { count: data.missedCount }));
   }
-  if (data.stale === true) parts.push('final delivery');
+  if (data.stale === true) parts.push(t('final delivery'));
   return parts.length > 0 ? parts.join(' | ') : undefined;
 }

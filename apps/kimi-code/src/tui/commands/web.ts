@@ -14,6 +14,7 @@ import {
 } from '#/cli/sub/web/remote-control';
 import { formatReadyBanner, startServerForeground } from '#/cli/sub/web/run';
 import { parseServerOptions, tryResolveServerToken } from '#/cli/sub/web/shared';
+import { t } from '#/tui/i18n';
 import { openUrl } from '#/utils/open-url';
 import { getDataDir } from '#/utils/paths';
 import { persistedKimiOAuthRef } from '#/utils/region';
@@ -159,7 +160,7 @@ function startNewServerAfterExit(host: SlashCommandHost, sessionId: string): voi
 
 /** Styled `Session:` line for the foreground handoff; the token fragment is
  * dimmed like in the ready banner so the host/path stands out. */
-function sessionLine(url: string, labelText = 'Session:  '): string {
+function sessionLine(url: string, labelText = t('Session:  ')): string {
   const label = (text: string): string => chalk.bold.hex(darkColors.textDim)(text);
   const accent = (text: string): string => chalk.hex(darkColors.accent)(text);
   const dim = (text: string): string => chalk.hex(darkColors.textDim)(text);

@@ -16,6 +16,7 @@ import type {
 import chalk from 'chalk';
 
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
 import { formatPluginSourceLabel, pluginTrustLabel } from '#/tui/utils/plugin-source-label';
@@ -135,14 +136,20 @@ export class PluginMcpSelectorComponent extends Container implements Focusable {
     const actionItems = this.items.filter((item) => item.kind === 'action');
     const lines: string[] = [
       chalk.hex(colors.primary)('─'.repeat(width)),
-      chalk.hex(colors.primary).bold(` MCP servers · ${info.displayName}`),
-      mutedHintLine(' ↑↓ navigate · Enter/Space enable/disable · Esc cancel', colors),
+      chalk.hex(colors.primary).bold(tFormat(' MCP servers · {name}', { name: info.displayName })),
+      mutedHintLine(t(' ↑↓ navigate · Enter/Space enable/disable · Esc cancel'), colors),
       '',
-      sectionLabel(`MCP servers (${info.enabledMcpServerCount}/${info.mcpServerCount} enabled)`, colors),
+      sectionLabel(
+        tFormat('MCP servers ({enabled}/{total} enabled)', {
+          enabled: info.enabledMcpServerCount,
+          total: info.mcpServerCount,
+        }),
+        colors,
+      ),
     ];
 
     if (serverItems.length === 0) {
-      lines.push(chalk.hex(colors.textMuted)('  No MCP servers declared.'));
+      lines.push(chalk.hex(colors.textMuted)(t('  No MCP servers declared.')));
     } else {
       for (let i = 0; i < serverItems.length; i++) {
         lines.push(...this.renderItem(serverItems[i]!, i, width));
@@ -150,7 +157,7 @@ export class PluginMcpSelectorComponent extends Container implements Focusable {
     }
 
     lines.push('');
-    lines.push(sectionLabel('Actions', colors));
+    lines.push(sectionLabel(t('Actions'), colors));
     for (let i = 0; i < actionItems.length; i++) {
       lines.push(...this.renderItem(actionItems[i]!, serverItems.length + i, width));
     }
@@ -168,7 +175,7 @@ export class PluginMcpSelectorComponent extends Container implements Focusable {
     const prefix = chalk.hex(selected ? colors.primary : colors.textDim)(`  ${pointer} `);
     let line = prefix + labelStyle(item.label);
     if (item.status !== undefined) {
-      line += '  ' + statusStyle(item, colors)(item.status);
+      line += '  ' + statusStyle(item, colors)(t(item.status));
     }
     const serverName = mcpItemServerName(item);
     if (serverName !== undefined && this.opts.serverHint?.server === serverName) {
@@ -196,20 +203,20 @@ export interface PluginRemoveConfirmOptions {
 export class PluginRemoveConfirmComponent extends ChoicePickerComponent {
   constructor(opts: PluginRemoveConfirmOptions) {
     super({
-      title: `Remove ${opts.displayName} (${opts.id})?`,
-      hint: '↑↓ navigate · Enter/Space select · ←/Esc cancel',
+      title: tFormat('Remove {name} ({id})?', { name: opts.displayName, id: opts.id }),
+      hint: t('↑↓ navigate · Enter/Space select · ←/Esc cancel'),
       formatHint: mutedHintLine,
       options: [
         {
           value: REMOVE_CONFIRM_CANCEL,
-          label: 'Cancel',
-          description: 'Keep this plugin installed.',
+          label: t('Cancel'),
+          description: t('Keep this plugin installed.'),
         },
         {
           value: REMOVE_CONFIRM_REMOVE,
-          label: 'Remove plugin',
+          label: t('Remove plugin'),
           tone: 'danger',
-          description: 'Remove only the install record; plugin files are left in place.',
+          description: t('Remove only the install record; plugin files are left in place.'),
         },
       ],
       onSelect: (value) => {
@@ -240,25 +247,26 @@ export interface PluginInstallTrustConfirmOptions {
 export class PluginInstallTrustConfirmComponent extends ChoicePickerComponent {
   constructor(opts: PluginInstallTrustConfirmOptions) {
     super({
-      title: `Install third-party plugin ${opts.label}?`,
-      hint: '↑↓ navigate · Enter/Space select · ←/Esc cancel',
+      title: tFormat('Install third-party plugin {label}?', { label: opts.label }),
+      hint: t('↑↓ navigate · Enter/Space select · ←/Esc cancel'),
       formatHint: mutedHintLine,
-      notice:
+      notice: t(
         '⚠️ This is a third-party plugin that Kimi has not reviewed. It can bundle MCP servers, ' +
-        'skills, or files that run code and access your workspace. Install it only if you ' +
-        'trust the source.',
+          'skills, or files that run code and access your workspace. Install it only if you ' +
+          'trust the source.',
+      ),
       noticeTone: 'warning',
       options: [
         {
           value: INSTALL_TRUST_EXIT,
-          label: 'Exit',
-          description: 'Cancel the installation.',
+          label: t('Exit'),
+          description: t('Cancel the installation.'),
         },
         {
           value: INSTALL_TRUST_TRUST,
-          label: 'Trust and install',
+          label: t('Trust and install'),
           tone: 'danger',
-          description: 'Install this third-party plugin anyway.',
+          description: t('Install this third-party plugin anyway.'),
         },
       ],
       onSelect: (value) => {
@@ -272,16 +280,21 @@ export class PluginInstallTrustConfirmComponent extends ChoicePickerComponent {
 }
 
 function overviewPluginDescription(plugin: PluginSummary): string {
-  const state = plugin.state === 'ok' ? '' : ` · state ${plugin.state}`;
-  const skills = `${plugin.skillCount} skill${plugin.skillCount === 1 ? '' : 's'}`;
+  const state = plugin.state === 'ok' ? '' : tFormat(' · state {state}', { state: plugin.state });
+  const skills = tFormat(plugin.skillCount === 1 ? '{count} skill' : '{count} skills', {
+    count: plugin.skillCount,
+  });
   const mcp =
     plugin.mcpServerCount > 0
-      ? ` · MCP ${plugin.enabledMcpServerCount}/${plugin.mcpServerCount}`
+      ? tFormat(' · MCP {enabled}/{total}', {
+          enabled: plugin.enabledMcpServerCount,
+          total: plugin.mcpServerCount,
+        })
       : '';
-  const diagnostics = plugin.hasErrors ? ' · diagnostics available' : '';
+  const diagnostics = plugin.hasErrors ? t(' · diagnostics available') : '';
   const source = ` · ${formatPluginSourceLabel(plugin)}`;
   const trust = ` · ${pluginTrustLabel(plugin)}`;
-  return `id ${plugin.id} · ${skills}${mcp}${source}${trust}${state}${diagnostics}`;
+  return `${tFormat('id {id}', { id: plugin.id })} · ${skills}${mcp}${source}${trust}${state}${diagnostics}`;
 }
 
 function pluginStatus(plugin: PluginSummary): string | undefined {
@@ -627,15 +640,15 @@ export class PluginsPanelComponent extends Container implements Focusable {
       tab === 'installed'
         ? this.installedHint()
         : tab === 'custom'
-          ? ' Tab switch · Enter install · Esc cancel'
-          : ' Tab switch · ↑↓ navigate · Enter open/install · Esc cancel';
+          ? t(' Tab switch · Enter install · Esc cancel')
+          : t(' Tab switch · ↑↓ navigate · Enter open/install · Esc cancel');
     const lines: string[] = [
       chalk.hex(colors.primary)('─'.repeat(width)),
-      chalk.hex(colors.primary).bold(' Plugins'),
+      chalk.hex(colors.primary).bold(t(' Plugins')),
       mutedHintLine(hint, colors),
       '',
       renderTabStrip({
-        labels: PLUGINS_PANEL_TABS.map((t) => t.label),
+        labels: PLUGINS_PANEL_TABS.map((tab) => t(tab.label)),
         activeIndex: this.activeTabIndex,
         width,
         colors,
@@ -656,21 +669,24 @@ export class PluginsPanelComponent extends Container implements Focusable {
     const { installed } = this.opts;
     const colors = currentTheme.palette;
     if (installed.length === 0) {
-      lines.push(chalk.hex(colors.textMuted)('  No plugins installed.'));
+      lines.push(chalk.hex(colors.textMuted)(t('  No plugins installed.')));
     } else {
       for (let i = 0; i < installed.length; i++) {
         lines.push(...this.renderInstalledRow(installed[i]!, i, width));
       }
     }
     lines.push('');
-    lines.push(mutedHintLine(` ${installed.length} installed`, colors));
+    lines.push(mutedHintLine(tFormat(' {count} installed', { count: installed.length }), colors));
   }
 
   private installedHint(): string {
     const plugin = this.opts.installed[this.selectedIndex];
     const hasUpdate = plugin !== undefined && this.installedUpdateStatus(plugin) !== undefined;
-    const enter = hasUpdate ? 'Enter update' : 'Enter details';
-    return ` Tab switch · Space toggle · D remove · M MCP · ${enter} · I details · R reload · Esc cancel`;
+    const enter = hasUpdate ? t('Enter update') : t('Enter details');
+    return tFormat(
+      ' Tab switch · Space toggle · D remove · M MCP · {enter} · I details · R reload · Esc cancel',
+      { enter },
+    );
   }
 
   private installedUpdateStatus(
@@ -698,11 +714,15 @@ export class PluginsPanelComponent extends Container implements Focusable {
     const update = this.installedUpdateStatus(plugin);
     let line = prefix + labelStyle(plugin.displayName);
     if (status !== undefined) {
-      line += '  ' + statusStyle({ kind: 'plugin', value: '', label: '', description: '', status }, colors)(status);
+      line += '  ' + statusStyle({ kind: 'plugin', value: '', label: '', description: '', status }, colors)(t(status));
     }
     if (update !== undefined) {
       const badge = `update ${update.local} → ${update.latest}`;
-      line += '  ' + marketplaceStatusStyle(badge, colors)(badge);
+      line +=
+        '  ' +
+        marketplaceStatusStyle(badge, colors)(
+          tFormat('update {local} → {latest}', { local: update.local, latest: update.latest }),
+        );
     }
     if (this.opts.pluginHint?.id === plugin.id) {
       line += '  ' + chalk.hex(colors.warning)(this.opts.pluginHint.text);
@@ -727,16 +747,20 @@ export class PluginsPanelComponent extends Container implements Focusable {
   ): void {
     const colors = currentTheme.palette;
     if (this.market.status === 'loading' || this.market.status === 'idle') {
-      lines.push(chalk.hex(colors.textMuted)('  Loading marketplace…'));
+      lines.push(chalk.hex(colors.textMuted)(t('  Loading marketplace…')));
       return;
     }
     if (this.market.status === 'error') {
-      lines.push(chalk.hex(colors.warning)(`  Marketplace unavailable: ${this.market.message}`));
-      lines.push(mutedHintLine('  Use the Custom tab to install from a URL.', colors));
+      lines.push(
+        chalk.hex(colors.warning)(
+          tFormat('  Marketplace unavailable: {message}', { message: this.market.message }),
+        ),
+      );
+      lines.push(mutedHintLine(t('  Use the Custom tab to install from a URL.'), colors));
       return;
     }
     if (entries.length === 0) {
-      lines.push(chalk.hex(colors.textMuted)('  No plugins found.'));
+      lines.push(chalk.hex(colors.textMuted)(t('  No plugins found.')));
     } else {
       for (let i = 0; i < entries.length; i++) {
         lines.push(...this.renderMarketplaceRow(entries[i]!, i + indexOffset, width));
@@ -748,11 +772,14 @@ export class PluginsPanelComponent extends Container implements Focusable {
     lines.push('');
     lines.push(
       mutedHintLine(
-        ` ${installedCount} installed · ${entriesForCount.length - installedCount} available`,
+        tFormat(' {installed} installed · {available} available', {
+          installed: installedCount,
+          available: entriesForCount.length - installedCount,
+        }),
         colors,
       ),
     );
-    lines.push(mutedHintLine(` Source: ${this.market.source}`, colors));
+    lines.push(mutedHintLine(tFormat(' Source: {source}', { source: this.market.source }), colors));
   }
 
   private renderOfficial(lines: string[], width: number): void {
@@ -774,7 +801,7 @@ export class PluginsPanelComponent extends Container implements Focusable {
   private renderThirdParty(lines: string[], width: number): void {
     if (this.opts.catalogIsDefault !== false) {
       const colors = currentTheme.palette;
-      lines.push(mutedHintLine(' Third-party plugins from our partners.', colors));
+      lines.push(mutedHintLine(t(' Third-party plugins from our partners.'), colors));
       lines.push('');
     }
     this.renderMarketplaceTab(lines, width, this.thirdPartyEntries);
@@ -796,15 +823,16 @@ export class PluginsPanelComponent extends Container implements Focusable {
             this.installedVersions,
             this.installedPluginId(entry),
           );
+    const statusText = marketplaceStatusText(status);
     const line =
-      prefix + labelStyle(entry.displayName) + '  ' + marketplaceStatusStyle(status, colors)(status);
+      prefix + labelStyle(entry.displayName) + '  ' + marketplaceStatusStyle(status, colors)(statusText);
     const descWidth = Math.max(1, width - 4);
     const out = [line];
     const description =
       this.activeTab.id === 'official'
         ? officialMarketplaceEntryDescription(entry)
         : marketplaceEntryDescription(entry);
-    for (const descLine of wrapOverviewDescription(description, descWidth)) {
+    for (const descLine of wrapOverviewDescription(t(description), descWidth)) {
       out.push(mutedHintLine(`    ${descLine}`, colors));
     }
     return out;
@@ -812,7 +840,7 @@ export class PluginsPanelComponent extends Container implements Focusable {
 
   private renderCustom(lines: string[], width: number): void {
     const colors = currentTheme.palette;
-    lines.push(mutedHintLine(' Install from a GitHub URL (or zip URL / local path):', colors));
+    lines.push(mutedHintLine(t(' Install from a GitHub URL (or zip URL / local path):'), colors));
     lines.push('');
     lines.push(...renderUrlInputBox(this.customInput, this.focused, width, colors));
   }
@@ -821,9 +849,9 @@ export class PluginsPanelComponent extends Container implements Focusable {
     const colors = currentTheme.palette;
     const lines = [
       chalk.hex(colors.primary)('─'.repeat(width)),
-      chalk.hex(colors.primary).bold(' Plugins'),
+      chalk.hex(colors.primary).bold(t(' Plugins')),
       '',
-      chalk.hex(colors.textMuted)(`  Installing ${this.installing}…`),
+      chalk.hex(colors.textMuted)(tFormat('  Installing {name}…', { name: this.installing ?? '' })),
       '',
       chalk.hex(colors.primary)('─'.repeat(width)),
     ];
@@ -842,14 +870,14 @@ function buildMcpItems(info: PluginInfo): PluginsOverviewItem[] {
   items.push({
     value: 'back',
     kind: 'action',
-    label: 'Back to installed plugins',
-    description: 'Return to the local plugin manager.',
+    label: t('Back to installed plugins'),
+    description: t('Return to the local plugin manager.'),
   });
   return items;
 }
 
 function mcpServerDescription(server: PluginMcpServerInfo): string {
-  const action = server.enabled ? 'Enter/Space disable' : 'Enter/Space enable';
+  const action = server.enabled ? t('Enter/Space disable') : t('Enter/Space enable');
   if (server.transport === 'http' || server.transport === 'sse') {
     return `${action} · ${server.transport.toUpperCase()} · ${server.url ?? server.runtimeName}`;
   }
@@ -881,9 +909,9 @@ function officialMarketplaceEntryDescription(entry: PluginMarketplaceEntry): str
 }
 
 function marketplaceTierLabel(tier: PluginMarketplaceEntry['tier']): string {
-  if (tier === 'official') return 'Official plugin';
-  if (tier === 'curated') return 'Curated plugin';
-  return 'Plugin';
+  if (tier === 'official') return t('Official plugin');
+  if (tier === 'curated') return t('Curated plugin');
+  return t('Plugin');
 }
 
 function capabilityMarketplaceEntry(capability: CapabilityStatus): PluginMarketplaceEntry {
@@ -919,6 +947,20 @@ function marketplaceEntryStatus(
     case 'not-installed':
       return installStatus(entry);
   }
+}
+
+function marketplaceStatusText(status: string): string {
+  if (status.startsWith('update ')) {
+    const [local = '', latest = ''] = status.slice('update '.length).split(' → ');
+    return tFormat('update {local} → {latest}', { local, latest });
+  }
+  if (status.startsWith('installed · v')) {
+    return tFormat('installed · v{version}', { version: status.slice('installed · v'.length) });
+  }
+  if (status.startsWith('install v')) {
+    return tFormat('install v{version}', { version: status.slice('install v'.length) });
+  }
+  return t(status);
 }
 
 function sectionLabel(label: string, colors: ColorPalette): string {

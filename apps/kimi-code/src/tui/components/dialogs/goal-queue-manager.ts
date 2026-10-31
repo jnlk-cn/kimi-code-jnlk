@@ -15,6 +15,7 @@ import type {
   GoalQueueSnapshot,
   UpcomingGoal,
 } from '#/tui/goal-queue-store';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '#/tui/utils/printable-key';
 import { SearchableList } from '#/tui/utils/searchable-list';
@@ -115,17 +116,17 @@ export class GoalQueueManagerComponent extends Container implements Focusable {
   override render(width: number): string[] {
     const view = this.list.view();
     const hint = this.movingGoalId === undefined
-      ? '↑↓ navigate · Space select · E edit · D delete · Esc cancel'
-      : '↑↓ reorder · Space done · E edit · D delete · Esc cancel';
+      ? t('↑↓ navigate · Space select · E edit · D delete · Esc cancel')
+      : t('↑↓ reorder · Space done · E edit · D delete · Esc cancel');
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
-      currentTheme.boldFg('primary', ' Upcoming goals'),
+      currentTheme.boldFg('primary', t(' Upcoming goals')),
       currentTheme.fg('textMuted', ` ${hint}`),
       '',
     ];
 
     if (this.goals.length === 0) {
-      lines.push(currentTheme.fg('textMuted', '  No upcoming goals.'));
+      lines.push(currentTheme.fg('textMuted', t('  No upcoming goals.')));
     } else {
       for (let i = view.page.start; i < view.page.end; i++) {
         const goal = view.items[i];
@@ -136,7 +137,7 @@ export class GoalQueueManagerComponent extends Container implements Focusable {
       const below = view.items.length - view.page.end;
       if (below > 0) {
         lines.push('');
-        lines.push(currentTheme.fg('textMuted', ` ▼ ${String(below)} more`));
+        lines.push(currentTheme.fg('textMuted', tFormat(' ▼ {count} more', { count: below })));
       }
     }
 
@@ -150,7 +151,7 @@ export class GoalQueueManagerComponent extends Container implements Focusable {
     const pointer = selected ? SELECT_POINTER : ' ';
     const prefix = currentTheme.fg(selected ? 'primary' : 'textDim', `  ${pointer} `);
     const labelPrefix = `${String(index + 1)}. `;
-    const stateLabel = moving ? '  selected' : '';
+    const stateLabel = moving ? t('  selected') : '';
     const labelWidth = visibleWidth(labelPrefix);
     const stateWidth = visibleWidth(stateLabel);
     const objectiveWidth = Math.max(1, width - 5 - labelWidth - stateWidth);
@@ -247,21 +248,24 @@ export class GoalQueueEditDialogComponent extends Container implements Focusable
     const pad = '  ';
     const border = (s: string): string => currentTheme.fg('primary', s);
     const title = truncateToWidth(
-      currentTheme.boldFg('textStrong', 'Edit upcoming goal'),
+      currentTheme.boldFg('textStrong', t('Edit upcoming goal')),
       innerWidth,
       ELLIPSIS,
     );
     const subtitle = truncateToWidth(
       currentTheme.fg(
         this.error === undefined ? 'textDim' : 'warning',
-        this.error ?? 'Update the queued objective.',
+        this.error ?? t('Update the queued objective.'),
       ),
       innerWidth,
       ELLIPSIS,
     );
     const inputLines = this.input.render(innerWidth);
     const footer = truncateToWidth(
-      currentTheme.fg('textDim', 'Enter submit · Shift-Enter/Ctrl-J newline · Esc cancel'),
+      currentTheme.fg(
+        'textDim',
+        t('Enter submit · Shift-Enter/Ctrl-J newline · Esc cancel'),
+      ),
       innerWidth,
       ELLIPSIS,
     );
@@ -291,11 +295,14 @@ export class GoalQueueEditDialogComponent extends Container implements Focusable
   private submit(value: string): void {
     const objective = value.trim();
     if (objective.length === 0) {
-      this.error = 'Goal objective cannot be empty.';
+      this.error = t('Goal objective cannot be empty.');
       return;
     }
     if (objective.length > MAX_GOAL_OBJECTIVE_LENGTH) {
-      this.error = `Goal objective cannot exceed ${MAX_GOAL_OBJECTIVE_LENGTH} characters; put long content in a file and reference the file path.`;
+      this.error = tFormat(
+        'Goal objective cannot exceed {max} characters; put long content in a file and reference the file path.',
+        { max: MAX_GOAL_OBJECTIVE_LENGTH },
+      );
       return;
     }
     this.opts.onDone({ kind: 'save', goalId: this.opts.goal.id, objective });
@@ -390,7 +397,12 @@ class MultilineGoalInput {
     const rendered: string[] = [];
 
     if (range.start > 0) {
-      rendered.push(padInputLine(`  ${ELLIPSIS} ${String(range.start)} previous`, safeWidth));
+      rendered.push(
+        padInputLine(
+          tFormat('  {mark} {count} previous', { mark: ELLIPSIS, count: range.start }),
+          safeWidth,
+        ),
+      );
     }
 
     for (let lineIndex = range.start; lineIndex < range.end; lineIndex++) {
@@ -405,7 +417,12 @@ class MultilineGoalInput {
 
     const remaining = logicalLines.length - range.end;
     if (remaining > 0) {
-      rendered.push(padInputLine(`  ${ELLIPSIS} ${String(remaining)} more`, safeWidth));
+      rendered.push(
+        padInputLine(
+          tFormat('  {mark} {count} more lines', { mark: ELLIPSIS, count: remaining }),
+          safeWidth,
+        ),
+      );
     }
 
     return rendered;

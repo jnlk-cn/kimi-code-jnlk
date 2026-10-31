@@ -12,8 +12,10 @@ import {
   type SessionStatus,
   type ThinkingEffort,
 } from '@moonshot-ai/kimi-code-sdk';
+import { visibleWidth } from '@moonshot-ai/pi-tui';
 
 import { PRODUCT_NAME } from '#/constant/app';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { PERMISSION_MODE_DISPLAY_NAMES } from '#/tui/utils/permission-mode';
 import {
@@ -68,10 +70,13 @@ function displayModelName(alias: string, models: Record<string, ModelAlias>): st
 
 function formatModelStatus(options: StatusReportOptions): string {
   const model = options.status?.model ?? options.model;
-  if (model.trim().length === 0) return 'not set';
+  if (model.trim().length === 0) return t('not set');
 
   const effort = options.status?.thinkingEffort ?? options.thinkingEffort;
-  return `${displayModelName(model, options.availableModels)} (thinking ${effort})`;
+  return tFormat('{model} (thinking {effort})', {
+    model: displayModelName(model, options.availableModels),
+    effort,
+  });
 }
 
 function addFieldRows(
@@ -81,11 +86,15 @@ function addFieldRows(
   value: Colorize,
   errorStyle: Colorize,
 ): void {
-  const labelWidth = Math.max(10, ...rows.map((row) => row.label.length));
+  const labelWidth = Math.max(10, ...rows.map((row) => visibleWidth(row.label)));
   for (const row of rows) {
     const colorize = row.severity === 'error' ? errorStyle : value;
-    lines.push(`  ${muted(row.label.padEnd(labelWidth, ' '))}  ${colorize(row.value)}`);
+    lines.push(`  ${muted(padToWidth(row.label, labelWidth))}  ${colorize(row.value)}`);
   }
+}
+
+function padToWidth(text: string, width: number): string {
+  return text + ' '.repeat(Math.max(0, width - visibleWidth(text)));
 }
 
 function contextValues(options: StatusReportOptions): {
@@ -111,21 +120,21 @@ export function buildStatusReportLines(options: StatusReportOptions): string[] {
   const permission = options.status?.permission ?? options.permissionMode;
   const planMode = options.status?.planMode ?? options.planMode;
   const towerMode = options.status?.towerMode ?? options.towerMode;
-  const sessionId = options.sessionId.trim().length > 0 ? options.sessionId : 'none';
+  const sessionId = options.sessionId.trim().length > 0 ? options.sessionId : t('none');
   const rows: FieldRow[] = [
-    { label: 'Model', value: formatModelStatus(options) },
-    { label: 'Directory', value: options.workDir },
-    { label: 'Permissions', value: PERMISSION_MODE_DISPLAY_NAMES[permission] },
-    { label: 'Plan mode', value: planMode ? 'on' : 'off' },
+    { label: t('Model'), value: formatModelStatus(options) },
+    { label: t('Directory'), value: options.workDir },
+    { label: t('Permissions'), value: PERMISSION_MODE_DISPLAY_NAMES[permission] },
+    { label: t('Plan mode'), value: planMode ? t('on') : t('off') },
   ];
   if (options.towerAvailable) {
-    rows.push({ label: 'Tower mode', value: towerMode ? 'on' : 'off' });
+    rows.push({ label: t('Tower mode'), value: towerMode ? t('on') : t('off') });
   }
-  rows.push({ label: 'Session', value: sessionId });
+  rows.push({ label: t('Session'), value: sessionId });
   const title = options.sessionTitle?.trim();
-  if (title !== undefined && title.length > 0) rows.push({ label: 'Title', value: title });
+  if (title !== undefined && title.length > 0) rows.push({ label: t('Title'), value: title });
   if (options.statusError !== undefined) {
-    rows.push({ label: 'Warning', value: options.statusError, severity: 'error' });
+    rows.push({ label: t('Warning'), value: options.statusError, severity: 'error' });
   }
 
   const lines: string[] = [
@@ -136,7 +145,7 @@ export function buildStatusReportLines(options: StatusReportOptions): string[] {
 
   const { ratio, tokens, maxTokens } = contextValues(options);
   lines.push('');
-  lines.push(accent('Context window'));
+  lines.push(accent(t('Context window')));
   if (maxTokens > 0) {
     const safeRatio = safeUsageRatio(ratio);
     const bar = renderProgressBar(safeRatio, 20);
@@ -146,7 +155,7 @@ export function buildStatusReportLines(options: StatusReportOptions): string[] {
         muted(`(${formatTokenCount(tokens)} / ${formatTokenCount(maxTokens)})`),
     );
   } else {
-    lines.push(`  ${muted('No context window data available.')}`);
+    lines.push(`  ${muted(t('No context window data available.'))}`);
   }
 
   const managedSection = buildManagedUsageReportLines({

@@ -29,6 +29,7 @@ import type {
 } from '@moonshot-ai/kimi-code-sdk';
 
 import { SELECT_POINTER } from '@/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '@/tui/utils/printable-key';
 import { sanitizeShellOutput } from '#/tui/utils/shell-output';
@@ -108,13 +109,13 @@ function isTerminal(status: BackgroundTaskStatus): boolean {
 function formatRelativeTime(ts: number | null | undefined): string {
   if (ts === null || ts === undefined || !Number.isFinite(ts) || ts <= 0) return '';
   const diffSec = Math.floor(Math.max(0, Date.now() - ts) / 1000);
-  if (diffSec < 60) return 'just now';
+  if (diffSec < 60) return t('just now');
   const minutes = Math.floor(diffSec / 60);
-  if (minutes < 60) return `${String(minutes)}m ago`;
+  if (minutes < 60) return tFormat('{count}m ago', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)}h ago`;
+  if (hours < 24) return tFormat('{count}h ago', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${String(days)}d ago`;
+  return tFormat('{count}d ago', { count: days });
 }
 
 function singleLine(text: string): string {
@@ -342,10 +343,10 @@ export class TasksBrowserApp extends Container implements Focusable {
   // ── header / footer ──────────────────────────────────────────────────
 
   private renderHeader(width: number): string {
-    const title = currentTheme.boldFg('primary', ' TASK BROWSER ');
+    const title = currentTheme.boldFg('primary', t(' TASK BROWSER '));
     const filterText = currentTheme.fg(
       'textMuted',
-      ` filter=${this.props.filter === 'all' ? 'ALL' : 'ACTIVE'} `,
+      tFormat('filter={mode}', { mode: t(this.props.filter === 'all' ? 'ALL' : 'ACTIVE') }),
     );
     // Count only the tasks actually listed (background tasks after the
     // foreground-task filter), so a foreground-only session doesn't read
@@ -354,14 +355,24 @@ export class TasksBrowserApp extends Container implements Focusable {
     const counts = countByStatus(visible);
     const countSegments: string[] = [];
     if (counts.running > 0)
-      countSegments.push(currentTheme.fg('success', ` ${String(counts.running)} running `));
+      countSegments.push(
+        currentTheme.fg('success', tFormat(' {count} running ', { count: counts.running })),
+      );
     if (counts.completed > 0)
-      countSegments.push(currentTheme.fg('textDim', ` ${String(counts.completed)} completed `));
+      countSegments.push(
+        currentTheme.fg('textDim', tFormat(' {count} completed ', { count: counts.completed })),
+      );
     if (counts.terminalFailed > 0)
       countSegments.push(
-        currentTheme.fg('error', ` ${String(counts.terminalFailed)} interrupted `),
+        currentTheme.fg(
+          'error',
+          tFormat(' {count} interrupted ', { count: counts.terminalFailed }),
+        ),
       );
-    const totals = currentTheme.fg('textMuted', ` ${String(visible.length)} total `);
+    const totals = currentTheme.fg(
+      'textMuted',
+      tFormat(' {count} total ', { count: visible.length }),
+    );
 
     const composed = title + filterText + countSegments.join('') + totals;
     return fitExactly(composed, width);
@@ -374,18 +385,18 @@ export class TasksBrowserApp extends Container implements Focusable {
     if (this.pendingStopTaskId !== undefined) {
       const warn = (text: string): string => currentTheme.boldFg('warning', text);
       const line =
-        ` ${warn('Stop')} ${currentTheme.fg('text', this.pendingStopTaskId)}? ` +
-        `${key('Y')} ${dim('confirm')}  ${key('N')}${dim('/')}${key('esc')} ${dim('cancel')} `;
+        ` ${warn(t('Stop'))} ${currentTheme.fg('text', this.pendingStopTaskId)}? ` +
+        `${key('Y')} ${dim(t('confirm'))}  ${key('N')}${dim('/')}${key('esc')} ${dim(t('cancel'))} `;
       return fitExactly(line, width);
     }
 
     const parts = [
-      ` ${key('↑↓')} ${dim('select')}`,
-      `${key('Enter/O')} ${dim('output')}`,
-      `${key('S')} ${dim('stop')}`,
-      `${key('R')} ${dim('refresh')}`,
-      `${key('Tab')} ${dim('filter')}`,
-      `${key('Q/Esc')} ${dim('cancel')} `,
+      ` ${key('↑↓')} ${dim(t('select'))}`,
+      `${key('Enter/O')} ${dim(t('output'))}`,
+      `${key('S')} ${dim(t('stop'))}`,
+      `${key('R')} ${dim(t('refresh'))}`,
+      `${key('Tab')} ${dim(t('filter'))}`,
+      `${key('Q/Esc')} ${dim(t('cancel'))} `,
     ];
     const left = parts.join('  ');
     const flash = this.props.flashMessage;
@@ -447,14 +458,14 @@ export class TasksBrowserApp extends Container implements Focusable {
   // ── left: task list frame ────────────────────────────────────────────
 
   private renderListFrame(width: number, height: number): string[] {
-    const title = `Tasks [${this.props.filter}]`;
+    const title = tFormat('Tasks [{filter}]', { filter: this.props.filter });
     const innerHeight = Math.max(0, height - 2);
 
     if (this.sortedVisible.length === 0) {
       const empty =
         this.props.filter === 'active'
-          ? 'No active tasks. Tab = show all.'
-          : 'No background tasks in this session.';
+          ? t('No active tasks. Tab = show all.')
+          : t('No background tasks in this session.');
       const lines: string[] = [currentTheme.fg('textMuted', empty)];
       while (lines.length < innerHeight) lines.push('');
       return this.renderFrame(title, lines, width, height);
@@ -493,7 +504,7 @@ export class TasksBrowserApp extends Container implements Focusable {
       : currentTheme.fg(idColor, task.taskId);
     const idPad = ' '.repeat(Math.max(0, 17 - task.taskId.length));
 
-    const status = STATUS_LABEL[task.status];
+    const status = t(STATUS_LABEL[task.status]);
     const statusBadge = currentTheme.fg(statusColor(task.status), status);
 
     const prefix = `${pointerStyled}${idText}${idPad} ${statusBadge}`;
@@ -504,7 +515,7 @@ export class TasksBrowserApp extends Container implements Focusable {
     const description =
       singleLine(task.description) ||
       (task.kind === 'process' ? singleLine(task.command) : '') ||
-      '(no description)';
+      t('(no description)');
     const desc = truncateToWidth(description, descBudget, ELLIPSIS);
     return fitExactly(`${prefix} ${currentTheme.fg('text', desc)}`, innerWidth);
   }
@@ -575,18 +586,24 @@ export class TasksBrowserApp extends Container implements Focusable {
     const innerHeight = Math.max(0, height - 2);
     const task = this.sortedVisible[this.selectedIndex];
     if (task === undefined) {
-      const empty = currentTheme.fg('textMuted', 'Select a task from the list.');
+      const empty = currentTheme.fg('textMuted', t('Select a task from the list.'));
       const lines: string[] = [empty];
       while (lines.length < innerHeight) lines.push('');
-      return this.renderFrame('Detail', lines, width, height);
+      return this.renderFrame(t('Detail'), lines, width, height);
     }
 
-    const label = (text: string): string => currentTheme.fg('textMuted', text.padEnd(14));
+    const label = (text: string): string => {
+      const translated = t(text);
+      return currentTheme.fg(
+        'textMuted',
+        translated + ' '.repeat(Math.max(0, 14 - visibleWidth(translated))),
+      );
+    };
     const value = (text: string): string => currentTheme.fg('text', text);
 
     const lines: string[] = [
       `${label('Task ID:')}${value(task.taskId)}`,
-      `${label('Status:')}${currentTheme.fg(statusColor(task.status), STATUS_LABEL[task.status])}`,
+      `${label('Status:')}${currentTheme.fg(statusColor(task.status), t(STATUS_LABEL[task.status]))}`,
       `${label('Description:')}${value(singleLine(task.description) || '—')}`,
     ];
     if (task.kind === 'process' && task.command && task.command !== task.description) {
@@ -612,9 +629,9 @@ export class TasksBrowserApp extends Container implements Focusable {
     }
     const timing =
       task.status === 'running'
-        ? `running ${formatRelativeTime(task.startedAt)}`
+        ? tFormat('running {time}', { time: formatRelativeTime(task.startedAt) })
         : task.endedAt !== null && task.endedAt !== undefined
-          ? `finished ${formatRelativeTime(task.endedAt)}`
+          ? tFormat('finished {time}', { time: formatRelativeTime(task.endedAt) })
           : '';
     if (timing.length > 0) lines.push(`${label('Time:')}${currentTheme.fg('textMuted', timing)}`);
     if (task.kind === 'process' && task.pid > 0) {
@@ -627,29 +644,29 @@ export class TasksBrowserApp extends Container implements Focusable {
       lines.push(`${label('Reason:')}${currentTheme.fg('textMuted', task.stopReason)}`);
     }
     while (lines.length < innerHeight) lines.push('');
-    return this.renderFrame('Detail', lines, width, height);
+    return this.renderFrame(t('Detail'), lines, width, height);
   }
 
   private renderPreviewFrame(width: number, height: number): string[] {
     const innerHeight = Math.max(0, height - 2);
     const task = this.sortedVisible[this.selectedIndex];
     if (task === undefined) {
-      const lines: string[] = [currentTheme.fg('textMuted', 'No task selected.')];
+      const lines: string[] = [currentTheme.fg('textMuted', t('No task selected.'))];
       while (lines.length < innerHeight) lines.push('');
-      return this.renderFrame('Preview Output', lines, width, height);
+      return this.renderFrame(t('Preview Output'), lines, width, height);
     }
 
     let body: string;
-    if (this.props.tailLoading) body = '[loading…]';
+    if (this.props.tailLoading) body = t('[loading…]');
     else if (this.props.tailOutput === undefined || this.props.tailOutput.length === 0)
-      body = '[no output captured]';
+      body = t('[no output captured]');
     else body = sanitizeShellOutput(this.props.tailOutput);
 
     const rawLines = body.split('\n');
     const tailLines = rawLines.slice(-innerHeight);
     const styled = tailLines.map((line) => currentTheme.fg('textDim', line));
     while (styled.length < innerHeight) styled.push('');
-    return this.renderFrame('Preview Output', styled, width, height);
+    return this.renderFrame(t('Preview Output'), styled, width, height);
   }
 
   // ── too-small fallback ──────────────────────────────────────────────
@@ -658,7 +675,10 @@ export class TasksBrowserApp extends Container implements Focusable {
     const lines: string[] = [];
     const msg = currentTheme.fg(
       'error',
-      `Terminal too small (need ≥ ${String(MIN_WIDTH)} × ${String(MIN_HEIGHT)})`,
+      tFormat('Terminal too small (need ≥ {width} × {height})', {
+        width: MIN_WIDTH,
+        height: MIN_HEIGHT,
+      }),
     );
     lines.push(fitExactly(msg, width));
     for (let i = 1; i < rows; i++) lines.push(' '.repeat(width));

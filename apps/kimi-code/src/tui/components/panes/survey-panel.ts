@@ -2,6 +2,8 @@ import type { RatingResponse } from '@moonshot-ai/kimi-code-product/session-rati
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@moonshot-ai/pi-tui';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import {
   SURVEY_MIN_OPTIONS_WIDTH,
   SURVEY_OPTION_GAP,
@@ -42,16 +44,19 @@ export class SurveyPanelComponent implements Component {
         return this.renderOpen(width);
       case 'pending': {
         const label =
-          this.view.response === undefined ? '' : RESPONSE_LABELS[this.view.response];
-        return this.renderStatusLine(width, currentTheme.fg('textDim', `Feedback: ${label} · [escape: undo]`));
+          this.view.response === undefined ? '' : t(RESPONSE_LABELS[this.view.response]);
+        return this.renderStatusLine(
+          width,
+          currentTheme.fg('textDim', tFormat('Feedback: {label} · [escape: undo]', { label })),
+        );
       }
       case 'thanks':
-        return this.renderStatusLine(width, currentTheme.fg('success', THANKS));
+        return this.renderStatusLine(width, currentTheme.fg('success', t(THANKS)));
     }
   }
 
   private renderOpen(width: number): string[] {
-    const title = wrapTextWithAnsi(SURVEY_QUESTION, Math.max(1, width - DOT_PREFIX_WIDTH)).map(
+    const title = wrapTextWithAnsi(t(SURVEY_QUESTION), Math.max(1, width - DOT_PREFIX_WIDTH)).map(
       (line, index) =>
         (index === 0 ? this.dotPrefix() : ' '.repeat(DOT_PREFIX_WIDTH)) +
         currentTheme.boldFg('textStrong', line),
@@ -78,13 +83,13 @@ export class SurveyPanelComponent implements Component {
   }
 
   private styledOptions(): string {
-    return SURVEY_OPTION_LABELS.map((label, index) => this.styleOption(label, index)).join(
+    return SURVEY_OPTION_LABELS.map((label, index) => this.styleOption(t(label), index)).join(
       ' '.repeat(SURVEY_OPTION_GAP),
     );
   }
 
   private styledOptionsPerLine(): string[] {
-    return SURVEY_OPTION_LABELS.map((label, index) => this.styleOption(label, index));
+    return SURVEY_OPTION_LABELS.map((label, index) => this.styleOption(t(label), index));
   }
 
   private styleOption(label: string, index: number): string {

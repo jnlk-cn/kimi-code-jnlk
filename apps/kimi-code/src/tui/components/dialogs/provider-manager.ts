@@ -46,6 +46,7 @@ import {
 
 import { DEFAULT_OAUTH_PROVIDER_NAME } from '#/constant/app';
 import { CURRENT_MARK, SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '#/tui/utils/printable-key';
 import { pageView, type PageView } from '#/tui/utils/paging';
@@ -205,7 +206,7 @@ function buildRows(opts: ProviderManagerOptions): readonly Row[] {
     });
   }
 
-  return [...sources, { kind: 'add', id: '__add__', label: ADD_ROW_LABEL }];
+  return [...sources, { kind: 'add', id: '__add__', label: t(ADD_ROW_LABEL) }];
 }
 
 export class ProviderManagerComponent extends Container implements Focusable {
@@ -325,8 +326,11 @@ export class ProviderManagerComponent extends Container implements Focusable {
     const ids = selected.providerIds;
     const prompt =
       ids.length === 1
-        ? `Delete platform "${selected.label}"?`
-        : `Delete platform "${selected.label}" and all ${String(ids.length)} providers?`;
+        ? tFormat('Delete platform "{name}"?', { name: selected.label })
+        : tFormat('Delete platform "{name}" and all {count} providers?', {
+            name: selected.label,
+            count: ids.length,
+          });
     this.confirm = {
       label: prompt,
       providerIds: ids,
@@ -360,13 +364,13 @@ export class ProviderManagerComponent extends Container implements Focusable {
     // border under the title.
     const border = currentTheme.fg('primary', '─'.repeat(width));
     lines.push(border);
-    lines.push(currentTheme.boldFg('primary', ' Providers'));
-    lines.push(currentTheme.fg('textMuted', ' ' + HEADER_HINT));
+    lines.push(currentTheme.boldFg('primary', t(' Providers')));
+    lines.push(currentTheme.fg('textMuted', ' ' + t(HEADER_HINT)));
     lines.push('');
 
     const rows = this.rows;
     if (rows.length === 0) {
-      lines.push(currentTheme.fg('textMuted', '  No providers configured.'));
+      lines.push(currentTheme.fg('textMuted', t('  No providers configured.')));
     } else {
       const view = this.page();
       for (let i = view.start; i < view.end; i++) {
@@ -388,7 +392,7 @@ export class ProviderManagerComponent extends Container implements Focusable {
         lines.push(
           currentTheme.fg(
             'textMuted',
-            ` Page ${String(view.page + 1)}/${String(view.pageCount)}`,
+            tFormat(' Page {page}/{total}', { page: view.page + 1, total: view.pageCount }),
           ),
         );
       }

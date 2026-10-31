@@ -15,6 +15,7 @@ import {
   type TUI,
 } from '@moonshot-ai/pi-tui';
 
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { createEditorTheme } from '#/tui/theme/pi-tui-theme';
 import { printableChar } from '#/tui/utils/printable-key';
@@ -360,7 +361,7 @@ export class CustomEditor extends Editor {
       (s: string) => this.borderColor(s),
       {
         connectedAbove: this.connectedAbove && !this.borderHighlighted,
-        label: isBash ? ` ${currentTheme.boldFg('shellMode', '! shell mode')} ` : undefined,
+        label: isBash ? ` ${currentTheme.boldFg('shellMode', t('! shell mode'))} ` : undefined,
       },
     );
     return inactive ? framed.map((line) => currentTheme.fade(line)) : framed;

@@ -12,6 +12,8 @@ import type {
   OpenPlatformDefinition,
 } from '@moonshot-ai/kimi-code-oauth';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import { ApiKeyInputDialogComponent, type ApiKeyInputResult } from '../components/dialogs/api-key-input-dialog';
 import { ChoicePickerComponent, type ChoiceOption } from '../components/dialogs/choice-picker';
 import { FeedbackInputDialogComponent, type FeedbackInputDialogResult } from '../components/dialogs/feedback-input-dialog';
@@ -44,7 +46,7 @@ export function promptLogoutProviderSelection(
 ): Promise<string | undefined> {
   return new Promise((resolve) => {
     const picker = new ChoicePickerComponent({
-      title: 'Select a provider to log out',
+      title: t('Select a provider to log out'),
       options,
       currentValue,
       onSelect: (value) => {
@@ -96,12 +98,18 @@ export function promptFeedbackAttachment(
   host: SlashCommandHost,
   excludeCodebase = false,
 ): Promise<FeedbackAttachmentLevel | undefined> {
-  const options = excludeCodebase
-    ? FEEDBACK_ATTACHMENT_OPTIONS.filter((option) => option.value !== 'logs+codebase')
-    : FEEDBACK_ATTACHMENT_OPTIONS;
+  const options = (
+    excludeCodebase
+      ? FEEDBACK_ATTACHMENT_OPTIONS.filter((option) => option.value !== 'logs+codebase')
+      : FEEDBACK_ATTACHMENT_OPTIONS
+  ).map((option) => ({
+    ...option,
+    label: t(option.label),
+    description: option.description === undefined ? undefined : t(option.description),
+  }));
   return new Promise((resolve) => {
     const picker = new ChoicePickerComponent({
-      title: 'Share diagnostic info to help us investigate?',
+      title: t('Share diagnostic info to help us investigate?'),
       options,
       onSelect: (value) => {
         host.restoreEditor();
@@ -125,7 +133,7 @@ export function promptApiKey(
   return new Promise<string | undefined>((resolve) => {
     const dialog = new ApiKeyInputDialogComponent(
       platformName,
-      subtitleLines,
+      subtitleLines.map((line) => t(line)),
       (result: ApiKeyInputResult) => {
         host.restoreEditor();
         resolve(result.kind === 'ok' ? result.value : undefined);
@@ -142,14 +150,14 @@ export function promptSshPassword(host: SlashCommandHost, environmentId: string)
   return new Promise<string | undefined>((resolve) => {
     const dialog = new ApiKeyInputDialogComponent(
       environmentId,
-      ['The password is used only in this process and is never saved.'],
+      [t('The password is used only in this process and is never saved.')],
       (result: ApiKeyInputResult) => {
         host.restoreEditor();
         resolve(result.kind === 'ok' ? result.value : undefined);
       },
       {
-        title: `Enter SSH password for ${environmentId}`,
-        emptyHint: 'SSH password cannot be empty.',
+        title: tFormat('Enter SSH password for {host}', { host: environmentId }),
+        emptyHint: t('SSH password cannot be empty.'),
         trimValue: false,
       },
     );
@@ -169,15 +177,15 @@ export function promptBaseUrl(host: SlashCommandHost, platformName: string): Pro
   return new Promise((resolve) => {
     const dialog = new ApiKeyInputDialogComponent(
       platformName,
-      ['The catalog declares no endpoint for this provider — enter its base URL.'],
+      [t('The catalog declares no endpoint for this provider — enter its base URL.')],
       (result: ApiKeyInputResult) => {
         host.restoreEditor();
         resolve(result.kind === 'ok' ? result.value : undefined);
       },
       {
-        title: `Enter base URL for ${platformName}`,
+        title: tFormat('Enter base URL for {provider}', { provider: platformName }),
         mask: false,
-        emptyHint: 'Base URL cannot be empty.',
+        emptyHint: t('Base URL cannot be empty.'),
       },
     );
     host.mountEditorReplacement(dialog);
@@ -197,13 +205,13 @@ export function promptCatalogProviderSelection(host: SlashCommandHost, catalog: 
       .toSorted((a, b) => a.label.localeCompare(b.label));
 
     if (options.length === 0) {
-      host.showError('Catalog has no providers with supported wire types.');
+      host.showError(t('Catalog has no providers with supported wire types.'));
       resolve(undefined);
       return;
     }
 
     const picker = new ChoicePickerComponent({
-      title: 'Select a provider',
+      title: t('Select a provider'),
       options,
       searchable: true,
       onSelect: (value) => {

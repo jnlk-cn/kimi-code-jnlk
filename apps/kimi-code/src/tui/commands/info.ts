@@ -35,6 +35,7 @@ import {
 import { DEFAULT_OAUTH_PROVIDER_NAME, isManagedUsageProvider } from '../constant/kimi-tui';
 import { submitFeedbackWithAttachments } from '../../feedback/feedback-attachments';
 import { formatErrorMessage } from '../utils/event-payload';
+import { t, tFormat } from '../i18n';
 import { openUrl } from '#/utils/open-url';
 import { promptFeedbackAttachment, promptFeedbackInput } from './prompts';
 import type { SlashCommandHost } from './dispatch';
@@ -45,7 +46,7 @@ import type { SlashCommandHost } from './dispatch';
 
 export async function handleFeedbackCommand(host: SlashCommandHost): Promise<void> {
   const fallback = (reason: string): void => {
-    host.showStatus(reason);
+    host.showStatus(t(reason));
     host.showStatus(FEEDBACK_ISSUE_URL);
     openUrl(FEEDBACK_ISSUE_URL);
   };
@@ -66,7 +67,7 @@ export async function handleFeedbackCommand(host: SlashCommandHost): Promise<voi
     return;
   }
   if (!signedIn) {
-    host.showStatus(FEEDBACK_STATUS_NOT_SIGNED_IN);
+    host.showStatus(t(FEEDBACK_STATUS_NOT_SIGNED_IN));
     host.showStatus(kimiCodeSignupUrl());
     host.showStatus(FEEDBACK_ISSUE_URL);
     return;
@@ -75,7 +76,7 @@ export async function handleFeedbackCommand(host: SlashCommandHost): Promise<voi
   // Stage 1: collect the free-form feedback text.
   const input = await promptFeedbackInput(host);
   if (input === undefined) {
-    host.showStatus(FEEDBACK_STATUS_CANCELLED);
+    host.showStatus(t(FEEDBACK_STATUS_CANCELLED));
     return;
   }
 
@@ -88,17 +89,19 @@ export async function handleFeedbackCommand(host: SlashCommandHost): Promise<voi
     host.state.appState.environment.environmentId !== 'local';
   if (remoteSession) {
     host.showStatus(
-      'Codebase attachment is not supported for remote sessions — the scanner only reads the local filesystem.',
+      t(
+        'Codebase attachment is not supported for remote sessions — the scanner only reads the local filesystem.',
+      ),
     );
   }
   const level = await promptFeedbackAttachment(host, remoteSession);
   if (level === undefined) {
-    host.showStatus(FEEDBACK_STATUS_CANCELLED);
+    host.showStatus(t(FEEDBACK_STATUS_CANCELLED));
     return;
   }
 
   const version = withFeedbackVersionPrefix(host.state.appState.version);
-  const spinner = host.showLoginProgressSpinner(FEEDBACK_STATUS_SUBMITTING);
+  const spinner = host.showLoginProgressSpinner(t(FEEDBACK_STATUS_SUBMITTING));
   // Guarantee the spinner's underlying setInterval is always cleared, even when
   // submitFeedback throws — otherwise the interval (and its per-frame
   // requestRender) leaks for the rest of the session.
@@ -134,15 +137,15 @@ export async function handleFeedbackCommand(host: SlashCommandHost): Promise<voi
       attachmentFailed = true;
     }
 
-    stopSpinner({ ok: true, label: FEEDBACK_STATUS_SUCCESS });
+    stopSpinner({ ok: true, label: t(FEEDBACK_STATUS_SUCCESS) });
     host.showStatus(feedbackSessionLine(host.state.appState.sessionId));
     host.showStatus(feedbackIdLine(res.feedbackId));
     host.track(FEEDBACK_TELEMETRY_EVENT);
     if (attachmentFailed) {
-      host.showStatus(FEEDBACK_STATUS_UPLOAD_FAILED);
+      host.showStatus(t(FEEDBACK_STATUS_UPLOAD_FAILED));
     }
   } catch (error) {
-    stopSpinner({ ok: false, label: FEEDBACK_STATUS_NETWORK_ERROR });
+    stopSpinner({ ok: false, label: t(FEEDBACK_STATUS_NETWORK_ERROR) });
     fallback(FEEDBACK_STATUS_FALLBACK);
     throw error;
   }
@@ -213,7 +216,11 @@ export async function showStatusReport(host: SlashCommandHost): Promise<void> {
     managedUsage: managedUsage?.usage,
     managedUsageError: managedUsage?.error,
   };
-  const panel = new UsagePanelComponent(() => buildStatusReportLines(reportArgs), 'primary', ' Status ');
+  const panel = new UsagePanelComponent(
+    () => buildStatusReportLines(reportArgs),
+    'primary',
+    ` ${t('Status')} `,
+  );
   host.state.transcriptContainer.addChild(panel);
   host.state.ui.requestRender();
 }
@@ -229,7 +236,9 @@ export async function showMcpServers(host: SlashCommandHost): Promise<void> {
       servers = await host.harness.listWorkspaceMcpServers(host.state.appState.workDir);
     }
   } catch (error) {
-    host.showError(`Failed to load MCP servers: ${formatErrorMessage(error)}`);
+    host.showError(
+      tFormat('Failed to load MCP servers: {error}', { error: formatErrorMessage(error) }),
+    );
     return;
   }
 
