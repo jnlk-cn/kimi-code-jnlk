@@ -64,7 +64,7 @@ function rgBinaryName(): string {
 function getShareDir(): string {
   const override = process.env['KIMI_CODE_HOME'];
   if (override !== undefined && override !== '') return override;
-  return join(homedir(), '.kimi-code');
+  return join(homedir(), '.ganycode');
 }
 
 function rgBaseUrl(resolveRegion: (() => KimiRegion | undefined) | undefined): string {

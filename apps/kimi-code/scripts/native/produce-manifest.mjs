@@ -29,6 +29,7 @@ import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 import { fail, run } from './exec.mjs';
+import { executableName } from './paths.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -70,10 +71,10 @@ for (const sumFile of sumFiles.sort()) {
   // kimi-code-darwin-arm64.zip.sha256 → darwin-arm64
   const target = basename(sumFile, '.sha256').replace(/^kimi-code-/, '').replace(/\.zip$/, '');
   const zipName = `kimi-code-${target}.zip`;
-  const exeName = target.startsWith('win32') ? 'kimi.exe' : 'kimi';
+  const exeName = executableName(target.startsWith('win32') ? 'win32' : 'linux');
   // The CDN bare-binary layout carries the .exe suffix on Windows
   // (src/constant/app.ts); the updater's fallback downloads this filename.
-  const binaryName = target.startsWith('win32') ? `kimi-code-${target}.exe` : `kimi-code-${target}`;
+  const binaryName = target.startsWith('win32') ? `ganycode-${target}.exe` : `ganycode-${target}`;
   const artifactBase = `kimi-code-${target}`;
   const zstName = `${artifactBase}.zst`;
   const tarballName = `${artifactBase}.tar.gz`;

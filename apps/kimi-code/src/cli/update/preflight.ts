@@ -8,6 +8,7 @@ import {
   kimiCodeOfficialInstallUrl,
   nativeInstallCommandUnix,
   nativeInstallCommandWin,
+  PRODUCT_NAME,
 } from '#/constant/app';
 import { loadTuiConfig } from '#/tui/config';
 import { resolveCommandPath } from '#/utils/process/resolve-command';
@@ -235,7 +236,7 @@ export function renderManualUpdateMessage(
   const target = plan.target;
   if (plan.kind === 'switch-channel') {
     return (
-      `Kimi Code release channel switch requested (${currentVersion} -> ${target.version}).\n` +
+      `${PRODUCT_NAME} release channel switch requested (${currentVersion} -> ${target.version}).\n` +
       `Release channel: ${plan.sourceChannel} -> ${target.channel}\n` +
       `Detected install source: ${sourceDesc}\n` +
       `To switch manually, run: ${installCommand}\n` +

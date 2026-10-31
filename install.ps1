@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  kimi-code-jnlk installer for Windows (PowerShell 5.1+).
+  GanyCode installer for Windows (PowerShell 5.1+). Installs alongside Kimi Code without touching it.
 
 .EXAMPLE
   irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
@@ -12,7 +12,7 @@
 .NOTES
   Optional env:
     KIMI_VERSION         GitHub Release tag (e.g. v2.4.0-jnlk.0); if unset, fetch latest release
-    KIMI_INSTALL_DIR     Installation directory, default %USERPROFILE%\.kimi-code
+    KIMI_INSTALL_DIR     Installation directory, default %USERPROFILE%\.ganycode
     KIMI_NO_MODIFY_PATH  Skip PATH modification when set to a non-empty value
 #>
 
@@ -27,7 +27,7 @@ $KimiGithubReleases = "https://github.com/$KimiGithubRepo/releases/download"
 $GithubHeaders = @{ 'User-Agent' = 'kimi-code-jnlk-installer' }
 
 $KimiVersion    = $env:KIMI_VERSION
-$KimiInstallDir = if ($env:KIMI_INSTALL_DIR) { $env:KIMI_INSTALL_DIR } else { Join-Path $env:USERPROFILE '.kimi-code' }
+$KimiInstallDir = if ($env:KIMI_INSTALL_DIR) { $env:KIMI_INSTALL_DIR } else { Join-Path $env:USERPROFILE '.ganycode' }
 $KimiNoPath     = $env:KIMI_NO_MODIFY_PATH
 
 function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
@@ -96,7 +96,7 @@ function Add-ToUserPath([string]$dir) {
 # prepends $KimiInstallDir\bin to PATH, so reachability is guaranteed in any
 # fresh terminal — no first-match check needed.
 
-$LegacyBin = 'kimi'
+$LegacyBin = 'ganycode'
 $LegacyRename = 'kimi-legacy'
 $PythonMarker = 'kimi_cli'
 # 256 KiB sniff window: `uv tool install` on Windows produces a Rust launcher
@@ -346,8 +346,12 @@ Write-Step "Fetching manifest $manifestUrl"
 $manifest = Invoke-RestMethod -Uri $manifestUrl -Headers $GithubHeaders
 $entry = $manifest.platforms.$target
 if (-not $entry) { Die "platform $target not found in manifest" }
-$filename = $entry.filename
-$checksum = $entry.checksum
+# 2.4.0+ manifests keep the downloadable archive under `compressed` (the bare
+# binary is `filename`); releases before that pointed `filename` at a zip.
+$archive = if ($entry.compressed) { $entry.compressed } else { $entry }
+$filename = $archive.filename
+$checksum = $archive.checksum
+if (-not $filename) { Die "no archive listed for $target in manifest" }
 if ($checksum -notmatch '^[a-f0-9]{64}$') { Die "invalid checksum for ${target}: $checksum" }
 
 # 3. Download archive
@@ -365,14 +369,23 @@ try {
   Write-Step "Extracting archive"
   $extractDir = Join-Path $tmp 'extracted'
   New-Item -ItemType Directory -Path $extractDir | Out-Null
-  Expand-Archive -LiteralPath $tmpArchive -DestinationPath $extractDir -Force
-  $extractedBinary = Join-Path $extractDir 'kimi.exe'
-  if (-not (Test-Path -LiteralPath $extractedBinary)) { Die "kimi.exe not found in $filename" }
+  if ($filename -match '\.(tar\.gz|tgz)$') {
+    # Prefer the in-box bsdtar: a Git-for-Windows / MSYS `tar` on PATH is GNU
+    # tar, which reads `C:\...` as a remote host and fails.
+    $systemTar = Join-Path $env:SystemRoot 'System32\tar.exe'
+    $tarExe = if (Test-Path -LiteralPath $systemTar) { $systemTar } else { 'tar' }
+    & $tarExe -xzf $tmpArchive -C $extractDir
+    if ($LASTEXITCODE -ne 0) { Die "failed to extract $filename" }
+  } else {
+    Expand-Archive -LiteralPath $tmpArchive -DestinationPath $extractDir -Force
+  }
+  $extractedBinary = Join-Path $extractDir 'ganycode.exe'
+  if (-not (Test-Path -LiteralPath $extractedBinary)) { Die "ganycode.exe not found in $filename" }
 
   # 4. Install
   $binDir = Join-Path $KimiInstallDir 'bin'
   New-Item -ItemType Directory -Path $binDir -Force | Out-Null
-  $binaryDest = Join-Path $binDir 'kimi.exe'
+  $binaryDest = Join-Path $binDir 'ganycode.exe'
   if (Test-Path $binaryDest) {
     $backup = "$binaryDest.bak"
     if (Test-Path $backup) {
@@ -386,7 +399,7 @@ try {
     }
     # Windows allows renaming a running .exe but not overwriting it, so move the old one first and then copy the new one.
     Move-Item $binaryDest $backup -Force
-    Write-Step "Backed up existing kimi.exe to $([System.IO.Path]::GetFileName($backup))"
+    Write-Step "Backed up existing ganycode.exe to $([System.IO.Path]::GetFileName($backup))"
   }
   Copy-Item $extractedBinary $binaryDest -Force
   Write-Step "Installed to $binaryDest"
@@ -399,7 +412,7 @@ try {
   #    so the new CLI is not shadowed.
   Invoke-LegacyMigration
 
-  Write-Step "Done. Open a new terminal and run: kimi --version"
+  Write-Step "Done. Open a new terminal and run: ganycode --version"
 } finally {
   Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }

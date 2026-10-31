@@ -170,7 +170,7 @@ export function resolveKimiHome(
   env: NodeJS.ProcessEnv = process.env,
   osHomeDir: string = homedir(),
 ): string {
-  return homeDir ?? env['KIMI_CODE_HOME'] ?? join(osHomeDir, '.kimi-code');
+  return homeDir ?? env['GANYCODE_HOME'] ?? env['KIMI_CODE_HOME'] ?? join(osHomeDir, '.ganycode');
 }
 
 export function resolveConfigPath(input: {

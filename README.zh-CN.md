@@ -1,4 +1,4 @@
-# Kimi Code CLI (kimi-code-jnlk)
+# GanyCode（kimi-code-jnlk）
 
 > **Fork 声明**
 >
@@ -10,8 +10,10 @@
 
 - **DeepSeek V4（官方 API `api.deepseek.com`）**：支持 `high` / `max` 思考档位，`off` 会显式关闭思考，工具调用轮次间的推理内容可正常往返（走 `openai` provider）。
 - **验证过的 provider 目录**：`/provider` 与 `kimi provider catalog` 默认指向本 fork 的 [catalog/api.json](catalog/api.json)，由 [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) 过滤，只有对官方 API 验证过的 provider 才会进内置目录。用 `--url https://models.dev/api.json` 仍可查看全部。
+- **以 `ganycode` 安装，不占用 `kimi`**：可执行文件、安装目录（`~/.ganycode`）与数据目录（`~/.ganycode`）都与 Kimi Code 分开，装这个不会覆盖已有的 Kimi CLI。
+- **以 `ganycode` 安装，不占用 `kimi`**：可执行文件、安装目录（`~/.ganycode`）与数据目录（`~/.ganycode`）都与 Kimi Code 分开，装这个不会覆盖已有的 Kimi CLI。
 - **遥测默认关闭**：需在 `config.toml` 设置 `telemetry = true` 才开启。
-- **自托管升级**：`kimi upgrade` 不会把 fork 的原生构建换成官方版本；升级请用 `install.sh` / `install.ps1`。
+- **自托管升级**：`ganycode upgrade` 不会把 fork 的原生构建换成官方版本；升级请用 `install.sh` / `install.ps1`。
 - **Ganymede Code 桌面端不在本分支**，仍留在 0.25 的 fork 线上，且无法对着新版 SDK 构建。
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/zh/)
@@ -49,7 +51,7 @@ irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.
 随后在新的终端会话中运行：
 
 ```sh
-kimi --version
+ganycode --version
 ```
 
 npm 安装、升级、卸载方式，见[快速上手](https://moonshotai.github.io/kimi-code/zh/guides/getting-started)。

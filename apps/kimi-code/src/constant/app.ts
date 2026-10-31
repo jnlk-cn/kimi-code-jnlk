@@ -2,13 +2,13 @@ import { ErrorCodes, type HostUiCapability } from '@moonshot-ai/kimi-code-sdk';
 
 import { currentKimiProfile } from '#/utils/region';
 
-export const PRODUCT_NAME = 'Kimi Code';
-export const CLI_COMMAND_NAME = 'kimi';
-export const PROCESS_NAME = 'kimi-code';
+export const PRODUCT_NAME = 'GanyCode';
+export const CLI_COMMAND_NAME = 'ganycode';
+export const PROCESS_NAME = 'ganycode';
 
 // Used in telemetry app names and HTTP User-Agent headers.
-export const CLI_USER_AGENT_PRODUCT = 'kimi-code-cli';
-export const CLI_MSH_PLATFORM = 'kimi_code_cli';
+export const CLI_USER_AGENT_PRODUCT = 'ganycode-cli';
+export const CLI_MSH_PLATFORM = 'ganycode_cli';
 export const CLI_UI_MODE = 'shell';
 // UI surfaces the TUI renders; declared to the engine at bootstrap so features that need a
 // host-side surface (the NotifyUser update panel) are offered to this process only.
@@ -57,8 +57,8 @@ Upgrade it with the fork installer instead:
 `;
 
 // App-owned data paths. SDK/core runtime config is intentionally not routed here.
-export const KIMI_CODE_HOME_ENV = 'KIMI_CODE_HOME';
-export const KIMI_CODE_DATA_DIR_NAME = '.kimi-code';
+export const KIMI_CODE_HOME_ENV = 'GANYCODE_HOME';
+export const KIMI_CODE_DATA_DIR_NAME = '.ganycode';
 export const KIMI_CODE_LOG_DIR_NAME = 'logs';
 export const KIMI_CODE_CACHE_DIR_NAME = 'cache';
 export const KIMI_CODE_UPDATE_DIR_NAME = 'updates';

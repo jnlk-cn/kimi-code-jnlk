@@ -10,7 +10,7 @@
 #
 # Optional env:
 #   KIMI_VERSION         Release tag (e.g. v2.4.0-jnlk.0); if unset, fetch latest GitHub Release
-#   KIMI_INSTALL_DIR     Installation directory, default $HOME/.kimi-code
+#   KIMI_INSTALL_DIR     Installation directory, default $HOME/.ganycode
 #   KIMI_NO_MODIFY_PATH  Skip PATH modification when set to a non-empty value
 #
 # Optional args:
@@ -23,7 +23,7 @@ KIMI_GITHUB_API="https://api.github.com/repos/${KIMI_GITHUB_REPO}"
 KIMI_GITHUB_RELEASES="https://github.com/${KIMI_GITHUB_REPO}/releases/download"
 
 KIMI_VERSION="${KIMI_VERSION:-}"
-KIMI_INSTALL_DIR="${KIMI_INSTALL_DIR:-$HOME/.kimi-code}"
+KIMI_INSTALL_DIR="${KIMI_INSTALL_DIR:-$HOME/.ganycode}"
 KIMI_NO_MODIFY_PATH="${KIMI_NO_MODIFY_PATH:-}"
 
 KIMI_PATH_UPDATED_RC=""
@@ -59,7 +59,7 @@ Options:
 
 Environment:
   KIMI_VERSION         Release tag; if unset, fetch latest from GitHub Releases
-  KIMI_INSTALL_DIR     Installation directory, default $HOME/.kimi-code
+  KIMI_INSTALL_DIR     Installation directory, default $HOME/.ganycode
   KIMI_NO_MODIFY_PATH  Skip PATH modification when set
 EOF
 }
@@ -184,10 +184,39 @@ _extract_archive() {
         _err "unzip is required to extract $archive"
       fi
       ;;
+    *.tar.gz|*.tgz)
+      if _have tar; then
+        tar -xzf "$archive" -C "$dest"
+      else
+        _err "tar is required to extract $archive"
+      fi
+      ;;
     *)
       _err "unsupported archive format: $archive"
       ;;
   esac
+}
+
+# 2.4.0+ manifests keep the downloadable archive under `compressed`; older ones
+# pointed `filename`/`checksum` at a zip directly.
+_manifest_archive_field() {
+  local manifest_json="$1" target="$2" field="$3"
+  local value=""
+  if _have jq; then
+    value="$(printf '%s' "$manifest_json" | jq -er ".platforms[\"$target\"].compressed.$field // empty" 2>/dev/null)"
+    if [ -n "$value" ]; then printf '%s' "$value"; return 0; fi
+    printf '%s' "$manifest_json" | jq -er ".platforms[\"$target\"].$field // empty"
+    return 0
+  fi
+  value="$(printf '%s' "$manifest_json" | awk -v t="\"$target\":" -v f="\"$field\":" '
+    index($0, t) > 0 { inp = 1 }
+    inp && /"compressed"/ { inc = 1 }
+    inc && index($0, f) > 0 {
+      line = $0; sub(/^[^:]*:[[:space:]]*"/, "", line); sub(/".*$/, "", line); print line; exit
+    }
+  ')"
+  if [ -n "$value" ]; then printf '%s' "$value"; return 0; fi
+  _manifest_field "$manifest_json" "$target" "$field"
 }
 
 # Prefer jq; otherwise parse a single manifest field using pure bash regex
@@ -543,8 +572,8 @@ main() {
   [ -n "$manifest" ] || _err "manifest is empty or unreachable: $manifest_url"
 
   # 3. Find current platform entry
-  filename="$(_manifest_field "$manifest" "$target" "filename")"
-  checksum="$(_manifest_field "$manifest" "$target" "checksum")"
+  filename="$(_manifest_archive_field "$manifest" "$target" "filename")"
+  checksum="$(_manifest_archive_field "$manifest" "$target" "checksum")"
   [ -n "$filename" ] || _err "platform $target not found in manifest"
   [[ "$checksum" =~ ^[a-f0-9]{64}$ ]] || _err "invalid checksum for $target: $checksum"
 
@@ -562,16 +591,16 @@ main() {
   # 6. Extract and install
   _log "Extracting archive"
   _extract_archive "${tmpdir}/${filename}" "${tmpdir}/extracted"
-  binary_path="${tmpdir}/extracted/kimi"
+  binary_path="${tmpdir}/extracted/ganycode"
   [ -f "$binary_path" ] || _err "kimi binary not found in ${filename}"
 
   mkdir -p "${KIMI_INSTALL_DIR}/bin"
-  if [ -f "${KIMI_INSTALL_DIR}/bin/kimi" ]; then
-    cp "${KIMI_INSTALL_DIR}/bin/kimi" "${KIMI_INSTALL_DIR}/bin/kimi.bak"
-    _log "Backed up existing kimi to ${KIMI_INSTALL_DIR}/bin/kimi.bak"
+  if [ -f "${KIMI_INSTALL_DIR}/bin/ganycode" ]; then
+    cp "${KIMI_INSTALL_DIR}/bin/ganycode" "${KIMI_INSTALL_DIR}/bin/ganycode.bak"
+    _log "Backed up existing ganycode to ${KIMI_INSTALL_DIR}/bin/ganycode.bak"
   fi
-  install -m 0755 "$binary_path" "${KIMI_INSTALL_DIR}/bin/kimi"
-  _log "Installed to ${KIMI_INSTALL_DIR}/bin/kimi"
+  install -m 0755 "$binary_path" "${KIMI_INSTALL_DIR}/bin/ganycode"
+  _log "Installed to ${KIMI_INSTALL_DIR}/bin/ganycode"
 
   # 7. PATH
   _update_path
@@ -579,9 +608,9 @@ main() {
   # 8. Migrate previous Python `kimi-cli` installations: rename the first
   #    `kimi` on PATH to `kimi-legacy` (preserve fallback) and drop later
   #    duplicates so the new CLI isn't shadowed.
-  _migrate_legacy_shims
+  : # GanyCode never renames an existing kimi install
 
-  _log "Done. Run: kimi --version"
+  _log "Done. Run: ganycode --version"
 
   if [ -n "$KIMI_PATH_UPDATED_RC" ]; then
     if [ -t 1 ]; then

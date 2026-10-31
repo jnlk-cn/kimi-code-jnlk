@@ -1,4 +1,4 @@
-# Kimi Code CLI (kimi-code-jnlk)
+# GanyCode (kimi-code-jnlk)
 
 > **Fork notice**
 >
@@ -10,8 +10,10 @@ Compared with upstream 2.4.0:
 
 - **DeepSeek V4 on the official API** (`api.deepseek.com`): thinking levels `high` / `max`, `off` disabling thinking explicitly, and reasoning round-trips across tool-call turns through the `openai` provider.
 - **Verified provider catalog**: `/provider` and `kimi provider catalog` default to this fork's [catalog/api.json](catalog/api.json), filtered by [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) — only providers verified against their official API ship in the built-in catalog. `--url https://models.dev/api.json` still lists everything.
+- **Installs as `ganycode`, not `kimi`**: the binary, install directory (`~/.ganycode`), and data directory (`~/.ganycode`) are separate from Kimi Code, so installing this never replaces an existing Kimi CLI.
+- **Installs as `ganycode`, not `kimi`**: the binary, install directory (`~/.ganycode`), and data directory (`~/.ganycode`) are separate from Kimi Code, so installing this never replaces an existing Kimi CLI.
 - **Telemetry off by default**: set `telemetry = true` in `config.toml` to opt in.
-- **Self-hosted upgrades**: `kimi upgrade` refuses to swap a fork native build for an official release; upgrade with `install.sh` / `install.ps1`.
+- **Self-hosted upgrades**: `ganycode upgrade` refuses to swap a fork native build for an official release; upgrade with `install.sh` / `install.ps1`.
 - **Ganymede Code desktop is not on this branch.** It remains on the 0.25 fork line and cannot build against this SDK.
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/en/) <br>
@@ -46,7 +48,7 @@ To pin a version, append `-s -- --version v2.4.0-jnlk.0` (bash) or set `$env:KIM
 Then, run it with a new shell session:
 
 ```sh
-kimi --version
+ganycode --version
 ```
 
 For npm install, upgrade, uninstall, see [Getting Started](https://moonshotai.github.io/kimi-code/en/guides/getting-started).

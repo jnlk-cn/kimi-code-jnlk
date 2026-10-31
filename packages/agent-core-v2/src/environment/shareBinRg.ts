@@ -10,7 +10,7 @@ export function isRemoteEnvironment(environment: Environment | undefined): envir
 export function getShareBinRgPath(): string {
   const override = process.env['KIMI_CODE_HOME'];
   if (override !== undefined && override !== '') return join(override, 'bin', rgBinaryName());
-  return join(homedir(), '.kimi-code', 'bin', rgBinaryName());
+  return join(homedir(), '.ganycode', 'bin', rgBinaryName());
 }
 
 export function shareBinRgPath(environment: Environment | undefined): string {

@@ -1,7 +1,7 @@
 import { log, type Logger } from '@moonshot-ai/kimi-code-sdk';
 import { track as trackTelemetry, type TelemetryProperties } from '@moonshot-ai/kimi-telemetry';
 
-import { FORK_UPGRADE_NOTICE, INTERACTIVE_UPDATE_CHECK_TIMEOUT_MS } from '#/constant/app';
+import { FORK_UPGRADE_NOTICE, INTERACTIVE_UPDATE_CHECK_TIMEOUT_MS, PRODUCT_NAME } from '#/constant/app';
 
 import { refreshUpdateCache } from '#/cli/update/refresh';
 import { decideUpdate, formatUpdateChannelWarning, resolveUpdateChannel } from '#/cli/update/select';
@@ -98,7 +98,7 @@ export async function handleUpgrade(
       currentVersion,
       plan: plan.kind,
     });
-    deps.stdout.write(`Kimi Code is already up to date (${formatDisplayVersion(currentVersion)}).\n`);
+    deps.stdout.write(`${PRODUCT_NAME} is already up to date (${formatDisplayVersion(currentVersion)}).\n`);
     return 0;
   }
 

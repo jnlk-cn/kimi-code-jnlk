@@ -184,7 +184,7 @@ export async function loadAgentsMdForRoots(
   };
 
   const realHome = deps.homeDir;
-  const brandDir = brandHome ?? join(realHome, '.kimi-code');
+  const brandDir = brandHome ?? join(realHome, '.ganycode');
   await collect(personalFs, join(brandDir, 'AGENTS.md'));
 
   const genericDirs = [join(realHome, '.agents')];
@@ -234,7 +234,7 @@ export async function agentsMdWatchRoots(
   brandHome?: string,
 ): Promise<readonly AgentsMdWatchRoot[]> {
   const realHome = deps.homeDir;
-  const brandDir = brandHome ?? join(realHome, '.kimi-code');
+  const brandDir = brandHome ?? join(realHome, '.ganycode');
   const plan: AgentsMdWatchRoot[] = [
     { root: brandDir, candidates: [join(brandDir, 'AGENTS.md')] },
     {
