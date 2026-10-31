@@ -2,6 +2,8 @@ import { ErrorCodes, type HostUiCapability } from '@moonshot-ai/kimi-code-sdk';
 
 import { currentKimiProfile } from '#/utils/region';
 
+export const KIMI_PROVIDER_DISPLAY_NAME = 'Kimi Code';
+
 export const PRODUCT_NAME = 'GanyCode';
 export const CLI_COMMAND_NAME = 'ganycode';
 export const PROCESS_NAME = 'ganycode';

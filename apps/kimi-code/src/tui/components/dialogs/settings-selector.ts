@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
 export type SettingsSelection =
@@ -88,8 +90,12 @@ export interface SettingsSelectorOptions {
 export class SettingsSelectorComponent extends ChoicePickerComponent {
   constructor(opts: SettingsSelectorOptions) {
     super({
-      title: 'Settings',
-      options: [...SETTINGS_OPTIONS],
+      title: t('Settings'),
+      options: SETTINGS_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+        ...("description" in option ? { description: t(String(option.description)) } : {}),
+      })),
       onSelect: (value) => {
         if (isSettingsSelection(value)) opts.onSelect(value);
       },

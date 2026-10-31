@@ -2,6 +2,8 @@ import type { PermissionMode } from '@moonshot-ai/kimi-code-sdk';
 
 import { PERMISSION_MODE_DESCRIPTIONS, PERMISSION_MODE_DISPLAY_NAMES } from '#/tui/utils/permission-mode';
 
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
 const PERMISSION_OPTIONS: readonly ChoiceOption[] = [
@@ -36,8 +38,12 @@ export interface PermissionSelectorOptions {
 export class PermissionSelectorComponent extends ChoicePickerComponent {
   constructor(opts: PermissionSelectorOptions) {
     super({
-      title: 'Select permission mode',
-      options: [...PERMISSION_OPTIONS],
+      title: t('Select permission mode'),
+      options: PERMISSION_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+        ...("description" in option ? { description: t(String(option.description)) } : {}),
+      })),
       currentValue: opts.currentValue,
       initialValue: opts.initialValue,
       onSelect: (value) => {

@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
 import { listCustomThemesSync } from '#/tui/theme/custom-theme-loader';
@@ -23,8 +25,12 @@ export class ThemeSelectorComponent extends ChoicePickerComponent {
       ...customThemes.map((name) => ({ value: name, label: `Custom: ${name}` })),
     ];
     super({
-      title: 'Select theme',
-      options,
+      title: t('Select theme'),
+      options: options.map((option) => ({
+        ...option,
+        label: t(option.label),
+        ...("description" in option ? { description: t(String(option.description)) } : {}),
+      })),
       currentValue: opts.currentValue,
       onSelect: (value) => {
         opts.onSelect(value);
