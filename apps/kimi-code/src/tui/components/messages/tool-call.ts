@@ -98,7 +98,7 @@ const notifyTitleStyle = (text: string): string => currentTheme.boldFg('textStro
 
 /** Delay before a long-running foreground Bash/Agent card advertises Ctrl+B. */
 const DETACH_HINT_DELAY_MS = 10_000;
-const DETACH_HINT_TEXT = 'Press Ctrl+B to run in background';
+const DETACH_HINT_TEXT = t('Press Ctrl+B to run in background');
 
 type SubagentTextKind = 'thinking' | 'text';
 type SubagentPhase = 'queued' | 'spawning' | 'running' | 'done' | 'failed' | 'backgrounded';
@@ -171,13 +171,13 @@ function backgroundFailureMessage(
 ): string | undefined {
   switch (status) {
     case 'lost':
-      return 'Background agent lost (session restarted before completion)';
+      return t('Background agent lost (session restarted before completion)');
     case 'killed':
-      return 'Background agent killed';
+      return t('Background agent killed');
     case 'timed_out':
-      return 'Background agent timed out';
+      return t('Background agent timed out');
     case 'failed':
-      return 'Background agent failed';
+      return t('Background agent failed');
     case 'completed':
     case undefined:
       return undefined;
@@ -250,8 +250,8 @@ const PLAN_SAVED_TO_RE = /\nPlan saved to: ([^\n]+)\n/;
  * `packages/agent-core-v2/src/features/plan/tools/exit-plan-mode/exitPlanModeTool.ts` and
  * `packages/agent-core-v2/src/features/plan/exitPlanModeReview.ts`:
  *   - Approved output starts with 'Exited plan mode.' and selected options
- *     are reported as 'Selected approach: <label>'. Older outputs may start
- *     with 'User approved option "<label>".' Plan-file mode may include
+ *     are reported as t('Selected approach: <label>'). Older outputs may start
+ *     with t('User approved option "<label>".') Plan-file mode may include
  *     'Plan saved to: <path>'.
  *   - Auto-approved output (auto permission mode skips the review ask) also
  *     starts with 'Exited plan mode.' but marks the plan body with
@@ -1942,7 +1942,7 @@ export class ToolCallComponent extends Container {
     }
 
     if (toolCall.name === 'ExitPlanMode') {
-      const label = currentTheme.boldFg('primary', 'Current plan');
+      const label = currentTheme.boldFg('primary', t('Current plan'));
       if (!isFinished || result === undefined || result.is_error === true) {
         return label;
       }
@@ -1984,7 +1984,7 @@ export class ToolCallComponent extends Container {
       if (isTruncated) {
         // max_tokens cut the arguments short: the call never ran and the
         // panel entry was dropped, so the card must not read as in flight.
-        return `${bullet}${currentTheme.boldFg('error', 'Update cut off')}${currentTheme.dim(' (arguments truncated by max_tokens)')}`;
+        return `${bullet}${currentTheme.boldFg('error', t('Update cut off'))}${currentTheme.dim(' (arguments truncated by max_tokens)')}`;
       }
       const delivery = notifyResultState(result?.output);
       if (!isFinished || (!isError && delivery === 'displayed')) {
@@ -2536,7 +2536,7 @@ export class ToolCallComponent extends Container {
     if (this.result === undefined && this.toolCall.truncated === true) {
       this.addChild(
         new Text(
-          currentTheme.dim('Tool call arguments truncated by max_tokens — call never executed.'),
+          currentTheme.dim(t('Tool call arguments truncated by max_tokens — call never executed.')),
           2,
           0,
         ),
