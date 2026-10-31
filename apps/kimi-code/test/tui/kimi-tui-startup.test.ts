@@ -3715,15 +3715,8 @@ describe('KimiTUI startup', () => {
     expect(uiContainsFooter(driver)).toBe(true);
   });
 
-  it('renders the banner below the welcome message after it loads', async () => {
-    const banner = {
-      key: 'new-banner',
-      tag: 'New',
-      mainText: 'Banner main',
-      subText: null,
-      display: 'always' as const,
-    };
-    const loadSpy = vi.spyOn(BannerProvider.prototype, 'load').mockResolvedValue(banner);
+  it('never consults the upstream remote banner', async () => {
+    const loadSpy = vi.spyOn(BannerProvider.prototype, 'load');
     const session = makeSession({ id: 'ses-target' });
     const harness = makeHarness(session, {
       listSessions: vi.fn(async () => [{ id: 'ses-target', workDir: '/tmp/proj-a' }]),
@@ -3735,154 +3728,10 @@ describe('KimiTUI startup', () => {
 
     await driver.initMainTui();
 
-    await vi.waitFor(() => {
-      expect(
-        driver.state.transcriptContainer.children.some((child) => child instanceof BannerComponent),
-      ).toBe(true);
-    });
-
-    const welcomeIndex = driver.state.transcriptContainer.children.findIndex(
-      (child) => child instanceof WelcomeComponent,
-    );
-    const bannerIndex = driver.state.transcriptContainer.children.findIndex(
-      (child) => child instanceof BannerComponent,
-    );
-    expect(welcomeIndex).toBeGreaterThanOrEqual(0);
-    expect(bannerIndex).toBe(welcomeIndex + 1);
-
-    loadSpy.mockRestore();
-  });
-
-  it('writes display state after rendering a once banner', async () => {
-    const originalEnv = { ...process.env };
-    const dir = mkdtempSync(join(tmpdir(), 'kimi-startup-banner-'));
-    process.env['KIMI_CODE_HOME'] = dir;
-
-    try {
-      const banner = {
-        key: 'once-banner',
-        tag: null,
-        mainText: 'Banner main',
-        subText: null,
-        display: 'once' as const,
-      };
-      const loadSpy = vi.spyOn(BannerProvider.prototype, 'load').mockResolvedValue(banner);
-      const session = makeSession({ id: 'ses-target' });
-      const harness = makeHarness(session, {
-        listSessions: vi.fn(async () => [{ id: 'ses-target', workDir: '/tmp/proj-a' }]),
-      });
-      const driver = makeDriver(
-        harness,
-        makeStartupInput({ session: 'ses-target' }),
-      ) as unknown as MigrateExitDriver;
-
-      await driver.initMainTui();
-
-      await vi.waitFor(() => {
-        expect(
-          driver.state.transcriptContainer.children.some((child) => child instanceof BannerComponent),
-        ).toBe(true);
-      });
-
-      await vi.waitFor(
-        async () => {
-          const state = await readBannerDisplayState();
-          expect(state.shown['once-banner']?.lastShownAt).toBeDefined();
-        },
-        { timeout: 5000 },
-      );
-      await expect(readBannerDisplayState()).resolves.toMatchObject({
-        version: 1,
-        shown: {
-          'once-banner': {
-            lastShownAt: expect.any(String),
-          },
-        },
-      });
-
-      loadSpy.mockRestore();
-    } finally {
-      process.env = { ...originalEnv };
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('does not write display state for an always banner', async () => {
-    const originalEnv = { ...process.env };
-    const dir = mkdtempSync(join(tmpdir(), 'kimi-startup-banner-'));
-    process.env['KIMI_CODE_HOME'] = dir;
-
-    try {
-      const banner = {
-        key: 'always-banner',
-        tag: null,
-        mainText: 'Banner main',
-        subText: null,
-        display: 'always' as const,
-      };
-      const loadSpy = vi.spyOn(BannerProvider.prototype, 'load').mockResolvedValue(banner);
-      const session = makeSession({ id: 'ses-target' });
-      const harness = makeHarness(session, {
-        listSessions: vi.fn(async () => [{ id: 'ses-target', workDir: '/tmp/proj-a' }]),
-      });
-      const driver = makeDriver(
-        harness,
-        makeStartupInput({ session: 'ses-target' }),
-      ) as unknown as MigrateExitDriver;
-
-      await driver.initMainTui();
-
-      await vi.waitFor(() => {
-        expect(
-          driver.state.transcriptContainer.children.some((child) => child instanceof BannerComponent),
-        ).toBe(true);
-      });
-
-      await expect(readBannerDisplayState()).resolves.toEqual({
-        version: 1,
-        shown: {},
-      });
-
-      loadSpy.mockRestore();
-    } finally {
-      process.env = { ...originalEnv };
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('still loads the banner when the access-token lookup fails', async () => {
-    const banner = {
-      key: 'new-banner',
-      tag: null,
-      mainText: 'Banner main',
-      subText: null,
-      display: 'always' as const,
-    };
-    let capturedAudience: unknown;
-    const loadSpy = vi.spyOn(BannerProvider.prototype, 'load').mockImplementation(async (options) => {
-      capturedAudience = await options?.audience;
-      return banner;
-    });
-    const session = makeSession({ id: 'ses-target' });
-    const harness = makeHarness(session, {
-      listSessions: vi.fn(async () => [{ id: 'ses-target', workDir: '/tmp/proj-a' }]),
-    });
-    harness.auth.getCachedAccessToken = vi.fn(async () => {
-      throw new Error('credential storage broken');
-    });
-    const driver = makeDriver(
-      harness,
-      makeStartupInput({ session: 'ses-target' }),
-    ) as unknown as MigrateExitDriver;
-
-    await driver.initMainTui();
-
-    await vi.waitFor(() => {
-      expect(
-        driver.state.transcriptContainer.children.some((child) => child instanceof BannerComponent),
-      ).toBe(true);
-    });
-    expect(capturedAudience).toEqual({ login: 'unknown' });
+    expect(loadSpy).not.toHaveBeenCalled();
+    expect(
+      driver.state.transcriptContainer.children.some((child) => child instanceof BannerComponent),
+    ).toBe(false);
 
     loadSpy.mockRestore();
   });
