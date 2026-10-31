@@ -16,6 +16,7 @@ import {
   type Focusable,
   truncateToWidth,
 } from '@moonshot-ai/pi-tui';
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export interface KeyboardShortcut {
@@ -109,17 +110,17 @@ export class HelpPanelComponent extends Container implements Focusable {
       currentTheme.boldFg('primary', ' help ') + muted('· Esc / Enter / q to cancel · ↑↓ scroll'),
       '',
       // Greeting
-      `  ${dim('Sure, Kimi is ready to help! Just send a message to get started.')}`,
+      `  ${dim(t('Sure, Kimi is ready to help! Just send a message to get started.'))}`,
       '',
       // Section: keyboard shortcuts
-      `  ${currentTheme.bold('Keyboard shortcuts')}`,
-      ...shortcuts.map((s) => `    ${kbdColor(s.keys.padEnd(kbdWidth))}  ${dim(s.description)}`),
+      `  ${currentTheme.bold(t('Keyboard shortcuts'))}`,
+      ...shortcuts.map((s) => `    ${kbdColor(s.keys.padEnd(kbdWidth))}  ${dim(t(s.description))}`),
       '',
       // Section: slash commands
-      `  ${currentTheme.bold('Slash commands')}`,
+      `  ${currentTheme.bold(t('Slash commands'))}`,
       ...sortedCmds.map((cmd, i) => {
         const label = cmdLabels[i] ?? `/${cmd.name}`;
-        return `    ${slashColor(label.padEnd(cmdWidth))}  ${dim(cmd.description)}`;
+        return `    ${slashColor(label.padEnd(cmdWidth))}  ${dim(t(cmd.description))}`;
       }),
       '',
       accent('─'.repeat(width)),

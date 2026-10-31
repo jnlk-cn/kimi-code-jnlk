@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 import type { ConversationLanguage } from '../../config';
 
@@ -28,8 +30,12 @@ export interface LanguageSelectorOptions {
 export class LanguageSelectorComponent extends ChoicePickerComponent {
   constructor(opts: LanguageSelectorOptions) {
     super({
-      title: 'Reply language',
-      options: [...LANGUAGE_OPTIONS],
+      title: t('Reply language'),
+      options: LANGUAGE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+        description: option.description === undefined ? undefined : t(option.description),
+      })),
       currentValue: opts.currentValue,
       onSelect: (value) => {
         opts.onSelect(value as ConversationLanguage);

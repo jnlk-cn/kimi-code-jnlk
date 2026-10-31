@@ -5,6 +5,7 @@ import { DEFAULT_MARKDOWN_CONFIG, loadTuiConfig, type TuiConfig } from '../confi
 import { TUI_MODE_RESTART_NOTICE } from '../constant/kimi-tui';
 import { setMarkdownMermaidMode, setMarkdownRenderLatex } from '../utils/markdown-options';
 import type { SlashCommandHost } from './dispatch';
+import { resolveUiLanguage, setUiLanguage } from '../i18n';
 import { setExperimentalFeatures } from './experimental-flags';
 
 export async function handleReloadTuiCommand(host: SlashCommandHost): Promise<void> {
@@ -60,6 +61,7 @@ export async function applyReloadedTuiConfig(
   host: SlashCommandHost,
   config: TuiConfig,
 ): Promise<void> {
+  setUiLanguage(resolveUiLanguage(config.language));
   // Set the LaTeX toggle before applyTheme: theme application invalidates the
   // transcript components, which rebuild their Markdown children and copy the
   // options at construction — so the new value must be live by then.

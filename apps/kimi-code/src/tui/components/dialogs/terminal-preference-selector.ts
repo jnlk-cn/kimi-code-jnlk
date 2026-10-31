@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 import type { TerminalPreference } from '../../config';
 
@@ -33,8 +35,12 @@ export interface TerminalPreferenceSelectorOptions {
 export class TerminalPreferenceSelectorComponent extends ChoicePickerComponent {
   constructor(opts: TerminalPreferenceSelectorOptions) {
     super({
-      title: 'Preferred shell (a hint for the agent, not enforced)',
-      options: [...TERMINAL_OPTIONS],
+      title: t('Preferred shell (a hint for the agent, not enforced)'),
+      options: TERMINAL_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+        description: option.description === undefined ? undefined : t(option.description),
+      })),
       currentValue: opts.currentValue,
       onSelect: (value) => {
         opts.onSelect(value as TerminalPreference);
