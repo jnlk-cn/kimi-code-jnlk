@@ -10,6 +10,7 @@ import {
   nativeBinPath,
   nativeBlobPath,
   nativeJsBundlePath,
+  platformOfTarget,
   nativeManifestKey,
   nativeSeaConfigPath,
   targetTriple,
@@ -39,6 +40,18 @@ describe('targetTriple', () => {
         env: { KIMI_CODE_BUILD_TARGET: 'linux-arm64' },
       }),
     ).toBe('linux-arm64');
+  });
+});
+
+describe('platformOfTarget', () => {
+  it('reads the platform from the target triple', () => {
+    expect(platformOfTarget('win32-x64')).toBe('win32');
+    expect(platformOfTarget('darwin-arm64')).toBe('darwin');
+    expect(platformOfTarget('linux-x64')).toBe('linux');
+  });
+
+  it('falls back to the whole value when there is no arch', () => {
+    expect(platformOfTarget('test')).toBe('test');
   });
 });
 

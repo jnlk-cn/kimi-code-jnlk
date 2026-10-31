@@ -8,17 +8,21 @@ import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import { inflateRawSync, zstdDecompressSync } from 'node:zlib';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZipFile } from 'yazl';
 
 import { appRoot } from '../../../scripts/native/paths.mjs';
+
+// Each case spawns package.mjs and/or produce-manifest.mjs, which in turn shell out to
+// unzip, zstd and tar. The default 5s budget is too tight on slower filesystems.
+vi.setConfig({ testTimeout: 30_000 });
 
 const execFileAsync = promisify(execFile);
 const packageScript = resolve(appRoot, 'scripts/native/package.mjs');
 const manifestScript = resolve(appRoot, 'scripts/native/produce-manifest.mjs');
 const artifactsDir = resolve(appRoot, 'dist-native/artifacts');
 const target = 'test-zip-artifact';
-const executableName = process.platform === 'win32' ? 'ganycode.exe' : 'ganycode';
+const executableName = target.startsWith('win32') ? 'ganycode.exe' : 'ganycode';
 const fakeBinary = resolve(appRoot, 'dist-native/bin', target, executableName);
 
 function sha256(bytes: Buffer | string): string {
@@ -162,7 +166,7 @@ describe('native release artifacts', () => {
       tag: '@moonshot-ai/kimi-code@0.5.0',
       platforms: {
         [target]: {
-          filename: `kimi-code-${target}`,
+          filename: `ganycode-${target}`,
           checksum: sha256(Buffer.from(binaryContent)),
           compressed: { filename: `kimi-code-${target}.zst`, checksum: sha256(zstBytes) },
         },

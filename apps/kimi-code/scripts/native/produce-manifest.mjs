@@ -23,13 +23,13 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 import { fail, run } from './exec.mjs';
-import { executableName } from './paths.mjs';
+import { executableName, platformOfTarget } from './paths.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -71,7 +71,7 @@ for (const sumFile of sumFiles.sort()) {
   // kimi-code-darwin-arm64.zip.sha256 → darwin-arm64
   const target = basename(sumFile, '.sha256').replace(/^kimi-code-/, '').replace(/\.zip$/, '');
   const zipName = `kimi-code-${target}.zip`;
-  const exeName = executableName(target.startsWith('win32') ? 'win32' : 'linux');
+  const exeName = executableName(platformOfTarget(target));
   // The CDN bare-binary layout carries the .exe suffix on Windows
   // (src/constant/app.ts); the updater's fallback downloads this filename.
   const binaryName = target.startsWith('win32') ? `ganycode-${target}.exe` : `ganycode-${target}`;
@@ -85,7 +85,8 @@ for (const sumFile of sumFiles.sort()) {
     const exePath = join(workDir, exeName);
     const binaryChecksum = await sha256File(exePath);
     await run('zstd', ['-T0', '-19', '-q', '-f', '-o', resolve(inputDir, zstName), exePath]);
-    await run('tar', ['-C', workDir, '-czf', resolve(inputDir, tarballName), exeName]);
+    await run('tar', ['-czf', tarballName, exeName], { cwd: workDir });
+    await copyFile(join(workDir, tarballName), resolve(inputDir, tarballName));
 
     const zstChecksum = await sha256File(resolve(inputDir, zstName));
     const tarballChecksum = await sha256File(resolve(inputDir, tarballName));

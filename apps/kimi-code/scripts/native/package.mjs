@@ -6,11 +6,18 @@ import { pipeline } from 'node:stream/promises';
 
 import { ZipFile } from 'yazl';
 
-import { executableName, nativeArtifactsDir, nativeBinPath, targetTriple } from './paths.mjs';
+import {
+  executableName,
+  nativeArtifactsDir,
+  nativeBinPath,
+  platformOfTarget,
+  targetTriple,
+} from './paths.mjs';
 
 const target = targetTriple();
-const execName = executableName();
-const sourceBinary = nativeBinPath(target);
+const platform = platformOfTarget(target);
+const execName = executableName(platform);
+const sourceBinary = nativeBinPath(target, platform);
 const artifactsDir = nativeArtifactsDir();
 
 // Flat-name archive for GH Release (GitHub Release assets do not support subdirectories).

@@ -6,6 +6,11 @@ export function targetTriple({ platform = process.platform, arch = process.arch,
   return env.KIMI_CODE_BUILD_TARGET ?? `${platform}-${arch}`;
 }
 
+export function platformOfTarget(target = targetTriple()) {
+  const separator = target.indexOf('-');
+  return separator === -1 ? target : target.slice(0, separator);
+}
+
 export function executableName(platform = process.platform) {
   return platform === 'win32' ? 'ganycode.exe' : 'ganycode';
 }
