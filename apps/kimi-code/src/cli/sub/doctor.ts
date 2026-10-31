@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { PRODUCT_NAME } from '#/constant/app';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 
@@ -77,7 +78,7 @@ export async function handleDoctor(deps: DoctorDeps, options: DoctorOptions): Pr
 export function registerDoctorCommand(parent: Command, deps?: Partial<DoctorDeps>): void {
   const doctor = parent
     .command('doctor')
-    .description('Validate Kimi Code configuration files.')
+    .description('Validate GanyCode configuration files.')
     .action(async () => {
       await runDoctorCommand(deps, {});
     });
@@ -231,7 +232,7 @@ function resolveInputPath(input: string, cwd: string): string {
 
 function formatSuccess(results: readonly CheckResult[]): string {
   return [
-    'Kimi doctor',
+    PRODUCT_NAME + ' doctor',
     '',
     ...formatResults(results),
     '',
