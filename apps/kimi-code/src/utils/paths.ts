@@ -36,7 +36,7 @@ import {
  * Priority: `KIMI_CODE_HOME` env var > `~/.kimi-code`.
  */
 export function getDataDir(): string {
-  const envDir = process.env[KIMI_CODE_HOME_ENV];
+  const envDir = process.env[KIMI_CODE_HOME_ENV] ?? process.env['KIMI_CODE_HOME'];
   if (envDir) {
     return envDir;
   }

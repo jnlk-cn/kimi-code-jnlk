@@ -92,6 +92,12 @@ export const TuiConfigFileSchema = z.object({
       auto_install: z.boolean().optional(),
     })
     .optional(),
+  language: z.string().optional(),
+  terminal: z
+    .object({
+      preference: z.string().optional(),
+    })
+    .optional(),
   status_line: StatusLineFileConfigSchema.optional(),
   markdown: z
     .object({
@@ -117,6 +123,10 @@ export const TuiConfigSchema = z.object({
   editorCommand: z.string().nullable(),
   notifications: NotificationsConfigSchema,
   upgrade: UpgradePreferencesSchema,
+  /** Conversation language for replies and UI copy: "en" | "zh-CN". */
+  language: z.enum(['auto', 'en', 'zh-CN']).optional(),
+  /** Soft shell preference handed to the agent; never enforced. */
+  terminalPreference: z.enum(['default', 'bash', 'powershell', 'powershell7']).optional(),
   /** Present in every normalized config; optional only so hand-built test
    * fixtures from before this field existed still typecheck. */
   statusLine: StatusLineConfigSchema.optional(),
@@ -129,6 +139,17 @@ export type TuiConfigFileShape = z.infer<typeof TuiConfigFileSchema>;
 export type TuiConfig = z.infer<typeof TuiConfigSchema>;
 export type NotificationsConfig = z.infer<typeof NotificationsConfigSchema>;
 export type UpgradePreferences = z.infer<typeof UpgradePreferencesSchema>;
+
+export type ConversationLanguage = 'auto' | 'en' | 'zh-CN';
+export type TerminalPreference = 'default' | 'bash' | 'powershell' | 'powershell7';
+
+export const CONVERSATION_LANGUAGES: readonly ConversationLanguage[] = ['auto', 'en', 'zh-CN'];
+export const TERMINAL_PREFERENCES: readonly TerminalPreference[] = [
+  'default',
+  'bash',
+  'powershell',
+  'powershell7',
+];
 
 export const DEFAULT_NOTIFICATIONS_CONFIG: NotificationsConfig = {
   enabled: true,
@@ -151,6 +172,8 @@ export const DEFAULT_TUI_CONFIG: TuiConfig = TuiConfigSchema.parse({
   upgrade: DEFAULT_UPGRADE_PREFERENCES,
   statusLine: DEFAULT_STATUS_LINE_CONFIG,
   markdown: DEFAULT_MARKDOWN_CONFIG,
+  language: 'auto',
+  terminalPreference: 'default',
 });
 
 /**
@@ -289,6 +312,24 @@ export function normalizeTuiConfig(
       warn(`[tui.toml] ignoring unknown markdown.mermaid value: ${mermaidValue}`);
     }
   }
+  const languageValue = config.language;
+  let language: ConversationLanguage = DEFAULT_TUI_CONFIG.language ?? 'auto';
+  if (languageValue !== undefined) {
+    if (CONVERSATION_LANGUAGES.includes(languageValue as ConversationLanguage)) {
+      language = languageValue as ConversationLanguage;
+    } else {
+      warn(`[tui.toml] ignoring unknown language value: ${languageValue}`);
+    }
+  }
+  const terminalValue = config.terminal?.preference;
+  let terminalPreference: TerminalPreference = DEFAULT_TUI_CONFIG.terminalPreference ?? 'default';
+  if (terminalValue !== undefined) {
+    if (TERMINAL_PREFERENCES.includes(terminalValue as TerminalPreference)) {
+      terminalPreference = terminalValue as TerminalPreference;
+    } else {
+      warn(`[tui.toml] ignoring unknown terminal.preference value: ${terminalValue}`);
+    }
+  }
   const tuiModeValue = config.tui_mode;
   let tuiMode: TuiMode = 'regular';
   if (tuiModeValue !== undefined) {
@@ -325,6 +366,8 @@ export function normalizeTuiConfig(
     markdown: {
       mermaid: mermaidMode,
     },
+    language,
+    terminalPreference,
   });
 }
 
@@ -372,6 +415,8 @@ disable_paste_burst = ${String(config.disablePasteBurst)} # true disables non-br
 cache_expiry_hint = ${String(config.cacheExpiryHint !== false)} # false disables the "cache expired" dialog on resume / idle submit
 ${config.disableFeedbackSurvey === undefined ? '' : `disable_feedback_survey = ${String(config.disableFeedbackSurvey)}\n`}auto_session_title = ${String(config.autoSessionTitle !== false)} # false stops the TUI from auto-generating a session title after the first turn
 
+language = "${config.language ?? 'auto'}" # "auto" (match the user) | "en" | "zh-CN"
+
 [editor]
 command = "${escapeTomlBasicString(config.editorCommand ?? '')}" # Empty uses $VISUAL / $EDITOR
 
@@ -381,6 +426,9 @@ notification_condition = "${config.notifications.condition}" # "unfocused" | "al
 
 [upgrade]
 auto_install = ${String(config.upgrade.autoInstall)} # true | false
+
+[terminal]
+preference = "${config.terminalPreference ?? 'default'}" # "default" | "bash" | "powershell" | "powershell7" (a hint for the agent, not enforced)
 
 ${markdownSection}
 ${statusSection}`;

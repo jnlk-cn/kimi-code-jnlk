@@ -75,6 +75,8 @@ auto_install = false
       upgrade: { autoInstall: false },
       statusLine: { items: null, command: null },
       markdown: { mermaid: 'final' },
+      language: 'auto',
+      terminalPreference: 'default',
     });
   });
 
@@ -144,6 +146,8 @@ command = "   "
       upgrade: { autoInstall: true },
       statusLine: { items: null, command: null },
       markdown: { mermaid: 'final' },
+      language: 'auto',
+      terminalPreference: 'default',
     });
   });
 
@@ -194,6 +198,8 @@ command = "   "
       upgrade: { autoInstall: false },
       statusLine: { items: null, command: null },
       markdown: { mermaid: 'final' },
+      language: 'auto',
+      terminalPreference: 'default',
     });
   });
 

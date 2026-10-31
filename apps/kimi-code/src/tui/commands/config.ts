@@ -14,7 +14,9 @@ import {
   ExperimentsSelectorComponent,
   type ExperimentalFeatureDraftChange,
 } from '../components/dialogs/experiments-selector';
+import { LanguageSelectorComponent } from '../components/dialogs/language-selector';
 import { MermaidPreferenceSelectorComponent } from '../components/dialogs/mermaid-preference-selector';
+import { TerminalPreferenceSelectorComponent } from '../components/dialogs/terminal-preference-selector';
 import { modelDisplayName, segmentsFor } from '../components/dialogs/model-selector';
 import { ModelSwitchConfirmDialogComponent } from '../components/dialogs/model-switch-confirm-dialog';
 import { TabbedModelSelectorComponent } from '../components/dialogs/tabbed-model-selector';
@@ -24,7 +26,7 @@ import { SurveyPreferenceSelectorComponent } from '../components/dialogs/survey-
 import { ThemeSelectorComponent } from '../components/dialogs/theme-selector';
 import { TuiModeSelectorComponent } from '../components/dialogs/tui-mode-selector';
 import { UpdatePreferenceSelectorComponent } from '../components/dialogs/update-preference-selector';
-import { DEFAULT_MARKDOWN_CONFIG, DEFAULT_TUI_CONFIG, saveTuiConfig, type MarkdownConfig, type TuiConfig, type TuiMode } from '../config';
+import { CONVERSATION_LANGUAGES, DEFAULT_MARKDOWN_CONFIG, DEFAULT_TUI_CONFIG, saveTuiConfig, TERMINAL_PREFERENCES, type ConversationLanguage, type MarkdownConfig, type TerminalPreference, type TuiConfig, type TuiMode } from '../config';
 import type { ThemeName } from '#/tui/theme';
 import { currentTheme, isBuiltInTheme, lightColors, loadCustomThemeMerged } from '#/tui/theme';
 import {
@@ -977,6 +979,100 @@ export async function applySurveyPreferenceChoice(
 
   host.setAppState({ disableFeedbackSurvey });
   host.showStatus(`Feedback survey ${enabled ? 'enabled' : 'disabled'}.`);
+}
+
+export async function handleLanguageCommand(host: SlashCommandHost, args: string): Promise<void> {
+  const value = args.trim() as ConversationLanguage;
+  if (value.length === 0) {
+    showLanguagePicker(host);
+    return;
+  }
+  if (!CONVERSATION_LANGUAGES.includes(value)) {
+    host.showError(`Unknown language: ${value}. Use one of: ${CONVERSATION_LANGUAGES.join(', ')}`);
+    return;
+  }
+  await applyLanguageChoice(host, value);
+}
+
+export async function handleTerminalCommand(host: SlashCommandHost, args: string): Promise<void> {
+  const value = args.trim() as TerminalPreference;
+  if (value.length === 0) {
+    showTerminalPreferencePicker(host);
+    return;
+  }
+  if (!TERMINAL_PREFERENCES.includes(value)) {
+    host.showError(`Unknown shell preference: ${value}. Use one of: ${TERMINAL_PREFERENCES.join(', ')}`);
+    return;
+  }
+  await applyTerminalPreferenceChoice(host, value);
+}
+
+export function showLanguagePicker(host: SlashCommandHost): void {
+  host.mountEditorReplacement(
+    new LanguageSelectorComponent({
+      currentValue: currentTuiConfig(host).language ?? 'auto',
+      onSelect: (value) => {
+        host.restoreEditor();
+        void applyLanguageChoice(host, value);
+      },
+      onCancel: () => {
+        host.restoreEditor();
+      },
+    }),
+  );
+}
+
+export function showTerminalPreferencePicker(host: SlashCommandHost): void {
+  host.mountEditorReplacement(
+    new TerminalPreferenceSelectorComponent({
+      currentValue: currentTuiConfig(host).terminalPreference ?? 'default',
+      onSelect: (value) => {
+        host.restoreEditor();
+        void applyTerminalPreferenceChoice(host, value);
+      },
+      onCancel: () => {
+        host.restoreEditor();
+      },
+    }),
+  );
+}
+
+export async function applyLanguageChoice(
+  host: SlashCommandHost,
+  language: ConversationLanguage,
+): Promise<void> {
+  if (language === (currentTuiConfig(host).language ?? 'auto')) {
+    host.showStatus(`Reply language already ${language}.`);
+    return;
+  }
+  try {
+    await saveTuiConfig({ ...currentTuiConfig(host), language });
+  } catch (error) {
+    host.showStatus(`Failed to save reply language: ${formatErrorMessage(error)}`, 'error');
+    return;
+  }
+  host.showStatus(`Reply language set to ${language}.`);
+}
+
+export async function applyTerminalPreferenceChoice(
+  host: SlashCommandHost,
+  preference: TerminalPreference,
+): Promise<void> {
+  if (preference === (currentTuiConfig(host).terminalPreference ?? 'default')) {
+    host.showStatus(`Shell preference already ${preference}.`);
+    return;
+  }
+  try {
+    await saveTuiConfig({ ...currentTuiConfig(host), terminalPreference: preference });
+  } catch (error) {
+    host.showStatus(`Failed to save shell preference: ${formatErrorMessage(error)}`, 'error');
+    return;
+  }
+  host.showStatus(
+    preference === 'default'
+      ? 'Shell preference cleared; the agent picks the shell itself.'
+      : `Shell preference set to ${preference} (a hint for the agent, not enforced).`,
+  );
 }
 
 export function showMermaidPreferencePicker(host: SlashCommandHost): void {

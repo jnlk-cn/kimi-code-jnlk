@@ -9,7 +9,7 @@
 相对上游 2.4.0：
 
 - **DeepSeek V4（官方 API `api.deepseek.com`）**：支持 `high` / `max` 思考档位，`off` 会显式关闭思考，工具调用轮次间的推理内容可正常往返（走 `openai` provider）。
-- **验证过的 provider 目录**：`/provider` 与 `kimi provider catalog` 默认指向本 fork 的 [catalog/api.json](catalog/api.json)，由 [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) 过滤，只有对官方 API 验证过的 provider 才会进内置目录。用 `--url https://models.dev/api.json` 仍可查看全部。
+- **验证过的内置目录**：provider 发现默认从官方 models.dev 拉取；内置进产物的目录由 [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) 过滤，离线时只提供对官方 API 验证过的 provider。
 - **以 `ganycode` 安装，不占用 `kimi`**：可执行文件、安装目录（`~/.ganycode`）与数据目录（`~/.ganycode`）都与 Kimi Code 分开，装这个不会覆盖已有的 Kimi CLI。
 - **以 `ganycode` 安装，不占用 `kimi`**：可执行文件、安装目录（`~/.ganycode`）与数据目录（`~/.ganycode`）都与 Kimi Code 分开，装这个不会覆盖已有的 Kimi CLI。
 - **遥测默认关闭**：需在 `config.toml` 设置 `telemetry = true` 才开启。

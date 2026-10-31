@@ -2,4 +2,4 @@
 "@moonshot-ai/kimi-code": minor
 ---
 
-Default provider discovery to this fork's verified catalog instead of the full models.dev catalog; run `kimi provider catalog list --url https://models.dev/api.json` to see every provider again.
+Keep the built-in provider catalog limited to an allowlist of providers verified against their official API; provider discovery still fetches the full official models.dev catalog.

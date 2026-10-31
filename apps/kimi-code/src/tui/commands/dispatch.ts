@@ -34,6 +34,8 @@ import {
   handleModelCommand,
   handlePlanCommand,
   handleSecondaryModelCommand,
+  handleLanguageCommand,
+  handleTerminalCommand,
   handleThemeCommand,
   showExperimentsPanel,
   showModelPicker,
@@ -467,6 +469,12 @@ async function handleBuiltInSlashCommand(
     case 'editor':
       await handleEditorCommand(host, args);
       return;
+    case 'language':
+      await handleLanguageCommand(host, args);
+      break;
+    case 'terminal':
+      await handleTerminalCommand(host, args);
+      break;
     case 'theme':
       await handleThemeCommand(host, args);
       return;

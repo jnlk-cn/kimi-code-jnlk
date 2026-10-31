@@ -393,6 +393,20 @@ export const BUILTIN_SLASH_COMMANDS = [
     availability: 'always',
   },
   {
+    name: 'language',
+    aliases: [],
+    description: 'Set the reply language (auto | zh-CN | en)',
+    priority: 60,
+    availability: 'always',
+  },
+  {
+    name: 'terminal',
+    aliases: [],
+    description: 'Set the preferred shell for the agent (a hint, not enforced)',
+    priority: 60,
+    availability: 'always',
+  },
+  {
     name: 'logout',
     aliases: ['disconnect'],
     description: 'Log out of a configured provider',
