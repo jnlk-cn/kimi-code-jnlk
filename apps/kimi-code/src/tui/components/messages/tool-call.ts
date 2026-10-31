@@ -3,6 +3,7 @@
  * Supports expand/collapse via Ctrl+O.
  */
 
+import { t } from '#/tui/i18n';
 import { isAbsolute, relative, sep } from 'node:path';
 
 import chalk from 'chalk';
@@ -1971,7 +1972,7 @@ export class ToolCallComponent extends Container {
           : 'Collected your answers'
         : isBackgroundAsk
           ? 'Starting background question'
-          : 'Waiting for your input';
+          : t('Waiting for your input');
       const tone = isError ? 'error' : 'primary';
       return `${bullet}${currentTheme.boldFg(tone, label)}`;
     }
@@ -2022,7 +2023,7 @@ export class ToolCallComponent extends Container {
       if (isTruncated) {
         return `${bullet}${currentTheme.fg('error', 'Truncated')} ${currentTheme.boldFg('primary', 'Bash')}`;
       }
-      const label = isFinished ? 'Ran a command' : 'Running a command';
+      const label = isFinished ? t('Ran a command') : t('Running a command');
       const tone = isError ? 'error' : 'primary';
       const command = extractKeyArgumentDetail(toolCall.name, toolCall.args, this.workspaceDir);
       const chipStr = isFinished && result !== undefined ? this.buildHeaderChip(result) : '';

@@ -163,4 +163,10 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   done: '已完成',
   'in progress': '进行中',
   pending: '待开始',
+  '{used}/{budget} turns': '{used}/{budget} 轮',
+  '{count} turn': '{count} 轮',
+  '{count} turns': '{count} 轮',
+  'Waiting for your input': '等待你的输入',
+  'Ran a command': '已执行一条命令',
+  'Running a command': '正在执行命令',
 };

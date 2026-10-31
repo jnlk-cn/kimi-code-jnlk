@@ -6,6 +6,7 @@
  *   Line 2: context: N% (tokens/max)
  */
 
+import { t, tFormat } from '#/tui/i18n';
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import chalk from 'chalk';
@@ -128,8 +129,13 @@ function formatGoalBadge(
         : colors.textMuted;
   const turns =
     goal.budget.turnBudget !== null
-      ? `${goal.turnsUsed}/${goal.budget.turnBudget} turns`
-      : `${goal.turnsUsed} ${goal.turnsUsed === 1 ? 'turn' : 'turns'}`;
+      ? tFormat('{used}/{budget} turns', {
+          used: goal.turnsUsed,
+          budget: goal.budget.turnBudget,
+        })
+      : goal.turnsUsed === 1
+        ? tFormat('{count} turn', { count: goal.turnsUsed })
+        : tFormat('{count} turns', { count: goal.turnsUsed });
   const label = `${goal.status} · ${formatBadgeElapsed(wallClockMs ?? goal.wallClockMs)} · ${turns}`;
   return (
     chalk.hex(colors.textMuted)('[goal ') +
@@ -459,8 +465,8 @@ export class FooterComponent implements Component {
     }
 
     const modes: string[] = [];
-    if (state.permissionMode === 'auto') modes.push(chalk.hex(colors.warning).bold(PERMISSION_MODE_DISPLAY_NAMES.auto));
-    if (state.permissionMode === 'yolo') modes.push(chalk.hex(colors.warning).bold(PERMISSION_MODE_DISPLAY_NAMES.yolo));
+    if (state.permissionMode === 'auto') modes.push(chalk.hex(colors.warning).bold(t(PERMISSION_MODE_DISPLAY_NAMES.auto)));
+    if (state.permissionMode === 'yolo') modes.push(chalk.hex(colors.warning).bold(t(PERMISSION_MODE_DISPLAY_NAMES.yolo)));
     if (state.planMode) modes.push(chalk.hex(colors.primary).bold('plan'));
     if (state.swarmMode) modes.push(chalk.hex(colors.accent).bold('swarm'));
     if (state.towerMode) modes.push(chalk.hex(colors.accent).bold('tower'));
