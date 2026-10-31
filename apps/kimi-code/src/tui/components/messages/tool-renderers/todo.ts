@@ -5,6 +5,7 @@
  * ctrl+o (or a click) shows every item.
  */
 
+import { t } from '#/tui/i18n';
 import { truncateToWidth, type Component } from '@moonshot-ai/pi-tui';
 
 import { OUTCOME_ROW_INDENT, TRUNCATION_ELLIPSIS } from '#/tui/constant/rendering';
@@ -40,7 +41,7 @@ const RESULT_ROW = /^ {2}\[(pending|in_progress|done)\] (.+)$/;
  */
 export function todoListFromResult(output: string): TodoItem[] {
   const lines = output.split('\n');
-  const start = lines.indexOf(LIST_HEADER);
+  const start = lines.indexOf(t(LIST_HEADER));
   if (start === -1) return [];
   const end = lines.indexOf('', start + 1);
   const todos: TodoItem[] = [];
@@ -138,7 +139,7 @@ const STATUS_LABELS: readonly { status: TodoStatus; label: string }[] = [
 
 export function formatHiddenCounts(counts: Record<TodoStatus, number>): string {
   return STATUS_LABELS.filter(({ status }) => counts[status] > 0)
-    .map(({ status, label }) => `${String(counts[status])} ${label}`)
+    .map(({ status, label }) => `${String(counts[status])} ${t(label)}`)
     .join(' · ');
 }
 

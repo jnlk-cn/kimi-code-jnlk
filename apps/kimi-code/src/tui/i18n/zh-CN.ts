@@ -156,4 +156,11 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   'Review your answer before submit': '提交前请检查你的回答',
   'Ready to submit your answers?': '准备提交你的回答吗？',
   'Some questions are still unanswered.': '还有问题没有回答。',
+  'Plan usage': '套餐用量',
+  '  No usage data available.': '  暂无用量数据。',
+  'Extra Usage': '额外用量',
+  'Current todo list:': '当前待办：',
+  done: '已完成',
+  'in progress': '进行中',
+  pending: '待开始',
 };

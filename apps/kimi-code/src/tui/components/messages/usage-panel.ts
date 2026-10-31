@@ -4,6 +4,7 @@
  * the pattern stays consistent across command-triggered panels.
  */
 
+import { t } from '#/tui/i18n';
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import { formatDuration } from '@moonshot-ai/kimi-code-oauth';
@@ -160,11 +161,11 @@ function buildManagedUsageSection(
   muted: Colorize,
   errorStyle: Colorize,
 ): string[] {
-  if (error !== undefined) return [accent('Plan usage'), errorStyle(`  ${error}`)];
+  if (error !== undefined) return [accent(t('Plan usage')), errorStyle(`  ${error}`)];
   if (usage === undefined) return [];
   const { rows } = usage;
   if (rows.length === 0) {
-    return [accent('Plan usage'), muted('  No usage data available.')];
+    return [accent(t('Plan usage')), muted(t('  No usage data available.'))];
   }
 
   const labels = rows.map((r) => r.name);
@@ -172,7 +173,7 @@ function buildManagedUsageSection(
   const rowRatio = (r: QuotaUsageRow): number => safeUsageRatio(r.usedRatio);
   const pctWidth = Math.max(...rows.map((r) => `${Math.round(rowRatio(r) * 100)}% used`.length));
 
-  const out: string[] = [accent('Plan usage')];
+  const out: string[] = [accent(t('Plan usage'))];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
     const ratioUsed = rowRatio(row);
@@ -271,7 +272,7 @@ export function buildExtraUsageSection(
     return `  ${muted(label.padEnd(labelWidth, ' '))}  ${value(cell)}`;
   };
 
-  const lines: string[] = [accent('Extra Usage')];
+  const lines: string[] = [accent(t('Extra Usage'))];
   if (barLine !== null) lines.push(barLine);
   for (const r of rows) lines.push(row(r.label, r.symbol, r.number));
 
@@ -300,7 +301,7 @@ export function buildUsageReportLines(options: UsageReportOptions): string[] {
   const muted = (text: string) => currentTheme.fg('textDim', text);
 
   const lines: string[] = [
-    accent('Session usage'),
+    accent(t('Session usage')),
     ...buildSessionUsageSection(options.sessionUsage, options.sessionUsageError, value, muted),
   ];
 
@@ -310,7 +311,7 @@ export function buildUsageReportLines(options: UsageReportOptions): string[] {
     const pct = `${String(usagePercent(options.contextTokens, options.maxContextTokens))}%`;
     const barColoured = currentTheme.fg(severityColor(ratioSeverity(ratio)), bar);
     lines.push('');
-    lines.push(accent('Context window'));
+    lines.push(accent(t('Context window')));
     lines.push(
       `  ${barColoured}  ${value(pct.padStart(6, ' '))}  ` +
         muted(
@@ -364,16 +365,16 @@ function buildDeepSeekBalanceSection(
   muted: (text: string) => string,
 ): string[] {
   if (balance === undefined && error === undefined) return [];
-  const lines = [accent('DeepSeek balance')];
+  const lines = [accent(t('DeepSeek balance'))];
   if (error !== undefined) {
     lines.push(muted(`  ${error}`));
     return lines;
   }
   if (balance === undefined) return [];
   const rows: Array<readonly [string, string]> = [
-    ['Total', balance.totalCny],
-    ['Granted', balance.grantedCny],
-    ['Topped up', balance.toppedUpCny],
+    [t('Total'), balance.totalCny],
+    [t('Granted'), balance.grantedCny],
+    [t('Topped up'), balance.toppedUpCny],
   ];
   const labelWidth = Math.max(...rows.map(([label]) => label.length));
   for (const [label, amount] of rows) {
