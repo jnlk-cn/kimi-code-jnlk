@@ -19,6 +19,7 @@ import {
   type TuiMouseEventResult,
 } from '@moonshot-ai/pi-tui';
 import { CURRENT_MARK, SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme, type ColorToken } from '#/tui/theme';
 import { createMarkdownTheme } from '#/tui/theme/pi-tui-theme';
 import { createMarkdownOptions } from '#/tui/utils/markdown-options';
@@ -202,13 +203,13 @@ export class ChoicePickerComponent implements Component, Focusable {
     // Header mirrors the model dialog (see model-selector.ts): border, title
     // with a "(type to search)" suffix until you type, the hint, a blank, then
     // the search line. Key vocabulary is lowercase to match every list dialog.
-    const navParts = ['↑↓ navigate'];
-    if (view.page.pageCount > 1) navParts.push('←→ page');
-    navParts.push('Enter select', 'Esc cancel');
+    const navParts = [t('↑↓ navigate')];
+    if (view.page.pageCount > 1) navParts.push(t('←→ page'));
+    navParts.push(t('Enter select'), t('Esc cancel'));
     const hint = this.opts.hint ?? navParts.join(' · ');
 
     const titleSuffix =
-      searchable && view.query.length === 0 ? currentTheme.fg('textMuted', '  (type to search)') : '';
+      searchable && view.query.length === 0 ? currentTheme.fg('textMuted', t('  (type to search)')) : '';
     const hintLines = hint.split(/\r?\n/);
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
@@ -245,11 +246,11 @@ export class ChoicePickerComponent implements Component, Focusable {
     }
     lines.push('');
     if (searchable && view.query.length > 0) {
-      lines.push(currentTheme.fg('primary', ` Search: `) + currentTheme.fg('text', view.query));
+      lines.push(currentTheme.fg('primary', ' ' + t('Search: ')) + currentTheme.fg('text', view.query));
     }
 
     if (options.length === 0) {
-      lines.push(currentTheme.fg('textMuted', '   No matches'));
+      lines.push(currentTheme.fg('textMuted', '   ' + t('No matches')));
     }
     const choiceRegions: ChoiceRegion[] = [];
     for (let i = view.page.start; i < view.page.end; i++) {
@@ -281,7 +282,10 @@ export class ChoicePickerComponent implements Component, Focusable {
     if (view.page.pageCount > 1) {
       lines.push(
         currentTheme.fg('textMuted',
-          ` Page ${String(view.page.page + 1)}/${String(view.page.pageCount)}`,
+          tFormat(' Page {page}/{total}', {
+            page: view.page.page + 1,
+            total: view.page.pageCount,
+          }),
         ),
       );
     }

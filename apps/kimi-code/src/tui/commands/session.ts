@@ -53,7 +53,7 @@ export async function handleForkCommand(host: SlashCommandHost, args: string): P
   void args;
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
 
@@ -115,7 +115,7 @@ function forkResumeCommand(workDir: string, forkId: string): string {
 export async function handleExportMdCommand(host: SlashCommandHost, args: string): Promise<void> {
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
 
@@ -162,7 +162,7 @@ export async function handleExportMdCommand(host: SlashCommandHost, args: string
 export async function handleExportDebugZipCommand(host: SlashCommandHost): Promise<void> {
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
 
@@ -188,7 +188,7 @@ export async function handleExportDebugZipCommand(host: SlashCommandHost): Promi
 export async function handleInitCommand(host: SlashCommandHost): Promise<void> {
   const session = host.session;
   if (host.state.appState.model.trim().length === 0 || session === undefined) {
-    host.showError(LLM_NOT_SET_MESSAGE);
+    host.showError(t(LLM_NOT_SET_MESSAGE));
     return;
   }
 

@@ -19,6 +19,8 @@ import type {
   TranscriptEntry,
 } from '#/tui/types';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import { modelDisplayName } from '../components/dialogs/model-selector';
 import { mediaUrlPartToText } from './media-url';
 import { nextTranscriptId } from './transcript-id';
@@ -474,7 +476,8 @@ const HOOK_RESULT_RE =
   /<hook_result\s+hook_event="([^"]+)">\n?([\s\S]*?)\n?<\/hook_result>/g;
 
 function formatHookResultBlock(event: string, body: string, blocked: boolean): string {
-  return `*${event} hook${blocked ? ' blocked' : ''}*\n\n${body.trim() || '(empty)'}`;
+  const label = blocked ? tFormat('{event} hook blocked', { event }) : `${event} hook`;
+  return `*${label}*\n\n${body.trim() || t('(empty)')}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

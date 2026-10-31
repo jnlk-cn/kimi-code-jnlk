@@ -16,6 +16,7 @@ import {
   type Focusable,
 } from '@moonshot-ai/pi-tui';
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { formatIdleDuration } from '#/tui/utils/cache-hint';
 import { SearchableList } from '#/tui/utils/searchable-list';
@@ -86,21 +87,32 @@ export class CacheHintDialogComponent extends Container implements Focusable {
 
   override render(width: number): string[] {
     const view = this.list.view();
-    const title = `This session has been idle for ${formatIdleDuration(this.opts.idleSeconds)} and is ~${formatTokenCount(this.opts.totalTokens)} tokens.`;
+    const title = tFormat(
+      'This session has been idle for {idle} and is ~{tokens} tokens.',
+      {
+        idle: formatIdleDuration(this.opts.idleSeconds),
+        tokens: formatTokenCount(this.opts.totalTokens),
+      },
+    );
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
       currentTheme.boldFg('primary', ` ${title}`),
-      currentTheme.fg('textMuted', ' ↑↓ navigate · Enter select · Esc cancel'),
+      currentTheme.fg('textMuted', t(' ↑↓ navigate · Enter select · Esc cancel')),
       '',
       currentTheme.fg(
         'text',
-        ' Cache expired — the next message re-sends the entire history at full price.',
+        t(' Cache expired — the next message re-sends the entire history at full price.'),
       ),
     ];
 
-    const maxLabelWidth = Math.max(...OPTIONS.map((o) => visibleWidth(o.label)));
+    const options = OPTIONS.map((option) => ({
+      label: t(option.label),
+      description: option.description === undefined ? undefined : t(option.description),
+    }));
+    const maxLabelWidth = Math.max(...options.map((option) => visibleWidth(option.label)));
     for (let i = view.page.start; i < view.page.end; i++) {
-      const opt = view.items[i]!;
+      const opt = options[i];
+      if (opt === undefined) continue;
       const isSelected = i === view.selectedIndex;
       const pointer = isSelected ? SELECT_POINTER : ' ';
       let line = currentTheme.fg(isSelected ? 'primary' : 'textDim', `  ${pointer} `);

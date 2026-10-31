@@ -1128,8 +1128,10 @@ export class KimiTUI {
             process.stderr.write(
               `${currentTheme.fg(
                 'warning',
-                `Session "${startup.sessionFlag}" was created under a different directory.\n` +
-                  `  cd "${target.workDir}" && kimi -r ${startup.sessionFlag}`,
+                tFormat(
+                  'Session "{session}" was created under a different directory.\n  cd "{directory}" && kimi -r {session}',
+                  { session: startup.sessionFlag, directory: target.workDir },
+                ),
               )}\n\n`,
             );
             throw new Error(
@@ -1176,7 +1178,7 @@ export class KimiTUI {
           // "No session yet" notice would contradict the live banner.
           void this.ensureSession();
         } else {
-          this.appendStartupNotice(SESSIONLESS_STARTUP_NOTICE);
+          this.appendStartupNotice(t(SESSIONLESS_STARTUP_NOTICE));
         }
       }
       if (session !== undefined && shouldReplayHistory) {
@@ -1251,7 +1253,7 @@ export class KimiTUI {
     // closeSession runs SessionEnd hooks, which can take seconds (bounded by
     // the hook timeout) — keep the last frame from looking like a freeze by
     // saying the shutdown is in progress.
-    this.state.footer.setTransientHint(SHUTTING_DOWN_HINT);
+    this.state.footer.setTransientHint(t(SHUTTING_DOWN_HINT));
     this.state.ui.requestRender();
     // Restore the terminal even if closing the session / harness throws — a
     // SIGTERM during a network or MCP shutdown must not leave the user stuck in
@@ -1600,7 +1602,7 @@ export class KimiTUI {
   async sendNormalUserInput(text: string, preExtracted?: ExtractionResult): Promise<void> {
     if (this.btwPanelController.sendUserInput(text)) return;
     if (this.state.appState.model.trim().length === 0) {
-      this.showError(LLM_NOT_SET_MESSAGE);
+      this.showError(t(LLM_NOT_SET_MESSAGE));
       return;
     }
     let extraction: ReturnType<typeof extractMediaAttachments>;
@@ -1702,7 +1704,7 @@ export class KimiTUI {
   ): Promise<void> {
     if (this.btwPanelController.sendUserInput(text, activations)) return;
     if (this.state.appState.model.trim().length === 0) {
-      this.showError(LLM_NOT_SET_MESSAGE);
+      this.showError(t(LLM_NOT_SET_MESSAGE));
       return;
     }
     const originatingSession = this.session;
@@ -4572,7 +4574,7 @@ export class KimiTUI {
 
     const session = this.session;
     if (session === undefined) {
-      this.showError(NO_ACTIVE_SESSION_MESSAGE);
+      this.showError(t(NO_ACTIVE_SESSION_MESSAGE));
       return;
     }
 

@@ -8,6 +8,7 @@ import type {
 
 import { NO_ACTIVE_SESSION_MESSAGE } from '../constant/kimi-tui';
 import { BtwPanelComponent } from '../components/panes/btw-panel';
+import { t, tFormat } from '../i18n';
 import { formatErrorMessage } from '../utils/event-payload';
 import { formatHookResultPlain } from '../utils/hook-result-format';
 import { createMarkdownTheme } from '../theme/pi-tui-theme';
@@ -192,7 +193,7 @@ export class BtwPanelController {
     input: string,
   ): void {
     this.host.state.editor.setText(input);
-    active.panel.addTransientNotice(BTW_BUSY_NOTICE);
+    active.panel.addTransientNotice(t(BTW_BUSY_NOTICE));
     this.host.state.ui.requestRender();
   }
 
@@ -204,7 +205,7 @@ export class BtwPanelController {
   ): void {
     const session = this.host.session;
     if (session === undefined) {
-      panel.markFailed(NO_ACTIVE_SESSION_MESSAGE);
+      panel.markFailed(t(NO_ACTIVE_SESSION_MESSAGE));
       this.host.state.ui.requestRender();
       return;
     }
@@ -213,7 +214,9 @@ export class BtwPanelController {
         ? () => this.promptWithSkills(agentId, session, prompt, panel, inlineSkillActivations)
         : () => session.prompt(prompt);
     void this.withInteractiveAgent(agentId, send).catch((error: unknown) => {
-      panel.markFailed(`Failed to send /btw prompt: ${formatErrorMessage(error)}`);
+      panel.markFailed(
+        tFormat('Failed to send /btw prompt: {error}', { error: formatErrorMessage(error) }),
+      );
       this.host.state.ui.requestRender();
     });
   }
@@ -236,7 +239,7 @@ export class BtwPanelController {
       // Ctrl-C during the media wait: no child turn existed for cancel() to
       // stop, so settle the question here instead of dispatching it anyway.
       if (this.cancelledAgentIds.delete(agentId)) {
-        panel.markFailed('Interrupted by user');
+        panel.markFailed(t('Interrupted by user'));
         return;
       }
       if (
@@ -256,7 +259,7 @@ export class BtwPanelController {
           )
         : prompt;
       if (this.cancelledAgentIds.delete(agentId)) {
-        panel.markFailed('Interrupted by user');
+        panel.markFailed(t('Interrupted by user'));
         return;
       }
       if (this.host.session !== session || this.panelsByAgentId.get(agentId) !== panel || !panel.isRunning()) return;
@@ -287,7 +290,9 @@ export class BtwPanelController {
     const session = this.host.session;
     if (session === undefined) return;
     await this.withInteractiveAgent(agentId, () => session.cancel()).catch((error: unknown) => {
-      this.host.showError(`Failed to cancel /btw: ${formatErrorMessage(error)}`);
+      this.host.showError(
+        tFormat('Failed to cancel /btw: {error}', { error: formatErrorMessage(error) }),
+      );
     });
   }
 
@@ -302,16 +307,16 @@ export class BtwPanelController {
 
 function formatBtwTurnEnd(event: TurnEndedEvent): string {
   if (event.reason === 'cancelled') {
-    return 'Interrupted by user';
+    return t('Interrupted by user');
   }
   if (event.error?.code === 'provider.filtered') {
-    return 'Provider safety policy blocked the response.';
+    return t('Provider safety policy blocked the response.');
   }
   if (event.error !== undefined) {
     return `[${event.error.code}] ${event.error.message}`;
   }
   if (event.reason === 'blocked') {
-    return 'Prompt hook blocked the request.';
+    return t('Prompt hook blocked the request.');
   }
-  return `BTW turn ended with reason: ${event.reason}`;
+  return tFormat('BTW turn ended with reason: {reason}', { reason: event.reason });
 }

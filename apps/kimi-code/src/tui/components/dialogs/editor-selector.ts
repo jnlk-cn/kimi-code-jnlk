@@ -1,3 +1,5 @@
+import { t } from '#/tui/i18n';
+
 import { ChoicePickerComponent, type ChoiceOption } from './choice-picker';
 
 const EDITOR_OPTIONS: readonly ChoiceOption[] = [
@@ -17,8 +19,8 @@ export interface EditorSelectorOptions {
 export class EditorSelectorComponent extends ChoicePickerComponent {
   constructor(opts: EditorSelectorOptions) {
     super({
-      title: 'Select external editor',
-      options: [...EDITOR_OPTIONS],
+      title: t('Select external editor'),
+      options: EDITOR_OPTIONS.map((option) => ({ ...option, label: t(option.label) })),
       currentValue: opts.currentValue,
       onSelect: opts.onSelect,
       onCancel: opts.onCancel,

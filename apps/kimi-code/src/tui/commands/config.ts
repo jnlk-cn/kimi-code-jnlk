@@ -151,7 +151,7 @@ async function applyPlanMode(host: SlashCommandHost, session: Session, enabled: 
 export async function handleCompactCommand(host: SlashCommandHost, args: string): Promise<void> {
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
   const customInstruction = args.trim() || undefined;

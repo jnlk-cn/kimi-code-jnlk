@@ -10,6 +10,7 @@ import {
 } from '#/utils/clipboard/clipboard-image';
 import { parseImageMeta } from '#/utils/image/image-mime';
 import { editInExternalEditor, resolveEditorCommand } from '#/utils/process/external-editor';
+import { t, tFormat } from '#/tui/i18n';
 
 import {
   CTRL_C_HINT,
@@ -324,7 +325,11 @@ export class EditorKeyboardController {
         try {
           extraction = extractMediaAttachments(text, this.imageStore);
         } catch (error) {
-          host.showError(`Failed to prepare media attachment: ${formatErrorMessage(error)}`);
+          host.showError(
+            tFormat('Failed to prepare media attachment: {error}', {
+              error: formatErrorMessage(error),
+            }),
+          );
           return;
         }
         if (!host.validateMediaCapabilities(extraction)) {
@@ -483,7 +488,7 @@ export class EditorKeyboardController {
     if (session === undefined) return;
     void session.cancelCompaction().catch((error: unknown) => {
       const message = formatErrorMessage(error);
-      this.host.showError(`Failed to cancel compaction: ${message}`);
+      this.host.showError(tFormat('Failed to cancel compaction: {error}', { error: message }));
     });
   }
 
@@ -514,7 +519,11 @@ export class EditorKeyboardController {
       this.host.track('shortcut_paste', { kind: 'video' });
       attachment.pending = this.finishClipboardVideoPaste(attachment, media).catch(
         (error: unknown) => {
-          this.host.showError(`Failed to process pasted video: ${formatErrorMessage(error)}`);
+          this.host.showError(
+            tFormat('Failed to process pasted video: {error}', {
+              error: formatErrorMessage(error),
+            }),
+          );
         },
       );
       return true;
@@ -549,7 +558,9 @@ export class EditorKeyboardController {
     ).catch((error: unknown) => {
       // The raw attachment and its already-visible placeholder are still a
       // valid inline fallback when optional ingestion work fails.
-      this.host.showError(`Failed to process pasted image: ${formatErrorMessage(error)}`);
+      this.host.showError(
+        tFormat('Failed to process pasted image: {error}', { error: formatErrorMessage(error) }),
+      );
     });
     return true;
   }
@@ -694,7 +705,9 @@ export class EditorKeyboardController {
     if (state.externalEditorRunning) return;
     const cmd = resolveEditorCommand(state.appState.editorCommand);
     if (cmd === undefined) {
-      this.host.showError('No editor configured. Set $VISUAL / $EDITOR, or run /editor <command>.');
+      this.host.showError(
+        t('No editor configured. Set $VISUAL / $EDITOR, or run /editor <command>.'),
+      );
       return;
     }
     this.host.setExternalEditorRunning(true);
@@ -713,7 +726,7 @@ export class EditorKeyboardController {
       }
     } catch (error) {
       const msg = formatErrorMessage(error);
-      this.host.showError(`External editor failed: ${msg}`);
+      this.host.showError(tFormat('External editor failed: {error}', { error: msg }));
     } finally {
       if (typeof process.stdin.pause === 'function') {
         process.stdin.pause();

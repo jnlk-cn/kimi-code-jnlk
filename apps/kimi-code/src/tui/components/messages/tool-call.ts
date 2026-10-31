@@ -540,14 +540,14 @@ export function extractKeyArgumentDetail(
 
 function formatSubagentLabel(agentName: string | undefined): string {
   const raw = agentName?.trim();
-  if (raw === undefined || raw.length === 0) return 'SubAgent';
+  if (raw === undefined || raw.length === 0) return t('SubAgent');
   const label = raw
     .split(/[-_\s]+/)
     .filter((part) => part.length > 0)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
   if (/\bagent$/i.test(label)) return label;
-  return `${label} Agent`;
+  return tFormat('{name} Agent', { name: label });
 }
 
 function tailNonEmptyLines(text: string, maxLines: number): string[] {

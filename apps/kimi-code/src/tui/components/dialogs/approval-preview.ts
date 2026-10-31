@@ -28,6 +28,7 @@ import {
 
 import { highlightLines, langFromPath } from '#/tui/components/media/code-highlight';
 import { renderDiffLinesClustered } from '#/tui/components/media/diff-preview';
+import { t } from '#/tui/i18n';
 import type { DiffDisplayBlock, FileContentDisplayBlock } from '#/tui/reverse-rpc/types';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '#/tui/utils/printable-key';
@@ -96,11 +97,11 @@ export class ApprovalPreviewViewer extends Container implements Focusable {
       this.scrollBy(1);
       return;
     }
-    if (matchesKey(data, Key.pageUp) || k === ' ' || data === '\x02') {
+    if (matchesKey(data, Key.pageUp) || k === ' ' || data === '\u0002') {
       this.scrollBy(-Math.max(1, visible - 1));
       return;
     }
-    if (matchesKey(data, Key.pageDown) || data === '\x06') {
+    if (matchesKey(data, Key.pageDown) || data === '\u0006') {
       this.scrollBy(Math.max(1, visible - 1));
       return;
     }
@@ -150,7 +151,7 @@ export class ApprovalPreviewViewer extends Container implements Focusable {
   }
 
   private renderHeader(width: number): string {
-    const title = currentTheme.boldFg('primary', ' Preview ');
+    const title = currentTheme.boldFg('primary', t(' Preview '));
     return fitExactly(title + this.headerTitle, width);
   }
 
@@ -191,10 +192,10 @@ export class ApprovalPreviewViewer extends Container implements Focusable {
       ` ${String(lineFrom)}-${String(lineTo)} / ${String(total)} (${String(percent)}%) `,
     );
     const keys =
-      `${key('↑↓')} ${dim('line')}  ` +
-      `${key('PgUp/PgDn')} ${dim('page')}  ` +
-      `${key('g/G')} ${dim('top/bot')}  ` +
-      `${key('Q/Esc/Ctrl+E')} ${dim('cancel')}`;
+      `${key('↑↓')} ${dim(t('line'))}  ` +
+      `${key('PgUp/PgDn')} ${dim(t('page'))}  ` +
+      `${key('g/G')} ${dim(t('top/bot'))}  ` +
+      `${key('Q/Esc/Ctrl+E')} ${dim(t('cancel'))}`;
     const left = ` ${keys}`;
     const leftW = visibleWidth(left);
     const rightW = visibleWidth(position);

@@ -6,7 +6,7 @@
  * lends the keyboard to the Updates panel; meanwhile the dialog fades.
  */
 
-import { t } from '#/tui/i18n';
+import { t, tFormat } from '#/tui/i18n';
 import {
   Container,
   Input,
@@ -477,13 +477,17 @@ export class QuestionDialogComponent extends Container implements Focusable {
     const success = (text: string) => currentTheme.fg('success', text);
 
     const renderWidth = Math.max(1, width);
-    const lines: string[] = [this.rule(renderWidth), currentTheme.boldFg('primary', ' question'), ''];
+    const lines: string[] = [
+      this.rule(renderWidth),
+      currentTheme.boldFg('primary', t(' question')),
+      '',
+    ];
     this.pushTabs(lines);
     lines.push('');
 
     appendWrapped(lines, ' ? ', '   ', question.question, renderWidth, accent);
     if (this.isEditingOther()) {
-      lines.push(dim('   Type your answer, then press Enter to save.'));
+      lines.push(dim(t('   Type your answer, then press Enter to save.')));
     }
 
     if (question.body !== undefined && question.body.trim().length > 0) {
@@ -494,7 +498,13 @@ export class QuestionDialogComponent extends Container implements Focusable {
         appendWrapped(lines, '   ', '   ', bodyLine, renderWidth, dim);
       }
       if (bodyLines.length > visibleBodyLines.length) {
-        lines.push(dim(`   … ${String(bodyLines.length - visibleBodyLines.length)} more lines`));
+        lines.push(
+          dim(
+            tFormat('   … {count} more lines', {
+              count: bodyLines.length - visibleBodyLines.length,
+            }),
+          ),
+        );
       }
     }
 
@@ -556,13 +566,19 @@ export class QuestionDialogComponent extends Container implements Focusable {
     if (visibleEnd < options.length || visibleStart > 0) {
       lines.push(
         dim(
-          `   showing ${String(visibleStart + 1)}-${String(visibleEnd)} of ${String(options.length)}`,
+          tFormat('   showing {start}-{end} of {total}', {
+            start: visibleStart + 1,
+            end: visibleEnd,
+            total: options.length,
+          }),
         ),
       );
     }
 
     lines.push('');
-    lines.push(this.focused ? this.buildQuestionHint(dim, questionIdx) : dim('  esc back to question'));
+    lines.push(
+      this.focused ? this.buildQuestionHint(dim, questionIdx) : dim(t('  esc back to question')),
+    );
     lines.push(this.rule(renderWidth));
 
     return lines.map((line) => truncateToWidth(line, width));
@@ -575,7 +591,11 @@ export class QuestionDialogComponent extends Container implements Focusable {
     const warning = (text: string) => currentTheme.fg('warning', text);
 
     const renderWidth = Math.max(1, width);
-    const lines: string[] = [this.rule(renderWidth), currentTheme.boldFg('primary', ' question'), ''];
+    const lines: string[] = [
+      this.rule(renderWidth),
+      currentTheme.boldFg('primary', t(' question')),
+      '',
+    ];
     this.pushTabs(lines);
     lines.push('');
     lines.push(currentTheme.boldFg('text', ` ${t(REVIEW_TITLE)}`));
@@ -619,14 +639,14 @@ export class QuestionDialogComponent extends Container implements Focusable {
       if (label === undefined) continue;
       const num = i + 1;
       if (i === this.submitActionIdx) {
-        lines.push(accent(`  → [${String(num)}] ${label}`));
+        lines.push(accent(`  → [${String(num)}] ${t(label)}`));
       } else {
-        lines.push(dim(`    [${String(num)}] ${label}`));
+        lines.push(dim(`    [${String(num)}] ${t(label)}`));
       }
     }
 
     lines.push('');
-    lines.push(this.focused ? this.buildSubmitHint(dim) : dim('  esc back to question'));
+    lines.push(this.focused ? this.buildSubmitHint(dim) : dim(t('  esc back to question')));
     lines.push(this.rule(renderWidth));
 
     return lines.map((line) => truncateToWidth(line, width));
@@ -650,7 +670,7 @@ export class QuestionDialogComponent extends Container implements Focusable {
       else tabs.push(dim(`(○) ${label}`));
     }
 
-    const submitLabel = 'Submit';
+    const submitLabel = t('Submit');
     if (this.isSubmitTab()) tabs.push(active(` ${submitLabel} `));
     else tabs.push(dim(` ${submitLabel} `));
 
@@ -660,10 +680,10 @@ export class QuestionDialogComponent extends Container implements Focusable {
   private buildQuestionHint(dim: (s: string) => string, questionIdx: number): string {
     if (this.isEditingOther()) {
       const parts: string[] = [
-        'type answer',
-        '↵ save',
-        ...(this.totalTabs() > 1 ? ['tab switch'] : []),
-        'esc cancel',
+        t('type answer'),
+        t('↵ save'),
+        ...(this.totalTabs() > 1 ? [t('tab switch')] : []),
+        t('esc cancel'),
       ];
       return dim(`  ${parts.join('  ')}`);
     }
@@ -671,21 +691,21 @@ export class QuestionDialogComponent extends Container implements Focusable {
     const optionCount = Math.min(this.displayOptions(questionIdx).length, NUMBER_KEYS.length);
     const numberHint = optionCount <= 1 ? '1' : `1-${String(optionCount)}`;
     const question = this.request.data.questions[questionIdx];
-    if (question === undefined) return dim('  esc cancel');
+    if (question === undefined) return dim(`  ${t('esc cancel')}`);
 
-    const parts: string[] = [
-      '↑↓ select',
-      `${numberHint} / ↵ ${question.multi_select ? 'toggle' : 'choose'}`,
-    ];
-    if (this.totalTabs() > 1) parts.push('←/→/tab switch');
-    parts.push('esc cancel');
+    const keyHint = question.multi_select
+      ? tFormat('{keys} / ↵ toggle', { keys: numberHint })
+      : tFormat('{keys} / ↵ choose', { keys: numberHint });
+    const parts: string[] = [t('↑↓ select'), keyHint];
+    if (this.totalTabs() > 1) parts.push(t('←/→/tab switch'));
+    parts.push(t('esc cancel'));
     return dim(`  ${parts.join('  ')}`);
   }
 
   private buildSubmitHint(dim: (s: string) => string): string {
-    const parts: string[] = ['↑↓ select', '1/2 choose', '↵ confirm'];
-    if (this.totalTabs() > 1) parts.push('←/→/tab switch');
-    parts.push('esc cancel');
+    const parts: string[] = [t('↑↓ select'), t('1/2 choose'), t('↵ confirm')];
+    if (this.totalTabs() > 1) parts.push(t('←/→/tab switch'));
+    parts.push(t('esc cancel'));
     return dim(`  ${parts.join('  ')}`);
   }
 
@@ -735,7 +755,7 @@ export class QuestionDialogComponent extends Container implements Focusable {
         kind: 'preset' as const,
       })),
       {
-        label: question.other_label?.length ? question.other_label : DEFAULT_OTHER_LABEL,
+        label: question.other_label?.length ? question.other_label : t(DEFAULT_OTHER_LABEL),
         description: question.other_description?.length ? question.other_description : undefined,
         kind: 'other' as const,
       },

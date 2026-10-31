@@ -99,10 +99,10 @@ function renderShellDisplayBlock(
 ): string[] {
   const lines: string[] = [];
   if (block.cwd !== undefined && block.cwd.length > 0) {
-    lines.push(s.dim(`cwd: ${block.cwd}`));
+    lines.push(s.dim(`${t('cwd:')} ${block.cwd}`));
   }
   if (block.danger !== undefined) {
-    lines.push(s.errorBold(`Dangerous: ${block.danger}`));
+    lines.push(s.errorBold(`${t('Dangerous:')} ${t(block.danger)}`));
   }
   const cmdLines = block.command.length > 0 ? block.command.split('\n') : [''];
   cmdLines.forEach((cmdLine, idx) => {
@@ -124,7 +124,7 @@ function renderDisplayBlock(
     case 'diff':
       return renderDiffLinesClustered(block.old_text, block.new_text, block.path, {
         contextLines: 3,
-        expandKeyHint: 'ctrl+e to preview',
+        expandKeyHint: t('ctrl+e to preview'),
         maxLines: DIFF_SUMMARY_MAX_LINES,
       });
     case 'file_content': {
@@ -139,7 +139,12 @@ function renderDisplayBlock(
       if (remaining > 0) {
         lines.push(
           s.dim(
-            `     … ${String(remaining)} more line${remaining > 1 ? 's' : ''} hidden (ctrl+e to preview)`,
+            tFormat(
+              remaining === 1
+                ? '     … {count} more line hidden (ctrl+e to preview)'
+                : '     … {count} more lines hidden (ctrl+e to preview)',
+              { count: remaining },
+            ),
           ),
         );
       }
@@ -160,9 +165,9 @@ function renderDisplayBlock(
       return [`${method} ${s.strong(block.url)}`];
     }
     case 'search': {
-      const lines = [`${s.accent('search')} ${s.strong(block.query)}`];
+      const lines = [`${s.accent(t('search'))} ${s.strong(block.query)}`];
       if (block.scope !== undefined && block.scope.length > 0) {
-        lines.push(s.dim(`scope: ${block.scope}`));
+        lines.push(s.dim(`${t('scope:')} ${block.scope}`));
       }
       return lines;
     }
@@ -179,7 +184,14 @@ function renderDisplayBlock(
         : [];
     case 'background_task':
       return [
-        s.strong(`${block.status} ${block.kind} task ${block.task_id}: ${block.description}`),
+        s.strong(
+          tFormat('{status} {kind} task {task}: {description}', {
+            status: block.status,
+            kind: block.kind,
+            task: block.task_id,
+            description: block.description,
+          }),
+        ),
       ];
     case 'todo':
       return block.items.map((item) => s.strong(`- [${item.status}] ${item.title}`));
@@ -509,13 +521,17 @@ export class ApprovalPanelComponent extends DockSection implements Focusable {
       const expandHint = this.visibleBlocks().some(
         (block) => block.type === 'diff' || block.type === 'file_content',
       )
-        ? ' · ctrl+e preview'
+        ? ` · ${t('ctrl+e preview')}`
         : '';
-      const scrollHint = this.bodyOverflows(width) ? ' · shift+↑/↓ scroll' : '';
+      const scrollHint = this.bodyOverflows(width) ? ` · ${t('shift+↑/↓ scroll')}` : '';
       lines.push(
         indent(
           dim(
-            `↑/↓ select · ${buildNumericHint(data.choices.length)} choose · ↵ confirm${expandHint}${scrollHint}`,
+            tFormat('↑/↓ select · {keys} choose · ↵ confirm', {
+              keys: buildNumericHint(data.choices.length),
+            }) +
+              expandHint +
+              scrollHint,
           ),
         ),
       );

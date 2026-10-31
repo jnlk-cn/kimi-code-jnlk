@@ -20,6 +20,7 @@ import {
   performModelSwitch,
 } from '../utils/model-switch';
 import { sanitizeShellOutput } from '../utils/shell-output';
+import { t, tFormat } from '#/tui/i18n';
 import {
   acknowledgeModelMigration,
   readModelMigrationAcknowledgements,
@@ -79,11 +80,16 @@ function findModelMigration(
     displayName: sanitizeShellOutput(modelDisplayName(toAlias, targetModel)),
     effort,
     effortHint:
-      thinkingAvailability(targetModel) === 'unsupported' ? undefined : `thinking ${effort}`,
+      thinkingAvailability(targetModel) === 'unsupported'
+        ? undefined
+        : tFormat('thinking {effort}', { effort }),
     migrationMarkdown: sanitizeShellOutput(
       migrationMarkdown.length > 0
         ? migrationMarkdown
-        : `We recommend switching from ${from.model} to ${to.model}.`,
+        : tFormat('We recommend switching from {from} to {to}.', {
+            from: from.model,
+            to: to.model,
+          }),
     ),
     retirementAt: upgrade.retirementAt,
   };
@@ -177,7 +183,7 @@ export class ModelMigrationController {
         })
         .catch(() => {
           this.scheduled = false;
-          this.host.showError('Failed to check model migration.');
+          this.host.showError(t('Failed to check model migration.'));
         });
     });
   }
@@ -217,7 +223,7 @@ export async function maybeShowModelMigrationPrompt(
         await acknowledgeModelMigration(migration.fromAlias, migration.toModel);
         resolve();
       })().catch(() => {
-        host.showError('Failed to save model migration preference.');
+        host.showError(t('Failed to save model migration preference.'));
         resolve();
       });
     };
@@ -225,7 +231,7 @@ export async function maybeShowModelMigrationPrompt(
     const notice = migrationNotice(migration);
     host.mountEditorReplacement(
       new ChoicePickerComponent({
-        title: 'Model migration available',
+        title: t('Model migration available'),
         notice: {
           markdown: hasConversationHistory(host)
             ? `${notice}\n\n${MODEL_SWITCH_CACHE_WARNING}`
@@ -234,10 +240,10 @@ export async function maybeShowModelMigrationPrompt(
         options: [
           {
             value: 'switch',
-            label: `Switch to ${migration.displayName}`,
+            label: tFormat('Switch to {model}', { model: migration.displayName }),
             description: migration.effortHint,
           },
-          { value: 'keep', label: 'Keep current model' },
+          { value: 'keep', label: t('Keep current model') },
         ],
         currentValue: 'keep',
         initialValue: 'switch',
@@ -266,7 +272,10 @@ function showRetiredDefaultNotice(host: SlashCommandHost, retired: RetiredDefaul
     modelDisplayName(retired.to, host.state.appState.availableModels[retired.to]),
   );
   host.showStatus(
-    `${fromName} is no longer offered by its provider; the default model is now ${toName}.`,
+    tFormat('{from} is no longer offered by its provider; the default model is now {to}.', {
+      from: fromName,
+      to: toName,
+    }),
     'warning',
   );
 }
@@ -276,5 +285,6 @@ function migrationNotice(migration: ModelMigration): string {
   if (retirementAt === undefined || retirementAt === null) return migration.migrationMarkdown;
   const timestamp = Date.parse(retirementAt);
   if (!Number.isFinite(timestamp)) return migration.migrationMarkdown;
-  return `${migration.migrationMarkdown}\n\nRetirement date: ${new Date(timestamp).toLocaleDateString()}`;
+  const date = new Date(timestamp).toLocaleDateString();
+  return `${migration.migrationMarkdown}\n\n${tFormat('Retirement date: {date}', { date })}`;
 }

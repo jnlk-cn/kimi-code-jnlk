@@ -20,6 +20,7 @@ import {
 } from '@moonshot-ai/pi-tui';
 import type { BackgroundTaskInfo, BackgroundTaskStatus } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { printableChar } from '@/tui/utils/printable-key';
 import { sanitizeShellOutput } from '#/tui/utils/shell-output';
@@ -105,7 +106,7 @@ export class TaskOutputViewer extends Container implements Focusable {
   }
 
   private splitOutput(output: string): string[] {
-    return (output.length > 0 ? sanitizeShellOutput(output) : '[no output captured]').split('\n');
+    return (output.length > 0 ? sanitizeShellOutput(output) : t('[no output captured]')).split('\n');
   }
 
   // ── input ──────────────────────────────────────────────────────────
@@ -191,14 +192,16 @@ export class TaskOutputViewer extends Container implements Focusable {
   }
 
   private renderHeader(width: number): string {
-    const title = currentTheme.boldFg('primary', ' Task output ');
+    const title = currentTheme.boldFg('primary', t(' Task output '));
     const id = currentTheme.boldFg('text', this.props.taskId);
     const info = this.props.info;
     const segments: string[] = [];
     if (info !== undefined) {
-      segments.push(currentTheme.fg(statusColor(info.status), STATUS_LABEL[info.status]));
+      segments.push(currentTheme.fg(statusColor(info.status), t(STATUS_LABEL[info.status])));
       if (info.kind === 'process' && info.exitCode !== null) {
-        segments.push(currentTheme.fg('textMuted', `exit ${String(info.exitCode)}`));
+        segments.push(
+          currentTheme.fg('textMuted', tFormat('exit {code}', { code: info.exitCode })),
+        );
       }
       if (info.description && info.description.length > 0) {
         segments.push(currentTheme.fg('textMuted', info.description));
@@ -249,10 +252,10 @@ export class TaskOutputViewer extends Container implements Focusable {
       ` ${String(lineFrom)}-${String(lineTo)} / ${String(total)} (${String(percent)}%) `,
     );
     const keys =
-      `${key('↑↓')} ${dim('line')}  ` +
-      `${key('PgUp/PgDn/Ctrl+U/D')} ${dim('page')}  ` +
-      `${key('g/G')} ${dim('top/bot')}  ` +
-      `${key('Q/Esc')} ${dim('cancel')}`;
+      `${key('↑↓')} ${dim(t('line'))}  ` +
+      `${key('PgUp/PgDn/Ctrl+U/D')} ${dim(t('page'))}  ` +
+      `${key('g/G')} ${dim(t('top/bot'))}  ` +
+      `${key('Q/Esc')} ${dim(t('cancel'))}`;
     const left = ` ${keys}`;
     const leftW = visibleWidth(left);
     const rightW = visibleWidth(position);

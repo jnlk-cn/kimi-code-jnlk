@@ -1,0 +1,55 @@
+export const FRAGMENT: Readonly<Record<string, string>> = {
+  ' Task output ': ' 任务输出 ',
+  'exit {code}': '退出码 {code}',
+  line: '行',
+  page: '页',
+  'top/bot': '首/尾',
+  expand: '展开',
+  collapse: '收起',
+
+  ' Agent activity ': ' 代理活动 ',
+  '[no activity recorded]': '[未记录到活动]',
+  '── step {step} ──': '── 第 {step} 步 ──',
+  'step {from}–{to} / {total}': '第 {from}–{to} 步 / 共 {total} 步',
+  ' · earlier steps discarded': ' · 更早的步骤已丢弃',
+  'Waiting for activity…': '等待活动…',
+  '[media output omitted]': '[媒体输出已省略]',
+  Result: '结果',
+  'Result:': '结果：',
+  'Failed:': '失败：',
+
+  ' Preview ': ' 预览 ',
+
+  'Dangerous:': '危险：',
+  'ctrl+e to preview': 'ctrl+e 预览',
+  'ctrl+e preview': 'ctrl+e 预览',
+  '     … {count} more line hidden (ctrl+e to preview)':
+    '     … 还有 {count} 行未显示（ctrl+e 预览）',
+  '     … {count} more lines hidden (ctrl+e to preview)':
+    '     … 还有 {count} 行未显示（ctrl+e 预览）',
+  '↑/↓ select · {keys} choose · ↵ confirm': '↑/↓ 选择 · {keys} 选择 · ↵ 确认',
+  'esc back to approval': 'esc 返回审批',
+  'Type feedback · ↵ submit.': '输入反馈 · ↵ 提交。',
+  'Run this command?': '要运行这条命令吗？',
+  'Write this file?': '要写入这个文件吗？',
+  'Apply these edits?': '要应用这些修改吗？',
+  'Stop this task?': '要停止这个任务吗？',
+  'Ready to build with this plan?': '准备好按这个计划开始实现了吗？',
+  'Approve {tool}?': '允许 {tool}？',
+  search: '搜索',
+  'scope:': '范围：',
+  '{status} {kind} task {task}: {description}': '{status} {kind} 任务 {task}：{description}',
+
+  'recursive delete': '递归删除',
+  'pipe to shell': '管道到 shell',
+  'dd write': 'dd 写盘',
+  'write to raw device': '写入裸设备',
+  'fork bomb': 'fork 炸弹',
+
+  'Select external editor': '选择外部编辑器',
+  'Auto-detect ($VISUAL / $EDITOR)': '自动检测（$VISUAL / $EDITOR）',
+
+  '←→ page': '←→ 翻页',
+  ' Select messages to undo': ' 选择要撤销的消息',
+  'No messages': '无消息',
+};

@@ -4,6 +4,7 @@ import type {
 } from '@moonshot-ai/kimi-code-sdk';
 import type { Component } from '@moonshot-ai/pi-tui';
 
+import { t, tFormat } from '#/tui/i18n';
 import {
   AgentSwarmProgressComponent,
   agentSwarmDescriptionFromArgs,
@@ -662,7 +663,7 @@ export class SubAgentEventHandler {
 
     const tc = this.host.streamingUI.getToolComponent(parentToolCallId);
     if (tc === undefined) return;
-    tc.onSubagentFailed({ error: 'Aborted by the user' });
+    tc.onSubagentFailed({ error: t('Aborted by the user') });
     this.host.streamingUI.removeToolComponentIfInactive(parentToolCallId);
   }
 
@@ -838,7 +839,8 @@ export class SubAgentEventHandler {
   private createStandaloneSubagentToolCall(
     event: SubagentLifecycleEventOf<'subagent.spawned'>,
   ) {
-    const description = event.description ?? `Run ${event.subagentName} agent`;
+    const description =
+      event.description ?? tFormat('Run {name} agent', { name: event.subagentName });
     const { turnId, step } = this.host.streamingUI.getTurnContext();
     const toolCall: ToolCallBlockData = {
       id: event.parentToolCallId,

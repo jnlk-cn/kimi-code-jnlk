@@ -36,6 +36,7 @@ import { Markdown } from '#/tui/components/markdown/markdown';
 
 import { MAIN_AGENT_ID } from '#/tui/constant/kimi-tui';
 import { UPDATES_PROMPT_FOLD_SCREEN_ROWS } from '#/tui/constant/rendering';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { createMarkdownTheme } from '#/tui/theme/pi-tui-theme';
 import { createMarkdownOptions } from '#/tui/utils/markdown-options';
@@ -450,16 +451,16 @@ export class NotifyPanelComponent extends DockSection implements Focusable {
       if (!this.hasFocus && !this.keptOpen) return [];
       return [
         { text: ' ', style: rule },
-        { text: this.hasFocus ? text : 'close', style: dim, action: { kind: 'close' } },
+        { text: this.hasFocus ? text : t('close'), style: dim, action: { kind: 'close' } },
         { text: ' ─', style: rule },
       ];
     };
     const focusedHints: string[] = [];
-    if (this.channels.length > 1) focusedHints.push('←→ agent');
-    if (this.bodyOverflows(width)) focusedHints.push('↑↓ scroll');
-    if (ch.entries.length > 1) focusedHints.push('shift+←→ update');
-    const hint = this.hasFocus ? focusedHints.join(' · ') : 'ctrl+n to browse';
-    const escape = this.ended || this.promptNeedsRows() ? 'esc close' : 'esc back';
+    if (this.channels.length > 1) focusedHints.push(t('←→ agent'));
+    if (this.bodyOverflows(width)) focusedHints.push(t('↑↓ scroll'));
+    if (ch.entries.length > 1) focusedHints.push(t('shift+←→ update'));
+    const hint = this.hasFocus ? focusedHints.join(' · ') : t('ctrl+n to browse');
+    const escape = this.ended || this.promptNeedsRows() ? t('esc close') : t('esc back');
     const candidates: [HeadSegment[], HeadSegment[]][] = [
       [label(this.tabSegments(true), hint), leave(escape)],
       [label(this.tabSegments(true), ''), leave(escape)],
@@ -487,8 +488,12 @@ export class NotifyPanelComponent extends DockSection implements Focusable {
       action: expand,
     };
     const total = this.channels.reduce((sum, ch) => sum + ch.entries.length, 0);
-    const count = `${String(total)} ${total === 1 ? 'update' : 'updates'}`;
-    const tail: HeadSegment = { text: ' · ctrl+n to expand', style: dim, action: expand };
+    const count =
+      total === 1
+        ? tFormat('{count} update', { count: total })
+        : tFormat('{count} updates', { count: total });
+    const expandHint = t('ctrl+n to expand');
+    const tail: HeadSegment = { text: ` · ${expandHint}`, style: dim, action: expand };
     const head = [marker, ...this.tabSegments(), { text: ` · ${count}`, style: dim, action: expand }];
     const preview = this.previewText(this.currentEntry());
     if (preview !== undefined) {
@@ -498,7 +503,7 @@ export class NotifyPanelComponent extends DockSection implements Focusable {
       }
     }
     if (segmentsWidth(head) + segmentsWidth([tail]) <= width) return [...head, tail];
-    return [marker, { text: `${count} · ctrl+n to expand`, style: dim, action: expand }];
+    return [marker, { text: `${count} · ${expandHint}`, style: dim, action: expand }];
   }
 
   private tabSegments(

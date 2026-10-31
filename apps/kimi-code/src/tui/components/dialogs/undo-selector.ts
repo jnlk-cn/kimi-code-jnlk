@@ -8,6 +8,7 @@ import {
 } from '@moonshot-ai/pi-tui';
 
 import { SELECT_POINTER } from '#/tui/constant/symbols';
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import { SearchableList } from '#/tui/utils/searchable-list';
 
@@ -66,17 +67,17 @@ export class UndoSelectorComponent extends Container implements Focusable {
 
   override render(width: number): string[] {
     const view = this.list.view();
-    const hintParts = ['↑↓ navigate', 'Enter select', 'Esc cancel'];
+    const hintParts = [t('↑↓ navigate'), t('Enter select'), t('Esc cancel')];
 
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
-      currentTheme.boldFg('primary', ' Select messages to undo'),
+      currentTheme.boldFg('primary', t(' Select messages to undo')),
       currentTheme.fg('textMuted', ' ' + hintParts.join(' · ')),
       '',
     ];
 
     if (view.items.length === 0) {
-      lines.push(currentTheme.fg('textMuted', '   No messages'));
+      lines.push(currentTheme.fg('textMuted', '   ' + t('No messages')));
     } else {
       const visibleCount = Math.min(MAX_VISIBLE_CHOICES, view.items.length);
       const maxStart = view.items.length - visibleCount;

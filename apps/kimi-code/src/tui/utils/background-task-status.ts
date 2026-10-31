@@ -11,6 +11,7 @@
 
 import type { BackgroundTaskInfo, BackgroundTaskStatus } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
 import type { BackgroundAgentStatusData, BackgroundAgentStatusPhase } from '@/tui/types';
 
 const MAX_DETAIL_LENGTH = 240;
@@ -40,26 +41,26 @@ function phaseFromStatus(status: BackgroundTaskStatus): BackgroundAgentStatusPha
 }
 
 function subjectFor(info: BackgroundTaskInfo): string {
-  if (info.kind === 'agent') return 'agent task';
-  if (info.kind === 'question') return 'question task';
-  return 'bash task';
+  if (info.kind === 'agent') return t('agent task');
+  if (info.kind === 'question') return t('question task');
+  return t('bash task');
 }
 
 function headlineFor(info: BackgroundTaskInfo): string {
   const subject = subjectFor(info);
   switch (info.status) {
     case 'running':
-      return `${subject} started in background`;
+      return tFormat('{subject} started in background', { subject });
     case 'completed':
-      return `${subject} completed in background`;
+      return tFormat('{subject} completed in background', { subject });
     case 'failed':
-      return `${subject} failed in background`;
+      return tFormat('{subject} failed in background', { subject });
     case 'timed_out':
-      return `${subject} timed out`;
+      return tFormat('{subject} timed out', { subject });
     case 'killed':
-      return `${subject} stopped`;
+      return tFormat('{subject} stopped', { subject });
     case 'lost':
-      return `${subject} lost`;
+      return tFormat('{subject} lost', { subject });
   }
 }
 
@@ -70,20 +71,22 @@ function detailFor(info: BackgroundTaskInfo): string | undefined {
 
   if (info.status === 'completed' || info.status === 'failed') {
     if (info.kind === 'process' && info.exitCode !== null) {
-      parts.push(`exit ${info.exitCode}`);
+      parts.push(tFormat('exit {code}', { code: info.exitCode }));
     }
   }
   if (info.status === 'killed') {
     const reason = truncate(info.stopReason);
-    parts.push(reason !== undefined ? `stopped — ${reason}` : 'stopped');
+    parts.push(
+      reason !== undefined ? tFormat('stopped — {reason}', { reason }) : t('stopped'),
+    );
   }
   if (info.status === 'failed') {
     const reason = truncate(info.stopReason);
     if (reason !== undefined) parts.push(reason);
   }
-  if (info.status === 'timed_out') parts.push('timed out');
+  if (info.status === 'timed_out') parts.push(t('timed out'));
   if (info.status === 'lost') {
-    parts.push('session restarted before completion');
+    parts.push(t('session restarted before completion'));
   }
 
   return parts.length > 0 ? parts.join(' · ') : undefined;

@@ -5,6 +5,7 @@ import { ChoicePickerComponent } from '../components/dialogs/choice-picker';
 import { formatErrorMessage } from '../utils/event-payload';
 import { occupiedHolderClientId } from '../utils/session-lock-errors';
 import { CLI_MSH_PLATFORM } from '#/constant/app';
+import { t, tFormat } from '#/tui/i18n';
 
 type SessionOccupancyHost = Pick<
   SlashCommandHost,
@@ -46,12 +47,12 @@ function showSessionOccupied(
   };
   host.mountEditorReplacement(
     new ChoicePickerComponent({
-      title: 'Session in use',
+      title: t('Session in use'),
       notice: error instanceof Error ? error.message : String(error),
       noticeTone: 'warning',
       options: [
-        { value: 'retry', label: 'Retry', description: 'send again now' },
-        { value: 'cancel', label: 'Cancel', description: 'get your message back' },
+        { value: 'retry', label: t('Retry'), description: t('send again now') },
+        { value: 'cancel', label: t('Cancel'), description: t('get your message back') },
       ],
       spaceSelect: false,
       onSelect: (action) => {
@@ -79,16 +80,18 @@ function showSessionTakeover(
   };
   host.mountEditorReplacement(
     new ChoicePickerComponent({
-      title: 'Session still in use',
-      notice: 'If another Kimi Code process is still running, taking over may mix up the history.',
+      title: t('Session still in use'),
+      notice: t(
+        'If another Kimi Code process is still running, taking over may mix up the history.',
+      ),
       noticeTone: 'warning',
       options: [
-        { value: 'cancel', label: 'Cancel', description: 'get your message back' },
+        { value: 'cancel', label: t('Cancel'), description: t('get your message back') },
         {
           value: 'takeover',
-          label: 'Take over',
+          label: t('Take over'),
           tone: 'danger',
-          description: 'send your message anyway',
+          description: t('send your message anyway'),
         },
       ],
       spaceSelect: false,
@@ -100,7 +103,11 @@ function showSessionTakeover(
         host.track('occupied_choice', { choice: 'takeover', holder_client: holderClient });
         host.restoreEditor();
         void session.takeOverLock().then(retry, (takeoverError: unknown) => {
-          host.showError(`Failed to take over the session: ${formatErrorMessage(takeoverError)}`);
+          host.showError(
+            tFormat('Failed to take over the session: {error}', {
+              error: formatErrorMessage(takeoverError),
+            }),
+          );
           restore();
         });
       },

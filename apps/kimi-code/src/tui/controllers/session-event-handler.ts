@@ -68,6 +68,7 @@ import {
   selectMcpStartupStatusRows,
 } from '../utils/mcp-server-status';
 import { openUrl } from '#/utils/open-url';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorToken } from '#/tui/theme';
 import { errorReportHintLine } from '../constant/feedback';
@@ -252,7 +253,7 @@ export class SessionEventHandler {
     } catch (error) {
       if (host.session !== session || host.aborted) return;
       const message = error instanceof Error ? error.message : String(error);
-      host.showError(`Failed to sync MCP server status: ${message}`);
+      host.showError(tFormat('Failed to sync MCP server status: {error}', { error: message }));
       return;
     }
     if (host.session !== session || host.state.appState.sessionId !== session.id) return;
@@ -395,7 +396,7 @@ export class SessionEventHandler {
     sendQueued: (item: QueuedMessage) => void,
   ): void {
     if (event.reason !== 'blocked') return;
-    this.host.programStatus?.failRequest('Turn blocked by a prompt hook');
+    this.host.programStatus?.failRequest(t('Turn blocked by a prompt hook'));
     this.host.streamingUI.finalizeTurn(sendQueued);
   }
 
@@ -411,10 +412,13 @@ export class SessionEventHandler {
     // until the session reset — prune them when the owning turn ends.
     this.subAgentEventHandler.dropForegroundOnlyActivityRecords();
     if (event.reason === 'failed' && event.error?.code === 'provider.filtered') {
-      this.host.showStatus('Turn stopped: provider safety policy blocked the response.', 'error');
+      this.host.showStatus(
+        t('Turn stopped: provider safety policy blocked the response.'),
+        'error',
+      );
     }
     if (event.reason === 'blocked') {
-      this.host.showStatus('Turn stopped: prompt hook blocked the request.', 'error');
+      this.host.showStatus(t('Turn stopped: prompt hook blocked the request.'), 'error');
     }
     this.host.streamingUI.resetToolUi();
     this.host.streamingUI.finalizeTurn(sendQueued);
@@ -465,8 +469,10 @@ export class SessionEventHandler {
 
     if (event.providerFinishReason === 'filtered') {
       this.host.showNotice(
-        'Provider safety policy blocked the response.',
-        `The model output was filtered (${event.rawFinishReason ?? 'content_filter'}).`,
+        t('Provider safety policy blocked the response.'),
+        tFormat('The model output was filtered ({reason}).', {
+          reason: event.rawFinishReason ?? 'content_filter',
+        }),
       );
       return;
     }
@@ -480,10 +486,12 @@ export class SessionEventHandler {
 
     const title =
       truncatedCount > 0
-        ? 'Model hit max_tokens — tool call was truncated before it could run.'
-        : 'Model hit max_tokens — no tool call was emitted.';
+        ? t('Model hit max_tokens — tool call was truncated before it could run.')
+        : t('Model hit max_tokens — no tool call was emitted.');
     const detail = this.isAnthropicSessionActive()
-      ? 'If this limit is wrong for your model, set `max_output_size` on the model alias in your kimi-code config.'
+      ? t(
+          'If this limit is wrong for your model, set `max_output_size` on the model alias in your kimi-code config.',
+        )
       : undefined;
     this.host.showNotice(title, detail);
   }
@@ -565,7 +573,7 @@ export class SessionEventHandler {
     if (reason === 'aborted' || reason === undefined || reason === '') {
       this.markActiveAgentSwarmsCancelled();
       if (event.message === undefined || event.message === '') {
-        this.host.showStatus('Interrupted by user', 'error');
+        this.host.showStatus(t('Interrupted by user'), 'error');
       } else {
         this.host.showError(event.message);
       }
@@ -573,8 +581,8 @@ export class SessionEventHandler {
     }
     this.host.showError(
       reason === 'max_steps'
-        ? 'reached per-turn step limit (max_steps)'
-        : `step interrupted (${reason})`,
+        ? t('reached per-turn step limit (max_steps)')
+        : tFormat('step interrupted ({reason})', { reason }),
     );
   }
 
@@ -783,7 +791,7 @@ export class SessionEventHandler {
     }
     if (shouldRenderTowerGoalExit) {
       this.host.state.transcriptContainer.addChild(
-        new StatusMessageComponent('Tower mode ended — a goal was activated'),
+        new StatusMessageComponent(t('Tower mode ended — a goal was activated')),
       );
       this.host.state.ui.requestRender();
     }
@@ -924,7 +932,9 @@ export class SessionEventHandler {
     try {
       queue = await readGoalQueue(session);
     } catch (error) {
-      host.showError(`Failed to read upcoming goals: ${formatErrorMessage(error)}`);
+      host.showError(
+        tFormat('Failed to read upcoming goals: {error}', { error: formatErrorMessage(error) }),
+      );
       return false;
     }
     if (host.session !== session || host.aborted) return true;
@@ -948,7 +958,9 @@ export class SessionEventHandler {
             await removeGoalQueueItem(session, { goalId: next.id });
           } catch (error) {
             host.showError(
-              `Queued goal started, but could not be removed from the queue: ${formatErrorMessage(error)}`,
+              tFormat('Queued goal started, but could not be removed from the queue: {error}', {
+                error: formatErrorMessage(error),
+              }),
             );
             await this.cancelStartedQueuedGoal(session);
             return false;
@@ -974,7 +986,9 @@ export class SessionEventHandler {
     try {
       await restoreGoalQueueItem(session, goal);
     } catch (error) {
-      this.host.showError(`Queued goal could not be restored: ${formatErrorMessage(error)}`);
+      this.host.showError(
+        tFormat('Queued goal could not be restored: {error}', { error: formatErrorMessage(error) }),
+      );
     }
     await this.cancelStartedQueuedGoal(session);
   }
@@ -983,7 +997,9 @@ export class SessionEventHandler {
     try {
       await session.cancelGoal();
     } catch (error) {
-      this.host.showError(`Queued goal could not be cancelled: ${formatErrorMessage(error)}`);
+      this.host.showError(
+        tFormat('Queued goal could not be cancelled: {error}', { error: formatErrorMessage(error) }),
+      );
     }
   }
 
@@ -1002,8 +1018,8 @@ export class SessionEventHandler {
     if (!hasQueuedGoal || host.session !== session || host.aborted) return;
 
     host.showNotice(
-      'Goal blocked.',
-      'The next queued goal will start only after this goal is complete.',
+      t('Goal blocked.'),
+      t('The next queued goal will start only after this goal is complete.'),
     );
   }
 
@@ -1037,7 +1053,7 @@ export class SessionEventHandler {
   }
 
   private handleSessionWarning(event: WarningEvent): void {
-    this.host.showStatus(`Warning: ${event.message}`, 'warning');
+    this.host.showStatus(tFormat('Warning: {message}', { message: event.message }), 'warning');
   }
 
   private renderMcpServerStatus(server: McpServerStatusSnapshot): void {
@@ -1050,32 +1066,51 @@ export class SessionEventHandler {
 
     switch (server.status) {
       case 'connected': {
-        const toolStr = `${server.toolCount} tool${server.toolCount === 1 ? '' : 's'}`;
-        const message = `MCP server "${server.name}" connected · ${toolStr} (${server.transport})`;
+        const message =
+          server.toolCount === 1
+            ? tFormat('MCP server "{name}" connected · {count} tool ({transport})', {
+                name: server.name,
+                count: server.toolCount,
+                transport: server.transport,
+              })
+            : tFormat('MCP server "{name}" connected · {count} tools ({transport})', {
+                name: server.name,
+                count: server.toolCount,
+                transport: server.transport,
+              });
         this.finalizeMcpServerStatusRow(server.name, message, 'success');
         return;
       }
       case 'failed': {
-        const message = `MCP server "${server.name}" failed${server.error !== undefined ? `: ${server.error}` : ''}`;
+        const message =
+          server.error === undefined
+            ? tFormat('MCP server "{name}" failed', { name: server.name })
+            : tFormat('MCP server "{name}" failed: {error}', {
+                name: server.name,
+                error: server.error,
+              });
         this.finalizeMcpServerStatusRow(server.name, message, 'error');
         return;
       }
       case 'needs-auth': {
-        const message = `MCP server "${server.name}" needs OAuth — run /mcp-config login ${server.name}`;
+        const message = tFormat(
+          'MCP server "{name}" needs OAuth — run /mcp-config login {name}',
+          { name: server.name },
+        );
         this.finalizeMcpServerStatusRow(server.name, message, 'warning');
         return;
       }
       case 'disabled':
         this.finalizeMcpServerStatusRow(
           server.name,
-          `MCP server "${server.name}" disabled`,
+          tFormat('MCP server "{name}" disabled', { name: server.name }),
           'textMuted',
         );
         return;
       case 'removed':
         this.finalizeMcpServerStatusRow(
           server.name,
-          `MCP server "${server.name}" removed`,
+          tFormat('MCP server "{name}" removed', { name: server.name }),
           'textMuted',
         );
         return;
@@ -1087,7 +1122,7 @@ export class SessionEventHandler {
 
   private showMcpServerStatusSpinner(name: string): void {
     const { state } = this.host;
-    const label = `MCP server "${name}" connecting…`;
+    const label = tFormat('MCP server "{name}" connecting…', { name });
     const existing = this.mcpServerStatusSpinners.get(name);
     if (existing !== undefined) {
       existing.setLabel(label);
@@ -1131,7 +1166,7 @@ export class SessionEventHandler {
       kind: 'skill_activation',
       turnId: undefined,
       renderMode: 'plain',
-      content: `Activated skill: ${event.skillName}`,
+      content: tFormat('Activated skill: {skill}', { skill: event.skillName }),
       skillActivationId: event.activationId,
       skillName: event.skillName,
       skillArgs: event.skillArgs,

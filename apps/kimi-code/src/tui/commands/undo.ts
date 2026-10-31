@@ -2,6 +2,8 @@ import type { Component } from '@moonshot-ai/pi-tui';
 import type { ContextMessage } from '@moonshot-ai/kimi-code-sdk';
 import { isKimiError } from '@moonshot-ai/kimi-code-sdk';
 
+import { t, tFormat } from '#/tui/i18n';
+
 import { WelcomeComponent } from '../components/chrome/welcome';
 import { CompactionComponent } from '../components/dialogs/compaction';
 import {
@@ -47,7 +49,7 @@ export async function handleUndoCommand(
   args: string = '',
 ): Promise<void> {
   if (host.state.appState.streamingPhase !== 'idle') {
-    host.showError('Cannot undo while streaming — press Esc or Ctrl-C first.');
+    host.showError(t('Cannot undo while streaming — press Esc or Ctrl-C first.'));
     return;
   }
 
@@ -59,13 +61,13 @@ export async function handleUndoCommand(
 
   const count = parseUndoCount(trimmed);
   if (count === undefined) {
-    host.showError('Usage: /undo [count], where count is a positive integer.');
+    host.showError(t('Usage: /undo [count], where count is a positive integer.'));
     return;
   }
 
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
 
@@ -81,14 +83,14 @@ export async function handleUndoCommand(
 async function undoByCount(host: SlashCommandHost, count: number): Promise<boolean> {
   const session = host.session;
   if (session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return false;
   }
 
   const entries = host.state.transcriptEntries;
   const lastUserIndex = findUndoAnchorEntryIndex(entries, count);
   if (lastUserIndex === undefined) {
-    showUndoLimitStatus(host, 'Nothing to undo.');
+    showUndoLimitStatus(host, t('Nothing to undo.'));
     return false;
   }
   // When the anchor is a bundled prompt, its skill activation cards sit
@@ -108,11 +110,14 @@ async function undoByCount(host: SlashCommandHost, count: number): Promise<boole
       return false;
     }
     if (isSessionStaleError(error)) {
-      host.showStatus('Loaded updates from another client. Review and run /undo again.', 'warning');
+      host.showStatus(
+        t('Loaded updates from another client. Review and run /undo again.'),
+        'warning',
+      );
       return false;
     }
     const message = formatErrorMessage(error);
-    host.showError(`Failed to undo: ${message}`);
+    host.showError(tFormat('Failed to undo: {error}', { error: message }));
     return false;
   }
   host.noteContextCut?.();
@@ -168,7 +173,7 @@ async function undoByCount(host: SlashCommandHost, count: number): Promise<boole
 
 async function showUndoSelector(host: SlashCommandHost): Promise<void> {
   if (host.session === undefined) {
-    host.showError(NO_ACTIVE_SESSION_MESSAGE);
+    host.showError(t(NO_ACTIVE_SESSION_MESSAGE));
     return;
   }
 
@@ -338,20 +343,23 @@ function formatUndoChoiceLabel(
       entry.skillName ?? entry.content.replace(/^Activated skill:\s*/, ''),
     );
     const args = singleLine(entry.skillArgs ?? '');
-    if (name.length === 0) return 'Skill: unknown';
+    if (name.length === 0) return t('Skill: unknown');
     return args.length > 0 ? `/${name} ${args}` : `/${name}`;
   }
   if (entry.kind === 'plugin_command' && entry.pluginCommandData !== undefined) {
-    return formatPluginCommandSlash(entry.pluginCommandData) ?? 'User message';
+    return formatPluginCommandSlash(entry.pluginCommandData) ?? t('User message');
   }
 
   const content = singleLine(entry.content);
   const imageCount = entry.imageAttachmentIds?.length ?? 0;
   if (content.length > 0) return content;
   if (imageCount > 0) {
-    return `User message (${String(imageCount)} ${imageCount === 1 ? 'image' : 'images'})`;
+    return tFormat(
+      imageCount === 1 ? 'User message ({count} image)' : 'User message ({count} images)',
+      { count: imageCount },
+    );
   }
-  return 'User message';
+  return t('User message');
 }
 
 function formatUndoChoiceInput(entry: TranscriptEntry): string {
@@ -384,21 +392,28 @@ function formatUndoLimitMessage(
   requestedCount: number,
   availability: UndoAvailability,
 ): string {
-  const reason = availability.stoppedAtCompaction ? ' after the last compaction' : '';
   const requested = formatPromptCount(requestedCount);
   const max = formatPromptCount(availability.maxCount);
-  return `Cannot undo ${requested}; only ${max} can be undone in the active context${reason}.`;
+  return availability.stoppedAtCompaction
+    ? tFormat(
+        'Cannot undo {requested}; only {max} can be undone in the active context after the last compaction.',
+        { requested, max },
+      )
+    : tFormat('Cannot undo {requested}; only {max} can be undone in the active context.', {
+        requested,
+        max,
+      });
 }
 
 function formatNothingToUndoMessage(availability: UndoAvailability): string {
   if (availability.stoppedAtCompaction) {
-    return 'Nothing to undo after the last compaction.';
+    return t('Nothing to undo after the last compaction.');
   }
-  return 'Nothing to undo.';
+  return t('Nothing to undo.');
 }
 
 function formatPromptCount(count: number): string {
-  return `${String(count)} ${count === 1 ? 'prompt' : 'prompts'}`;
+  return count === 1 ? tFormat('{count} prompt', { count }) : tFormat('{count} prompts', { count });
 }
 
 function showUndoLimitStatus(host: SlashCommandHost, message: string): void {

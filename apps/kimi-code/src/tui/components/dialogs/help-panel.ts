@@ -16,7 +16,7 @@ import {
   type Focusable,
   truncateToWidth,
 } from '@moonshot-ai/pi-tui';
-import { t } from '#/tui/i18n';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export interface KeyboardShortcut {
@@ -107,7 +107,8 @@ export class HelpPanelComponent extends Container implements Focusable {
     const cmdWidth = Math.max(12, ...cmdLabels.map((l) => l.length));
     const lines: string[] = [
       accent('─'.repeat(width)),
-      currentTheme.boldFg('primary', ' help ') + muted('· Esc / Enter / q to cancel · ↑↓ scroll'),
+      currentTheme.boldFg('primary', t(' help ')) +
+        muted(t('· Esc / Enter / q to cancel · ↑↓ scroll')),
       '',
       // Greeting
       `  ${dim(t('Sure, Kimi is ready to help! Just send a message to get started.'))}`,
@@ -133,7 +134,11 @@ export class HelpPanelComponent extends Container implements Focusable {
       this.scrollTop = Math.max(0, Math.min(this.scrollTop, content.length - maxVisible));
       const slice = content.slice(this.scrollTop, this.scrollTop + maxVisible);
       const scrollInfo = muted(
-        ` showing ${String(this.scrollTop + 1)}-${String(this.scrollTop + slice.length)} of ${String(content.length)}`,
+        tFormat(' showing {start}-{end} of {total}', {
+          start: this.scrollTop + 1,
+          end: this.scrollTop + slice.length,
+          total: content.length,
+        }),
       );
       return [lines[0] ?? '', ...slice, scrollInfo, lines.at(-1) ?? ''].map((line) =>
         truncateToWidth(line, width),

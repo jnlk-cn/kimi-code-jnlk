@@ -1,5 +1,5 @@
 import { effectiveModelAlias, type ModelAlias, type ThinkingEffort } from '@moonshot-ai/kimi-code-sdk';
-import { t } from '#/tui/i18n';
+import { t, tFormat } from '#/tui/i18n';
 import {
   Container,
   Key,
@@ -284,14 +284,14 @@ export class ModelSelectorComponent extends Container implements Focusable {
 
     const titleSuffix =
       searchable && view.query.length === 0
-        ? currentTheme.fg('textMuted', '  (type to search)')
+        ? currentTheme.fg('textMuted', t('  (type to search)'))
         : '';
 
     // "type to search" already lives in the title suffix, so the hint only
     // surfaces the backspace shortcut once a query is active.
     const hintParts: string[] = [];
     if (this.opts.providerSwitchHint) hintParts.push(t('Tab toggle provider'));
-    hintParts.push('↑↓ navigate');
+    hintParts.push(t('↑↓ navigate'));
     if (searchable && view.query.length > 0) hintParts.push(t('Backspace clear'));
     hintParts.push(t('Enter select'));
     if (this.opts.onSessionOnlySelect !== undefined) hintParts.push(t('Alt+S session-only'));
@@ -299,7 +299,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
-      currentTheme.boldFg('primary', this.opts.title ?? ' Select a model') + titleSuffix,
+      currentTheme.boldFg('primary', this.opts.title ?? t(' Select a model')) + titleSuffix,
       currentTheme.fg('textMuted', ' ' + hintParts.join(' · ')),
     ];
     if (this.opts.warning !== undefined) {
@@ -310,11 +310,11 @@ export class ModelSelectorComponent extends Container implements Focusable {
     lines.push('');
 
     if (searchable && view.query.length > 0) {
-      lines.push(currentTheme.fg('primary', ' Search: ') + currentTheme.fg('text', view.query));
+      lines.push(currentTheme.fg('primary', t(' Search: ')) + currentTheme.fg('text', view.query));
     }
 
     if (view.items.length === 0) {
-      lines.push(currentTheme.fg('textMuted', '   No matches'));
+      lines.push(currentTheme.fg('textMuted', t('   No matches')));
     } else {
       // Column width for model names so the provider column lines up. Capped so
       // the provider + "← current" marker still fit on normal terminal widths.
@@ -354,7 +354,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
       const below = view.items.length - view.page.end;
       if (below > 0) {
         lines.push('');
-        lines.push(currentTheme.fg('textMuted', ` ▼ ${String(below)} more`));
+        lines.push(currentTheme.fg('textMuted', tFormat(' ▼ {count} more', { count: below })));
       }
     }
 
@@ -362,7 +362,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
     const selected = this.selectedChoice();
     if (selected !== undefined && this.opts.thinkingControl !== false) {
       const canSwitch = segmentsFor(selected.model).length > 1;
-      const thinkingHeader = canSwitch ? ' Thinking  (←→ to switch)' : ' Thinking';
+      const thinkingHeader = canSwitch ? t(' Thinking  (←→ to switch)') : t(' Thinking');
       lines.push(currentTheme.fg('textMuted', thinkingHeader));
       lines.push(this.renderThinkingControl(selected));
       const description =
@@ -388,7 +388,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
     // The whole segment is muted, suffix included, so the disabled side reads
     // as a single greyed-out control rather than a selectable option.
     const unavailable = (label: string): string =>
-      currentTheme.fg('textMuted', `  ${label} (Unsupported)  `);
+      currentTheme.fg('textMuted', `  ${label}${t(' (Unsupported)')}  `);
 
     // Non-effort always-on / unsupported models keep the original On/Off layout
     // so the control never shifts while moving across legacy models.

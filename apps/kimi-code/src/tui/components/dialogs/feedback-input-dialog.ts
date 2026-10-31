@@ -20,6 +20,7 @@ import {
   visibleWidth,
   type Focusable,
 } from '@moonshot-ai/pi-tui';
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 export type FeedbackInputDialogResult =
@@ -77,10 +78,10 @@ export class FeedbackInputDialogComponent extends Container implements Focusable
     const pad = '  ';
 
     const border = (s: string): string => currentTheme.fg('primary', s);
-    const titleStyled = currentTheme.boldFg('textStrong', TITLE);
+    const titleStyled = currentTheme.boldFg('textStrong', t(TITLE));
     const subtitleText = this.emptyHinted ? SUBTITLE_EMPTY : SUBTITLE_DEFAULT;
-    const subtitleStyled = currentTheme.fg('textDim', subtitleText);
-    const footerStyled = currentTheme.fg('textDim', FOOTER);
+    const subtitleStyled = currentTheme.fg('textDim', t(subtitleText));
+    const footerStyled = currentTheme.fg('textDim', t(FOOTER));
 
     const titleLine = truncateToWidth(titleStyled, innerWidth, '…');
     const subtitleLine = truncateToWidth(subtitleStyled, innerWidth, '…');

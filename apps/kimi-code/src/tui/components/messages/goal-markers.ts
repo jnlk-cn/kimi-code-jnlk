@@ -168,7 +168,9 @@ function pausedHeadline(reason: string | undefined, actor: GoalMarkerActor | und
     return t("Goal paused due to user's interruption");
   }
   if (actor === 'user') return t('Goal paused by the user.');
-  if (reason?.startsWith('Paused ') === true) return `Goal ${lowercaseFirst(reason)}`;
+  if (reason?.startsWith('Paused ') === true) {
+    return tFormat('Goal {reason}', { reason: lowercaseFirst(reason) });
+  }
   if (reason !== undefined && reason.length > 0) {
     return tFormat('Goal paused: {reason}', { reason });
   }

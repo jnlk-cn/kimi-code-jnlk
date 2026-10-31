@@ -1,0 +1,25 @@
+export const FRAGMENT: Readonly<Record<string, string>> = {
+  'LLM not set, send "/login" to login': '未设置模型，发送 "/login" 登录',
+  'No active session. Send a message to start one.': '当前没有会话。发送一条消息即可开始。',
+  'Shutting down… (running shutdown hooks)': '正在关闭…（正在执行关闭 hook）',
+  'No session yet — one will be created on your first message.':
+    '暂无会话 — 发送第一条消息时会自动创建。',
+  'Session "{session}" was created under a different directory.\n  cd "{directory}" && kimi -r {session}':
+    '会话 "{session}" 是在另一个目录下创建的。\n  cd "{directory}" && kimi -r {session}',
+  'agent task': '代理任务',
+  'question task': '提问任务',
+  'bash task': 'bash 任务',
+  '{subject} started in background': '{subject}已在后台启动',
+  '{subject} completed in background': '{subject}已在后台完成',
+  '{subject} failed in background': '{subject}后台执行失败',
+  '{subject} timed out': '{subject}已超时',
+  '{subject} stopped': '{subject}已停止',
+  '{subject} lost': '{subject}已失联',
+  'exit {code}': '退出码 {code}',
+  'stopped — {reason}': '已停止 — {reason}',
+  stopped: '已停止',
+  'session restarted before completion': '会话在完成前已重启',
+  '(no output)': '（无输出）',
+  '{event} hook blocked': '{event} hook 已阻止',
+  '(empty)': '（空）',
+};

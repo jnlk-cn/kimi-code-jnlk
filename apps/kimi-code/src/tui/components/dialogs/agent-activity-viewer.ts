@@ -31,6 +31,7 @@ import type {
   SubagentActivityRecord,
   SubToolCallActivity,
 } from '#/tui/controllers/subagent-activity-store';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ToolCallBlockData } from '#/tui/types';
 import { printableChar } from '#/tui/utils/printable-key';
@@ -179,12 +180,12 @@ export class AgentActivityViewer extends Container implements Focusable {
   private buildLines(innerWidth: number): string[] {
     const record = this.props.record;
     if (record === undefined) {
-      return [currentTheme.dim(`${MESSAGE_INDENT}[no activity recorded]`)];
+      return [currentTheme.dim(`${MESSAGE_INDENT}${t('[no activity recorded]')}`)];
     }
 
     const out: string[] = [];
     for (const step of record.steps) {
-      out.push(currentTheme.dim(`── step ${String(step.step)} ──`));
+      out.push(currentTheme.dim(tFormat('── step {step} ──', { step: step.step })));
       if (step.retrying !== undefined) {
         out.push(currentTheme.fg('warning', `${MESSAGE_INDENT}↻ ${step.retrying}`));
       }
@@ -201,19 +202,19 @@ export class AgentActivityViewer extends Container implements Focusable {
     }
 
     if (record.error !== undefined && record.error.length > 0) {
-      out.push(currentTheme.fg('error', 'Failed'));
+      out.push(currentTheme.fg('error', t('Failed')));
       const message = new AssistantMessageComponent();
       message.updateContent(record.error);
       out.push(...message.render(innerWidth));
     } else if (record.resultSummary !== undefined && record.resultSummary.length > 0) {
-      out.push(currentTheme.boldFg('primary', 'Result'));
+      out.push(currentTheme.boldFg('primary', t('Result')));
       const message = new AssistantMessageComponent();
       message.updateContent(record.resultSummary);
       out.push(...message.render(innerWidth));
     }
 
     if (out.length === 0) {
-      out.push(currentTheme.dim(`${MESSAGE_INDENT}Waiting for activity…`));
+      out.push(currentTheme.dim(`${MESSAGE_INDENT}${t('Waiting for activity…')}`));
     }
     return out;
   }
@@ -231,7 +232,7 @@ export class AgentActivityViewer extends Container implements Focusable {
     } else {
       bullet = currentTheme.fg('text', STATUS_BULLET);
     }
-    const verb = call.status === 'running' ? 'Using' : 'Used';
+    const verb = call.status === 'running' ? t('Using') : t('Used');
     const name = currentTheme.boldFg('primary', call.name);
     const keyArg = extractKeyArgument(call.name, call.args);
     const argStr = keyArg === null || keyArg.length === 0 ? '' : currentTheme.dim(` (${keyArg})`);
@@ -259,7 +260,7 @@ export class AgentActivityViewer extends Container implements Focusable {
     // The store caps retained output, which cannot survive as a parseable
     // media envelope (base64) — show a marker instead of dumping the blob.
     if (call.name === 'ReadMediaFile' && call.result.is_error !== true) {
-      return [currentTheme.dim(`${MESSAGE_INDENT}[media output omitted]`)];
+      return [currentTheme.dim(`${MESSAGE_INDENT}${t('[media output omitted]')}`)];
     }
     const components = pickResultRenderer(call.name)(
       this.toToolCallBlockData(call),
@@ -302,7 +303,7 @@ export class AgentActivityViewer extends Container implements Focusable {
   }
 
   private renderHeader(width: number): string {
-    const title = currentTheme.boldFg('primary', ' Agent activity ');
+    const title = currentTheme.boldFg('primary', t(' Agent activity '));
     const record = this.props.record;
     const info = this.props.info;
     const segments: string[] = [];
@@ -317,13 +318,17 @@ export class AgentActivityViewer extends Container implements Focusable {
       segments.push(currentTheme.boldFg('text', this.props.taskId));
     }
     if (info !== undefined) {
-      segments.push(currentTheme.fg(statusColor(info.status), STATUS_LABEL[info.status]));
+      segments.push(currentTheme.fg(statusColor(info.status), t(STATUS_LABEL[info.status])));
     }
     if (record !== undefined && record.steps.length > 0) {
       const from = record.steps[0]!.step;
       const to = record.steps.at(-1)!.step;
-      let range = `step ${String(from)}–${String(to)} / ${String(record.totalSteps)}`;
-      if (record.totalSteps > record.steps.length) range += ' · earlier steps discarded';
+      let range = tFormat('step {from}–{to} / {total}', {
+        from,
+        to,
+        total: record.totalSteps,
+      });
+      if (record.totalSteps > record.steps.length) range += t(' · earlier steps discarded');
       segments.push(currentTheme.fg('textMuted', range));
     }
 
@@ -370,11 +375,11 @@ export class AgentActivityViewer extends Container implements Focusable {
       ` ${String(lineFrom)}-${String(lineTo)} / ${String(total)} (${String(percent)}%) `,
     );
     const keys =
-      `${key('↑↓')} ${dim('line')}  ` +
-      `${key('PgUp/PgDn')} ${dim('page')}  ` +
-      `${key('g/G')} ${dim('top/bot')}  ` +
-      `${key('Ctrl+O')} ${dim(this.expanded ? 'collapse' : 'expand')}  ` +
-      `${key('Q/Esc')} ${dim('cancel')}`;
+      `${key('↑↓')} ${dim(t('line'))}  ` +
+      `${key('PgUp/PgDn')} ${dim(t('page'))}  ` +
+      `${key('g/G')} ${dim(t('top/bot'))}  ` +
+      `${key('Ctrl+O')} ${dim(this.expanded ? t('collapse') : t('expand'))}  ` +
+      `${key('Q/Esc')} ${dim(t('cancel'))}`;
     const left = ` ${keys}`;
     const leftW = visibleWidth(left);
     const rightW = visibleWidth(position);
@@ -393,7 +398,7 @@ export class AgentActivityViewer extends Container implements Focusable {
 export function formatSubagentActivityPreview(record: SubagentActivityRecord): string {
   const lines: string[] = [];
   for (const step of record.steps) {
-    lines.push(`── step ${String(step.step)} ──`);
+    lines.push(tFormat('── step {step} ──', { step: step.step }));
     if (step.retrying !== undefined) lines.push(`${MESSAGE_INDENT}↻ ${step.retrying}`);
     if (step.textTail.trim().length > 0) lines.push(...step.textTail.trimEnd().split('\n'));
     for (const call of step.toolCalls) {
@@ -408,19 +413,19 @@ export function formatSubagentActivityPreview(record: SubagentActivityRecord): s
     }
   }
   if (record.error !== undefined && record.error.length > 0) {
-    lines.push('Failed:', ...record.error.trimEnd().split('\n'));
+    lines.push(t('Failed:'), ...record.error.trimEnd().split('\n'));
   } else if (record.resultSummary !== undefined && record.resultSummary.length > 0) {
-    lines.push('Result:', ...record.resultSummary.trimEnd().split('\n'));
+    lines.push(t('Result:'), ...record.resultSummary.trimEnd().split('\n'));
   }
   if (lines.length === 0) {
-    return record.status === 'running' ? 'Waiting for activity…' : '';
+    return record.status === 'running' ? t('Waiting for activity…') : '';
   }
   return lines.join('\n');
 }
 
 function formatPreviewToolCall(call: SubToolCallActivity): string {
   const mark = call.status === 'done' ? '✓' : call.status === 'error' ? '✗' : '●';
-  const verb = call.status === 'running' ? 'Using' : 'Used';
+  const verb = call.status === 'running' ? t('Using') : t('Used');
   const keyArg = extractKeyArgument(call.name, call.args);
   const argStr = keyArg === null || keyArg.length === 0 ? '' : ` (${keyArg})`;
 

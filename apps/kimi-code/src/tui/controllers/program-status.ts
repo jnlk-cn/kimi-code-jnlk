@@ -8,6 +8,8 @@ import type {
   TurnStartedEvent,
 } from '@moonshot-ai/kimi-code-sdk';
 
+import { t } from '#/tui/i18n';
+
 import { PRODUCT_NAME } from '../constant/kimi-tui';
 import type { AppState } from '../types';
 
@@ -148,13 +150,13 @@ export class ProgramStatusController implements ProgramStatusInteractionTracker 
       case 'failed':
         this.outcome = {
           state: 'error',
-          message: firstLine(event.error?.message) ?? 'Turn failed',
+          message: firstLine(event.error?.message) ?? t('Turn failed'),
         };
         break;
       case 'blocked':
         this.outcome = {
           state: 'error',
-          message: firstLine(event.error?.message) ?? 'Turn blocked by a prompt hook',
+          message: firstLine(event.error?.message) ?? t('Turn blocked by a prompt hook'),
         };
         break;
     }
@@ -182,7 +184,7 @@ export class ProgramStatusController implements ProgramStatusInteractionTracker 
   }
 
   failRequest(message: string): void {
-    this.outcome = { state: 'error', message: firstLine(message) ?? 'Request failed' };
+    this.outcome = { state: 'error', message: firstLine(message) ?? t('Request failed') };
     this.refresh();
   }
 
@@ -204,7 +206,7 @@ export class ProgramStatusController implements ProgramStatusInteractionTracker 
   }
 
   failSubagent(agentId: string, message: string): void {
-    this.settleSubagent(agentId, 'error', undefined, firstLine(message) ?? 'Subagent failed');
+    this.settleSubagent(agentId, 'error', undefined, firstLine(message) ?? t('Subagent failed'));
   }
 
   cancelSubagent(agentId: string): void {
@@ -250,10 +252,10 @@ export class ProgramStatusController implements ProgramStatusInteractionTracker 
         const message =
           firstLine(info.stopReason) ??
           (info.status === 'failed'
-            ? 'Background agent failed'
+            ? t('Background agent failed')
             : info.status === 'timed_out'
-              ? 'Background agent timed out'
-              : 'Background agent was lost');
+              ? t('Background agent timed out')
+              : t('Background agent was lost'));
         this.settleSubagent(agentId, 'error', base, message);
         return;
       }
@@ -312,7 +314,12 @@ export class ProgramStatusController implements ProgramStatusInteractionTracker 
 
   private rootStatus(): ProgramStatus {
     if (this.authRequired || this.authBlocks.size > 0) {
-      return { state: 'blocked', app: 'kimi-code', ...AUTH_BLOCKED };
+      return {
+        state: 'blocked',
+        app: 'kimi-code',
+        ...AUTH_BLOCKED,
+        message: t(AUTH_BLOCKED.message),
+      };
     }
     const blocked =
       this.interactionOfKind('permission') ?? this.interactionOfKind('question');
@@ -417,7 +424,7 @@ export class ProgramStatusController implements ProgramStatusInteractionTracker 
       this.children.set(agentId, {
         ...current,
         status,
-        message: message ?? 'Subagent failed',
+        message: message ?? t('Subagent failed'),
         lastActive,
       });
     }
@@ -460,7 +467,7 @@ function childBase(
       nonEmpty(info.description) ??
       previous?.title ??
       nonEmpty(info.subagentType) ??
-      'Subagent',
+      t('Subagent'),
     lastActive: previous?.lastActive ?? 0,
   };
 }
@@ -482,7 +489,7 @@ function childRank(child: ChildWork, blocked: boolean): number {
 }
 
 function defaultInteractionMessage(kind: 'permission' | 'question'): string {
-  return kind === 'permission' ? 'Approval required' : 'Answer required';
+  return kind === 'permission' ? t('Approval required') : t('Answer required');
 }
 
 function recordId(agentId: string): string {

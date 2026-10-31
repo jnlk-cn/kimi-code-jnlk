@@ -26,6 +26,10 @@ import { FRAGMENT as GROUP_Q } from './fragments/group-q';
 import { FRAGMENT as GROUP_R } from './fragments/group-r';
 import { FRAGMENT as GROUP_S } from './fragments/group-s';
 import { FRAGMENT as GROUP_T } from './fragments/group-t';
+import { FRAGMENT as GROUP_U } from './fragments/group-u';
+import { FRAGMENT as GROUP_V } from './fragments/group-v';
+import { FRAGMENT as GROUP_W } from './fragments/group-w';
+import { FRAGMENT as GROUP_X } from './fragments/group-x';
 import { ZH_CN_DICTIONARY } from './zh-CN';
 
 export type UiLanguage = 'en' | 'zh-CN';
@@ -58,6 +62,10 @@ const dictionaries: Record<UiLanguage, Readonly<Record<string, string>>> = {
     ...GROUP_R,
     ...GROUP_S,
     ...GROUP_T,
+    ...GROUP_U,
+    ...GROUP_V,
+    ...GROUP_W,
+    ...GROUP_X,
   },
 };
 
