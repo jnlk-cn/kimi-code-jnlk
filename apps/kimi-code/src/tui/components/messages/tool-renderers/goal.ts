@@ -1,6 +1,7 @@
 import { Text } from '@moonshot-ai/pi-tui';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ToolCallBlockData, ToolResultBlockData } from '#/tui/types';
 import { formatTokenCount } from '#/utils/usage/usage-format';
@@ -86,7 +87,7 @@ function formatGoalBudgetArg(args: Record<string, unknown>): string | undefined 
 export function goalStatusChip(output: string): string {
   const goal = parseGoalValue(output);
   if (goal === undefined) return '';
-  if (goal === null) return 'no goal';
+  if (goal === null) return t('no goal');
   return stringField(goal, 'status') ?? '';
 }
 
@@ -100,10 +101,15 @@ function renderGoalSnapshot(
 
   const muted = (s: string) => currentTheme.dimFg('textDim', s);
   const value = (s: string) => currentTheme.fg('text', s);
-  if (goal === null) return [new Text(muted('  No current goal.'), 0, 0)];
+  if (goal === null) return [new Text(muted(t('  No current goal.')), 0, 0)];
 
   const lines = [
-    `  ${value(`Goal ${goal.status}: ${truncateOneLine(goal.objective, 96)}`)}`,
+    `  ${value(
+      tFormat('Goal {status}: {objective}', {
+        status: goal.status,
+        objective: truncateOneLine(goal.objective, 96),
+      }),
+    )}`,
     `    ${muted(formatGoalStats(goal))}`,
   ];
   if (goal.terminalReason !== undefined && goal.terminalReason.length > 0) {
@@ -121,23 +127,29 @@ function goalToolLabel(
   const finished = result !== undefined;
   switch (toolName) {
     case 'CreateGoal':
-      return failed ? 'Could not start goal' : finished ? 'Started goal' : 'Starting goal';
+      return failed ? t('Could not start goal') : finished ? t('Started goal') : t('Starting goal');
     case 'GetGoal':
-      return failed ? 'Could not check goal' : finished ? 'Checked goal' : 'Checking goal';
+      return failed ? t('Could not check goal') : finished ? t('Checked goal') : t('Checking goal');
     case 'SetGoalBudget':
       return failed
-        ? 'Could not set goal budget'
+        ? t('Could not set goal budget')
         : finished
-          ? 'Set goal budget'
-          : 'Setting goal budget';
+          ? t('Set goal budget')
+          : t('Setting goal budget');
     case 'UpdateGoal': {
       const status = stringArg(args, 'status');
-      const suffix = status ?? 'status';
+      if (status === undefined) {
+        return failed
+          ? t('Could not report goal status')
+          : finished
+            ? t('Reported goal status')
+            : t('Reporting goal status');
+      }
       return failed
-        ? `Could not report goal ${suffix}`
+        ? tFormat('Could not report goal {status}', { status })
         : finished
-          ? `Reported goal ${suffix}`
-          : `Reporting goal ${suffix}`;
+          ? tFormat('Reported goal {status}', { status })
+          : tFormat('Reporting goal {status}', { status });
     }
   }
 }

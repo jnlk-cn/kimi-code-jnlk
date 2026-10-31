@@ -16,6 +16,7 @@
 import type { Component } from '@moonshot-ai/pi-tui';
 import { Text } from '@moonshot-ai/pi-tui';
 
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 import type { ChipProvider } from './chip';
@@ -118,10 +119,11 @@ export const readMediaChip: ChipProvider = (_toolCall, result) => {
   const summary = parseReadMediaOutput(result.output);
   if (summary === null) return '';
   const meta = metaSegments(summary);
+  const kind = t(summary.kind);
   if (meta.length === 0) {
-    return summary.url !== undefined ? `${summary.kind} · uploaded` : summary.kind;
+    return summary.url !== undefined ? `${kind} · ${t('uploaded')}` : kind;
   }
-  return `${summary.kind} (${meta.join(', ')})`;
+  return `${kind} (${meta.join(', ')})`;
 };
 
 export const readMediaSummary: ResultRenderer = (toolCall, result, ctx) => {
@@ -136,7 +138,7 @@ export const readMediaSummary: ResultRenderer = (toolCall, result, ctx) => {
     out.push(new Text(`  ${dim(summary.path)}`, 0, 0));
   }
   const meta = metaSegments(summary);
-  const tail: string[] = [summary.kind];
+  const tail: string[] = [t(summary.kind)];
   if (meta.length > 0) tail.push(meta.join(', '));
   if (summary.url !== undefined) tail.push(summary.url);
   out.push(new Text(`  ${dim(tail.join(' · '))}`, 0, 0));

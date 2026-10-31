@@ -1,5 +1,6 @@
 import { Text, truncateToWidth, type Component } from '@moonshot-ai/pi-tui';
 
+import { tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
 
@@ -98,15 +99,15 @@ export class TruncatedOutputComponent implements Component {
     if (this.tail) {
       const shown = contentLines.slice(contentLines.length - this.maxLines);
       return [
-        this.renderHint(width, `… (${String(remaining)} earlier lines)`),
+        this.renderHint(width, tFormat('… ({count} earlier lines)', { count: remaining })),
         ...shown,
       ];
     }
 
     const shown = contentLines.slice(0, this.maxLines);
     const hint = this.expandHint
-      ? `… (${String(remaining)} more lines, ctrl+o to expand)`
-      : `… (${String(remaining)} more lines)`;
+      ? tFormat('… ({count} more lines, ctrl+o to expand)', { count: remaining })
+      : tFormat('… ({count} more lines)', { count: remaining });
     return [...shown, this.renderHint(width, hint)];
   }
 }

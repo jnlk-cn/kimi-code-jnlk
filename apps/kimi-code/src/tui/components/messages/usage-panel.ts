@@ -4,7 +4,7 @@
  * the pattern stays consistent across command-triggered panels.
  */
 
-import { t } from '#/tui/i18n';
+import { t, tFormat } from '#/tui/i18n';
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import { formatDuration } from '@moonshot-ai/kimi-code-oauth';
@@ -38,8 +38,8 @@ function usageRowResetHint(row: QuotaUsageRow): string | undefined {
   const parsed = Date.parse(resetAt);
   if (!Number.isFinite(parsed)) return undefined;
   const diffSec = Math.floor((parsed - Date.now()) / 1000);
-  if (diffSec <= 0) return 'reset';
-  return `resets in ${formatDuration(diffSec)}`;
+  if (diffSec <= 0) return t('reset');
+  return tFormat('resets in {duration}', { duration: formatDuration(diffSec) });
 }
 
 export interface BoosterWalletInfo {
@@ -124,7 +124,7 @@ function buildSessionUsageSection(
   const byModel = (usage as { readonly byModel?: Record<string, TokenUsage> } | undefined)
     ?.byModel;
   const entries = Object.entries(byModel ?? {});
-  if (entries.length === 0) return [muted('  No token usage recorded yet.')];
+  if (entries.length === 0) return [muted(t('  No token usage recorded yet.'))];
 
   const lines: string[] = [];
   let totalInput = 0;
@@ -136,18 +136,18 @@ function buildSessionUsageSection(
     totalOutput += output;
     const cost = deepSeekCostLabel(model, row);
     lines.push(
-      `  ${muted(model)}  input ${value(formatTokenCount(input))}  output ${value(
+      `  ${muted(model)}  ${t('input')} ${value(formatTokenCount(input))}  ${t('output')} ${value(
         formatTokenCount(output),
-      )}  total ${value(formatTokenCount(input + output))}${
-        cost === undefined ? '' : `  est. ${value(cost)}`
+      )}  ${t('total')} ${value(formatTokenCount(input + output))}${
+        cost === undefined ? '' : `  ${t('est.')} ${value(cost)}`
       }`,
     );
   }
   if (entries.length > 1) {
     lines.push(
-      `  ${muted('total')}  input ${value(formatTokenCount(totalInput))}  output ${value(
+      `  ${muted(t('total'))}  ${t('input')} ${value(formatTokenCount(totalInput))}  ${t('output')} ${value(
         formatTokenCount(totalOutput),
-      )}  total ${value(formatTokenCount(totalInput + totalOutput))}`,
+      )}  ${t('total')} ${value(formatTokenCount(totalInput + totalOutput))}`,
     );
   }
   return lines;
@@ -171,14 +171,16 @@ function buildManagedUsageSection(
   const labels = rows.map((r) => r.name);
   const labelWidth = Math.max(10, ...labels.map((l) => l.length));
   const rowRatio = (r: QuotaUsageRow): number => safeUsageRatio(r.usedRatio);
-  const pctWidth = Math.max(...rows.map((r) => `${Math.round(rowRatio(r) * 100)}% used`.length));
+  const pctLabel = (r: QuotaUsageRow): string =>
+    tFormat('{percent}% used', { percent: Math.round(rowRatio(r) * 100) });
+  const pctWidth = Math.max(...rows.map((r) => pctLabel(r).length));
 
   const out: string[] = [accent(t('Plan usage'))];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
     const ratioUsed = rowRatio(row);
     const bar = renderProgressBar(ratioUsed, 20);
-    const pct = `${Math.round(ratioUsed * 100)}% used`;
+    const pct = pctLabel(row);
     const barColoured = currentTheme.fg(severityColor(ratioSeverity(ratioUsed)), bar);
     const label = labels[i]!.padEnd(labelWidth, ' ');
     const resetHint = usageRowResetHint(row);
@@ -247,13 +249,13 @@ export function buildExtraUsageSection(
     const bar = renderProgressBar(ratio, 20);
     barLine = `  ${currentTheme.fg(severityColor(ratioSeverity(ratio)), bar)}`;
     const limit = formatCurrencyParts(extraUsage.monthlyChargeLimitCents, extraUsage.currency);
-    rows.push({ label: 'Used this month', ...used });
-    rows.push({ label: 'Monthly limit', ...limit });
-    rows.push({ label: 'Balance', ...balance });
+    rows.push({ label: t('Used this month'), ...used });
+    rows.push({ label: t('Monthly limit'), ...limit });
+    rows.push({ label: t('Balance'), ...balance });
   } else {
-    rows.push({ label: 'Used this month', ...used });
-    rows.push({ label: 'Monthly limit', symbol: '', number: 'Unlimited' });
-    rows.push({ label: 'Balance', ...balance });
+    rows.push({ label: t('Used this month'), ...used });
+    rows.push({ label: t('Monthly limit'), symbol: '', number: t('Unlimited') });
+    rows.push({ label: t('Balance'), ...balance });
   }
 
   // `Used this month` is the longest label; size the column to the widest label
@@ -381,7 +383,7 @@ function buildDeepSeekBalanceSection(
     lines.push(`  ${muted(label.padEnd(labelWidth, ' '))}  ${value(`¥${amount}`)}`);
   }
   if (!balance.available) {
-    lines.push(muted('  Balance unavailable for this account.'));
+    lines.push(muted(t('  Balance unavailable for this account.')));
   }
   return lines;
 }
@@ -393,7 +395,7 @@ export class UsagePanelComponent implements Component {
   constructor(
     private readonly buildLines: () => readonly string[],
     private readonly borderToken: ColorToken,
-    private readonly title: string = ' Usage ',
+    private readonly title: string = ` ${t('Usage')} `,
   ) {
     this.lines = buildLines();
   }

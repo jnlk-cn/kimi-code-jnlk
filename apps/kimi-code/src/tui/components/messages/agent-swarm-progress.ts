@@ -11,6 +11,7 @@ import {
   MAX_FINAL_OUTPUT_LABEL_CODE_UNITS,
 } from '#/tui/constant/rendering';
 import { FAILURE_MARK, SUCCESS_MARK } from '#/tui/constant/symbols';
+import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
 import { gradientText } from '#/tui/theme/gradient-text';
@@ -591,7 +592,7 @@ export class AgentSwarmProgressComponent implements Component {
   private renderHeader(width: number, _summary: AgentSwarmSummary | undefined): string {
     if (width <= 3) return chalk.hex(this.colors.primary)('─'.repeat(width));
 
-    const title = gradientText('Agent Swarm', this.colors.primary, this.colors.accent, AGENT_SWARM_TITLE_ACCENT_BIAS);
+    const title = gradientText(t('Agent Swarm'), this.colors.primary, this.colors.accent, AGENT_SWARM_TITLE_ACCENT_BIAS);
     const description =
       this.description.length > 0
         ? chalk.hex(this.colors.primary)(' ─ ') + chalk.hex(this.colors.text)(this.description)
@@ -658,14 +659,14 @@ export class AgentSwarmProgressComponent implements Component {
   private renderOrchestratingStatusLine(width: number): string {
     if (this.itemsStarted) {
       return truncateToWidth(
-        renderStatusLabel(ORCHESTRATING_LABEL, this.colors.primary),
+        renderStatusLabel(t(ORCHESTRATING_LABEL), this.colors.primary),
         width,
       );
     }
 
     const promptTemplate = collapseWhitespace(this.promptTemplateText);
     const label = renderStatusLabel(
-      promptTemplate.length > 0 ? PROMPTING_LABEL : ORCHESTRATING_LABEL,
+      t(promptTemplate.length > 0 ? PROMPTING_LABEL : ORCHESTRATING_LABEL),
       this.colors.primary,
     );
     if (promptTemplate.length === 0) return truncateToWidth(label, width);
@@ -1629,7 +1630,7 @@ function totalStatusLabel(status: TotalStatus): string {
     failed: FAILED_LABEL,
     aborted: ABORTED_LABEL,
   };
-  return map[status];
+  return t(map[status]);
 }
 
 function totalStatusColor(status: TotalStatus, colors: ColorPalette): string {
@@ -1681,7 +1682,7 @@ function renderCellLabel(
 ): string {
   if (snapshot.phase === 'running') {
     const latestLine = latestNonEmptyLine(snapshot.latestModelText);
-    return truncateWithColor(runningCellLabelText(member, latestLine), width, colors.textDim);
+    return truncateWithColor(t(runningCellLabelText(member, latestLine)), width, colors.textDim);
   }
   if (snapshot.phase === 'failed' && member.failureText !== undefined) {
     return truncateWithColor(`${FAILURE_MARK}${member.failureText}`, width, colors.error);
@@ -1696,7 +1697,7 @@ function renderCellLabel(
   if (snapshot.phase === 'cancelled') {
     return renderCancelledCellLabel(member, width, colors);
   }
-  return truncateWithColor(PHASE_LABELS[snapshot.phase], width, phaseColor(snapshot.phase, colors));
+  return truncateWithColor(t(PHASE_LABELS[snapshot.phase]), width, phaseColor(snapshot.phase, colors));
 }
 
 function runningCellLabelText(member: AgentSwarmMember, latestLine: string): string {
@@ -1710,7 +1711,7 @@ function renderCancelledCellLabel(
   width: number,
   colors: ColorPalette,
 ): string {
-  const labelText = member.cancelledLabelText ?? ABORTED_LABEL;
+  const labelText = t(member.cancelledLabelText ?? ABORTED_LABEL);
   const labelColor = member.cancelledLabelColor ?? colors.warning;
   const markColor = member.cancelledMarkColor ?? colors.warning;
   const labelStyle = chalk.hex(labelColor);
@@ -1752,7 +1753,7 @@ function renderPendingCell(
   const id = chalk.hex(colors.primary)(member.id);
   const prefix = `${id} `;
   const itemText = collapseWhitespace(member.itemText);
-  const label = itemText.length > 0 ? itemText : QUEUED_LABEL;
+  const label = itemText.length > 0 ? t(itemText) : t(QUEUED_LABEL);
   const labelWidth = Math.max(1, width - visibleWidth(prefix));
   return prefix + truncateWithColor(label, labelWidth, colors.textDim);
 }
@@ -1765,7 +1766,7 @@ function renderQueuedCell(
   const id = chalk.hex(colors.primary)(member.id);
   const prefix = `${id} `;
   const labelWidth = Math.max(1, width - visibleWidth(prefix));
-  return prefix + truncateWithColor(QUEUED_LABEL, labelWidth, colors.textDim);
+  return prefix + truncateWithColor(t(QUEUED_LABEL), labelWidth, colors.textDim);
 }
 
 function renderCancelledUnstartedCell(

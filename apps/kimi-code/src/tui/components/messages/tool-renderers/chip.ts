@@ -9,6 +9,7 @@
  */
 
 import { computeDiffLines } from '#/tui/components/media/diff-preview';
+import { t, tFormat } from '#/tui/i18n';
 import { OUTCOME_MAX_LINES } from '#/tui/constant/rendering';
 import type { ToolCallBlockData, ToolResultBlockData } from '#/tui/types';
 
@@ -29,8 +30,8 @@ export function countNonEmptyLines(text: string): number {
 }
 
 // `partial` marks a lower bound (`12+ files`) when the tool reported an incomplete result set.
-function pluralize(n: number, singular: string, plural?: string, partial = false): string {
-  return `${String(n)}${partial ? '+' : ''} ${n === 1 ? singular : (plural ?? `${singular}s`)}`;
+function pluralize(n: number, one: string, many: string, partial = false): string {
+  return tFormat(n === 1 ? one : many, { count: `${String(n)}${partial ? '+' : ''}` });
 }
 
 function formatBytes(bytes: number): string {
@@ -77,7 +78,7 @@ export function formatEditChip(stats: EditStats): string {
 }
 
 export function formatWriteChip(stats: WriteStats): string {
-  return pluralize(stats.lines, 'line');
+  return pluralize(stats.lines, '{count} line', '{count} lines');
 }
 
 const editChip: ChipProvider = (toolCall) => {
@@ -89,7 +90,7 @@ const editChip: ChipProvider = (toolCall) => {
 const writeChip: ChipProvider = (toolCall) => formatWriteChip(computeWriteStats(toolCall.args));
 
 const readChip: ChipProvider = (_toolCall, result) =>
-  pluralize(nonEmptyLines(result.output).length, 'line');
+  pluralize(nonEmptyLines(result.output).length, '{count} line', '{count} lines');
 
 // A collapsed Bash card shows its output whole when it fits the outcome
 // rows; once one line stands in for the rest, the chip counts the hidden
@@ -100,7 +101,9 @@ const bashChip: ChipProvider = (_toolCall, result) => {
   // Counted the way the outcome rows are, so whitespace-only rows neither
   // count as hidden nor leave the chip claiming more than the card holds.
   const lines = nonEmptyLines(result.output).length;
-  return lines <= OUTCOME_MAX_LINES ? '' : pluralize(lines - 1, 'more line');
+  return lines <= OUTCOME_MAX_LINES
+    ? ''
+    : pluralize(lines - 1, '{count} more line', '{count} more lines');
 };
 
 // Grep's default mode lists files, so the chip counts what the mode
@@ -114,22 +117,29 @@ const grepChip: ChipProvider = (toolCall, result) => {
   // the totals, so the emptiness check reads the summary-backed file count.
   if (searchNoticeOnly(toolCall, result.output)) return '';
   const stats = parseGrepOutput(toolCall, result.output);
-  if (stats.files === 0) return 'no matches';
-  if (stats.mode === 'files_with_matches') return pluralize(stats.files, 'file', undefined, stats.partial);
-  if (stats.matches === null) return pluralize(stats.files, 'file', undefined, stats.partial);
-  const matches = pluralize(stats.matches, 'match', 'matches', stats.partial);
+  if (stats.files === 0) return t('no matches');
+  if (stats.mode === 'files_with_matches') {
+    return pluralize(stats.files, '{count} file', '{count} files', stats.partial);
+  }
+  if (stats.matches === null) {
+    return pluralize(stats.files, '{count} file', '{count} files', stats.partial);
+  }
+  const matches = pluralize(stats.matches, '{count} match', '{count} matches', stats.partial);
   // A paginated content result only shows the files on its page.
   if (stats.filesPartial) return matches;
   return stats.files === 1
-    ? `${matches} in 1 file`
-    : `${matches} across ${pluralize(stats.files, 'file', undefined, stats.partial)}`;
+    ? tFormat('{matches} in 1 file', { matches })
+    : tFormat('{matches} across {files}', {
+        matches,
+        files: pluralize(stats.files, '{count} file', '{count} files', stats.partial),
+      });
 };
 
 const globChip: ChipProvider = (toolCall, result) => {
   if (searchNoticeOnly(toolCall, result.output)) return '';
   const { entries, partial } = parseGlobOutput(result.output);
-  if (entries.length === 0) return 'no files';
-  return pluralize(entries.length, 'file', undefined, partial);
+  if (entries.length === 0) return t('no files');
+  return pluralize(entries.length, '{count} file', '{count} files', partial);
 };
 
 const fetchChip: ChipProvider = (_toolCall, result) =>
@@ -141,8 +151,8 @@ const webSearchChip: ChipProvider = (_toolCall, result) => {
   for (const line of lines) {
     if (/^\s*(\d+\.|[-*])\s+/.test(line)) count++;
   }
-  if (count === 0) return lines.length === 0 ? 'no results' : 'web result';
-  return pluralize(count, 'result');
+  if (count === 0) return lines.length === 0 ? t('no results') : t('web result');
+  return pluralize(count, '{count} result', '{count} results');
 };
 
 const goalStatusOutputChip: ChipProvider = (_toolCall, result) =>

@@ -3,7 +3,7 @@
  * Supports expand/collapse via Ctrl+O.
  */
 
-import { t } from '#/tui/i18n';
+import { t, tFormat } from '#/tui/i18n';
 import { isAbsolute, relative, sep } from 'node:path';
 
 import chalk from 'chalk';
@@ -98,7 +98,7 @@ const notifyTitleStyle = (text: string): string => currentTheme.boldFg('textStro
 
 /** Delay before a long-running foreground Bash/Agent card advertises Ctrl+B. */
 const DETACH_HINT_DELAY_MS = 10_000;
-const DETACH_HINT_TEXT = t('Press Ctrl+B to run in background');
+const DETACH_HINT_TEXT = 'Press Ctrl+B to run in background';
 
 type SubagentTextKind = 'thinking' | 'text';
 type SubagentPhase = 'queued' | 'spawning' | 'running' | 'done' | 'failed' | 'backgrounded';
@@ -221,6 +221,10 @@ function formatElapsed(seconds: number): string {
   return `${String(minutes)}m ${String(remainder)}s`;
 }
 
+function formatToolCount(count: number): string {
+  return count === 1 ? tFormat('{count} tool', { count }) : tFormat('{count} tools', { count });
+}
+
 function extractApprovedPlan(output: string): string {
   const marker = output.includes(AUTO_APPROVED_PLAN_MARKER)
     ? AUTO_APPROVED_PLAN_MARKER
@@ -250,8 +254,8 @@ const PLAN_SAVED_TO_RE = /\nPlan saved to: ([^\n]+)\n/;
  * `packages/agent-core-v2/src/features/plan/tools/exit-plan-mode/exitPlanModeTool.ts` and
  * `packages/agent-core-v2/src/features/plan/exitPlanModeReview.ts`:
  *   - Approved output starts with 'Exited plan mode.' and selected options
- *     are reported as t('Selected approach: <label>'). Older outputs may start
- *     with t('User approved option "<label>".') Plan-file mode may include
+ *     are reported as 'Selected approach: <label>'. Older outputs may start
+ *     with 'User approved option "<label>".' Plan-file mode may include
  *     'Plan saved to: <path>'.
  *   - Auto-approved output (auto permission mode skips the review ask) also
  *     starts with 'Exited plan mode.' but marks the plan body with
@@ -1542,7 +1546,7 @@ export class ToolCallComponent extends Container {
   private buildDetachHintBlock(): void {
     if (!this.detachHintVisible) return;
     if (this.result !== undefined) return;
-    this.addChild(new Text(currentTheme.dim(DETACH_HINT_TEXT), 2, 0));
+    this.addChild(new Text(currentTheme.dim(t(DETACH_HINT_TEXT)), 2, 0));
   }
 
   private syncSubagentElapsedTimer(): void {
@@ -1950,14 +1954,14 @@ export class ToolCallComponent extends Container {
       if (outcome.kind === 'approved') {
         const chipText =
           outcome.chosen !== undefined && outcome.chosen.length > 0
-            ? `Approved: ${outcome.chosen}`
-            : 'Approved';
+            ? tFormat('Approved: {option}', { option: outcome.chosen })
+            : t('Approved');
         return `${label}${currentTheme.fg('success', ` · ${chipText}`)}`;
       }
       if (outcome.kind === 'auto_approved') {
         // Auto permission mode let the plan through without user review —
         // a warning-toned chip keeps "the user approved this" out of the UI.
-        return `${label}${currentTheme.fg('warning', ' · Auto-approved')}`;
+        return `${label}${currentTheme.fg('warning', ` · ${t('Auto-approved')}`)}`;
       }
       return label;
     }
@@ -1966,12 +1970,12 @@ export class ToolCallComponent extends Container {
       const isBackgroundAsk = toolCall.args['background'] === true;
       const label = isFinished
         ? isError
-          ? 'Could not collect your input'
+          ? t('Could not collect your input')
           : isBackgroundAsk
-            ? 'Started background question'
-          : 'Collected your answers'
+            ? t('Started background question')
+          : t('Collected your answers')
         : isBackgroundAsk
-          ? 'Starting background question'
+          ? t('Starting background question')
           : t('Waiting for your input');
       const tone = isError ? 'error' : 'primary';
       return `${bullet}${currentTheme.boldFg(tone, label)}`;
@@ -1984,7 +1988,7 @@ export class ToolCallComponent extends Container {
       if (isTruncated) {
         // max_tokens cut the arguments short: the call never ran and the
         // panel entry was dropped, so the card must not read as in flight.
-        return `${bullet}${currentTheme.boldFg('error', t('Update cut off'))}${currentTheme.dim(' (arguments truncated by max_tokens)')}`;
+        return `${bullet}${currentTheme.boldFg('error', t('Update cut off'))}${currentTheme.dim(` ${t('(arguments truncated by max_tokens)')}`)}`;
       }
       const delivery = notifyResultState(result?.output);
       if (!isFinished || (!isError && delivery === 'displayed')) {
@@ -1998,12 +2002,12 @@ export class ToolCallComponent extends Container {
         return content;
       }
       const label = isError
-        ? 'Could not send you an update'
+        ? t('Could not send you an update')
         : delivery === 'displayed'
-          ? 'Sent you an update'
+          ? t('Sent you an update')
           : delivery === 'suppressed'
-            ? 'Update not displayed'
-            : 'Update completed';
+            ? t('Update not displayed')
+            : t('Update completed');
       const tone = isError ? 'error' : 'primary';
       const preview = extractKeyArgumentDetail(toolCall.name, toolCall.args, this.workspaceDir);
       const head = `${bullet}${currentTheme.boldFg(tone, label)}`;
@@ -2021,7 +2025,7 @@ export class ToolCallComponent extends Container {
       // render in the body once expanded (ctrl+o). Wording mirrors the other label-only
       // headers (e.g. AskUserQuestion): the whole label takes the tone colour.
       if (isTruncated) {
-        return `${bullet}${currentTheme.fg('error', 'Truncated')} ${currentTheme.boldFg('primary', 'Bash')}`;
+        return `${bullet}${currentTheme.fg('error', t('Truncated'))} ${currentTheme.boldFg('primary', 'Bash')}`;
       }
       const label = isFinished ? t('Ran a command') : t('Running a command');
       const tone = isError ? 'error' : 'primary';
@@ -2060,7 +2064,7 @@ export class ToolCallComponent extends Container {
 
     const finishedVerb =
       toolCall.name === 'TodoList' && isTodoListRead(toolCall.args) ? 'Read' : 'Used';
-    const verb = isFinished ? finishedVerb : isTruncated ? 'Truncated' : 'Using';
+    const verb = t(isFinished ? finishedVerb : isTruncated ? 'Truncated' : 'Using');
     const keyArg = extractKeyArgumentDetail(toolCall.name, toolCall.args, this.workspaceDir);
     const decoded = decodeMcpToolName(toolCall.name);
     const verbStyled = isTruncated
@@ -2194,20 +2198,20 @@ export class ToolCallComponent extends Container {
     }
 
     const phaseChip = this.formatPhaseChip();
+    const agentId = this.formatAgentId();
     const headerLabel =
       this.subagentAgentName !== undefined
-        ? `subagent ${this.subagentAgentName} (${this.formatAgentId()})`
-        : `subagent (${this.formatAgentId()})`;
+        ? tFormat('subagent {name} ({id})', { name: this.subagentAgentName, id: agentId })
+        : tFormat('subagent ({id})', { id: agentId });
     this.addChild(new Text(`  ${currentTheme.dim(`↳ ${headerLabel}`)}${phaseChip}`, 0, 0));
 
     if (this.hiddenSubCallCount > 0) {
-      const suffix = this.hiddenSubCallCount > 1 ? 's' : '';
+      const hiddenLabel =
+        this.hiddenSubCallCount > 1
+          ? tFormat('{count} more tool calls …', { count: this.hiddenSubCallCount })
+          : tFormat('{count} more tool call …', { count: this.hiddenSubCallCount });
       this.addChild(
-        new Text(
-          currentTheme.italic(currentTheme.dim(`    ${String(this.hiddenSubCallCount)} more tool call${suffix} …`)),
-          0,
-          0,
-        ),
+        new Text(currentTheme.italic(currentTheme.dim(`    ${hiddenLabel}`)), 0, 0),
       );
     }
 
@@ -2218,7 +2222,7 @@ export class ToolCallComponent extends Container {
       const keyArg = extractKeyArgument(sub.name, sub.args, this.workspaceDir);
       const nameCol = currentTheme.fg('primary', sub.name);
       const argCol = keyArg ? currentTheme.dim(` (${keyArg})`) : '';
-      this.addChild(new Text(`    ${mark} Used ${nameCol}${argCol}`, 0, 0));
+      this.addChild(new Text(`    ${mark} ${t('Used')} ${nameCol}${argCol}`, 0, 0));
     }
 
     for (const [id, call] of this.ongoingSubCalls) {
@@ -2226,7 +2230,7 @@ export class ToolCallComponent extends Container {
       const nameCol = currentTheme.fg('primary', call.name);
       const argCol = keyArg ? currentTheme.dim(` (${keyArg})`) : '';
       void id;
-      this.addChild(new Text(`    ${currentTheme.dim('…')} Using ${nameCol}${argCol}`, 0, 0));
+      this.addChild(new Text(`    ${currentTheme.dim('…')} ${t('Using')} ${nameCol}${argCol}`, 0, 0));
     }
 
     if (this.subagentText.length > 0) {
@@ -2267,18 +2271,18 @@ export class ToolCallComponent extends Container {
     const parts: string[] = [];
     switch (this.subagentPhase) {
       case 'queued':
-        parts.push('○ queued');
+        parts.push(t('○ queued'));
         break;
       case 'spawning':
-        parts.push('↻ starting…');
+        parts.push(t('↻ starting…'));
         break;
       case 'running':
-        parts.push('↻ running');
+        parts.push(t('↻ running'));
         break;
       case 'done': {
-        parts.push(currentTheme.fg('success', '✓ done'));
+        parts.push(currentTheme.fg('success', t('✓ done')));
         const toolCount = this.finishedSubCalls.length + this.hiddenSubCallCount;
-        if (toolCount > 0) parts.push(`${String(toolCount)} tool${toolCount > 1 ? 's' : ''}`);
+        if (toolCount > 0) parts.push(formatToolCount(toolCount));
         const tokens =
           formatSubagentContextTokens(this.subagentContextTokens) ??
           formatSubagentTokens(this.subagentUsage);
@@ -2286,10 +2290,10 @@ export class ToolCallComponent extends Container {
         break;
       }
       case 'failed':
-        parts.push(currentTheme.fg('error', '✗ failed'));
+        parts.push(currentTheme.fg('error', t('✗ failed')));
         break;
       case 'backgrounded':
-        parts.push('◐ backgrounded');
+        parts.push(t('◐ backgrounded'));
         break;
     }
     return parts.length > 0 ? currentTheme.dim(` · ${parts.join(' · ')}`) : '';
@@ -2349,7 +2353,7 @@ export class ToolCallComponent extends Container {
     const descriptionText = descriptionPlain.length > 0 ? currentTheme.dim(descriptionPlain) : '';
     const statsText = this.formatSingleSubagentStatsText();
     if (isDone) {
-      return `${marker}${currentTheme.boldFg('success', labelText)} ${currentTheme.fg('success', `Completed${descriptionPlain}${statsText}`)}`;
+      return `${marker}${currentTheme.boldFg('success', labelText)} ${currentTheme.fg('success', `${t('Completed')}${descriptionPlain}${statsText}`)}`;
     }
     const stats = currentTheme.dim(statsText);
     return `${marker}${label} ${status}${descriptionText}${stats}`;
@@ -2358,18 +2362,18 @@ export class ToolCallComponent extends Container {
   private formatSingleSubagentStatus(phase: SubagentPhase | undefined): string {
     switch (phase) {
       case 'done':
-        return currentTheme.fg('success', 'Completed');
+        return currentTheme.fg('success', t('Completed'));
       case 'failed':
-        return currentTheme.fg('error', 'Failed');
+        return currentTheme.fg('error', t('Failed'));
       case 'running':
-        return currentTheme.fg('primary', 'Running');
+        return currentTheme.fg('primary', t('Running'));
       case 'backgrounded':
-        return 'Backgrounded';
+        return t('Backgrounded');
       case 'queued':
-        return currentTheme.fg('primary', 'Queued');
+        return currentTheme.fg('primary', t('Queued'));
       case 'spawning':
       case undefined:
-        return currentTheme.fg('primary', 'Starting');
+        return currentTheme.fg('primary', t('Starting'));
     }
   }
 
@@ -2377,7 +2381,7 @@ export class ToolCallComponent extends Container {
     const parts: string[] = [];
     if (this.subagentModel !== undefined) parts.push(this.subagentModel);
     if (this.subagentEffort !== undefined) parts.push(this.subagentEffort);
-    parts.push(`${String(this.subToolActivities.size)} tool${this.subToolActivities.size === 1 ? '' : 's'}`);
+    parts.push(formatToolCount(this.subToolActivities.size));
     const elapsed = this.getSubagentElapsedSeconds();
     if (elapsed !== undefined) parts.push(formatElapsed(elapsed));
     const tokens =
@@ -2469,13 +2473,12 @@ export class ToolCallComponent extends Container {
   }
 
   private buildSingleSubagentSummaryLine(): string {
-    const toolCount = this.subToolActivities.size;
-    const countLabel = `${String(toolCount)} tool${toolCount === 1 ? '' : 's'}`;
+    const countLabel = formatToolCount(this.subToolActivities.size);
     const current = this.getCurrentSubToolActivity();
     if (current === undefined) {
       return currentTheme.dim(`  · ${countLabel}`);
     }
-    const verb = current.phase === 'ongoing' ? 'Using' : 'Used';
+    const verb = current.phase === 'ongoing' ? t('Using') : t('Used');
     const keyArg = extractKeyArgument(current.name, current.args, this.workspaceDir);
     const nameCol = currentTheme.fg('primary', current.name);
     const argCol = keyArg ? currentTheme.dim(` (${keyArg})`) : '';
@@ -2599,7 +2602,10 @@ export class ToolCallComponent extends Container {
         this.addChild(
           new Text(
             currentTheme.dim(
-              `… (${String(remaining)} more lines, ${String(allLines.length)} total, ctrl+o to expand)`,
+              tFormat('… ({count} more lines, {total} total, ctrl+o to expand)', {
+                count: remaining,
+                total: allLines.length,
+              }),
             ),
             2,
             0,
@@ -2700,10 +2706,16 @@ export class ToolCallComponent extends Container {
       const startedAtMs = this.toolCall.streamingStartedAtMs;
       const elapsedSeconds =
         startedAtMs === undefined ? 0 : Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
-      const target = filePath.length > 0 ? ` for ${filePath}` : '';
-      const progress = `Preparing changes${target}... ${formatByteSize(bytes)} · ${formatElapsed(
-        elapsedSeconds,
-      )} elapsed`;
+      const size = formatByteSize(bytes);
+      const elapsed = formatElapsed(elapsedSeconds);
+      const progress =
+        filePath.length > 0
+          ? tFormat('Preparing changes for {path}... {size} · {elapsed} elapsed', {
+              path: filePath,
+              size,
+              elapsed,
+            })
+          : tFormat('Preparing changes... {size} · {elapsed} elapsed', { size, elapsed });
       this.addChild(new Text(currentTheme.dim(progress), 2, 0));
       return;
     }
@@ -2762,7 +2774,7 @@ export class ToolCallComponent extends Container {
     if (!isExitPlanModeOutcomeOutput(result.output)) return undefined;
     const outcome = interpretExitPlanModeOutcome(result.output);
     if (outcome.kind !== 'rejected') return undefined;
-    return { label: 'Rejected', colorHex: currentTheme.color('error') };
+    return { label: t('Rejected'), colorHex: currentTheme.color('error') };
   }
 
   private buildContent(): void {
@@ -2800,7 +2812,7 @@ export class ToolCallComponent extends Container {
         const trimmed = outcome.feedback.trim();
         if (trimmed.length > 0) {
           const labelTone = (text: string) => currentTheme.boldFg('warning', text);
-          this.addChild(new Text(labelTone('↪ Suggestion'), 2, 0));
+          this.addChild(new Text(labelTone(t('↪ Suggestion')), 2, 0));
           for (const line of trimmed.split('\n')) {
             this.addChild(new Text(line, 4, 0));
           }
@@ -2853,37 +2865,47 @@ export class ToolCallComponent extends Container {
   private buildAgentSwarmResultSummary(result: ToolResultBlockData): void {
     const summary = agentSwarmResultSummaryFromOutput(result.output);
     const dim = (s: string): string => currentTheme.fg('textDim', s);
+    const title = `${t('Agent swarm:')} `;
     const segments: string[] = [];
 
     if (summary.completed > 0) {
       segments.push(
-        currentTheme.fg('success', `${SUCCESS_MARK.trimEnd()} ${String(summary.completed)} completed`),
+        currentTheme.fg(
+          'success',
+          `${SUCCESS_MARK.trimEnd()} ${tFormat('{count} completed', { count: summary.completed })}`,
+        ),
       );
     }
     if (summary.failed > 0) {
       segments.push(
-        currentTheme.fg('error', `${FAILURE_MARK.trimEnd()} ${String(summary.failed)} failed`),
+        currentTheme.fg(
+          'error',
+          `${FAILURE_MARK.trimEnd()} ${tFormat('{count} failed', { count: summary.failed })}`,
+        ),
       );
     }
     if (summary.aborted > 0) {
       segments.push(
-        currentTheme.fg('warning', `${ABORTED_MARK} ${String(summary.aborted)} aborted`),
+        currentTheme.fg(
+          'warning',
+          `${ABORTED_MARK} ${tFormat('{count} aborted', { count: summary.aborted })}`,
+        ),
       );
     }
 
     if (segments.length > 0) {
-      this.addChild(new Text(`${dim('Agent swarm: ')}${segments.join(dim(' · '))}`, 2, 0));
+      this.addChild(new Text(`${dim(title)}${segments.join(dim(' · '))}`, 2, 0));
       return;
     }
 
     const isAborted = result.is_error === true && /\b(?:aborted|cancelled)\b/i.test(result.output);
     const colorToken = isAborted ? 'warning' : result.is_error === true ? 'error' : 'success';
     const label = isAborted
-      ? `${ABORTED_MARK} Aborted.`
+      ? `${ABORTED_MARK} ${t('Aborted.')}`
       : result.is_error === true
-        ? `${FAILURE_MARK.trimEnd()} Failed.`
-        : `${SUCCESS_MARK.trimEnd()} Completed.`;
-    this.addChild(new Text(`${dim('Agent swarm: ')}${currentTheme.fg(colorToken, label)}`, 2, 0));
+        ? `${FAILURE_MARK.trimEnd()} ${t('Failed.')}`
+        : `${SUCCESS_MARK.trimEnd()} ${t('Completed.')}`;
+    this.addChild(new Text(`${dim(title)}${currentTheme.fg(colorToken, label)}`, 2, 0));
   }
 
   /**
@@ -2910,7 +2932,7 @@ export class ToolCallComponent extends Container {
 
     if (!hasAnswers) {
       const noteText =
-        typeof note === 'string' && note.length > 0 ? note : 'User dismissed the question.';
+        typeof note === 'string' && note.length > 0 ? note : t('User dismissed the question.');
       this.addChild(new Text(currentTheme.dim(`  ${noteText}`), 0, 0));
       return true;
     }
@@ -2939,13 +2961,13 @@ function computeLatestActivity(
   if (ongoing.size > 0) {
     const lastOngoing = [...ongoing.values()].at(-1);
     if (lastOngoing !== undefined) {
-      return formatActivityLine('Using', lastOngoing.name, lastOngoing.args, workspaceDir);
+      return formatActivityLine(t('Using'), lastOngoing.name, lastOngoing.args, workspaceDir);
     }
   }
   if (finished.length > 0) {
     const last = finished.at(-1);
     if (last !== undefined) {
-      return formatActivityLine('Used', last.name, last.args, workspaceDir);
+      return formatActivityLine(t('Used'), last.name, last.args, workspaceDir);
     }
   }
   if (text.length > 0) {

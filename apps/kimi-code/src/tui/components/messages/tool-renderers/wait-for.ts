@@ -10,6 +10,7 @@
 import { Text, type Component } from '@moonshot-ai/pi-tui';
 
 import { STATUS_BULLET } from '#/tui/constant/symbols';
+import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 import type { ToolCallBlockData, ToolResultBlockData } from '#/tui/types';
 
@@ -63,24 +64,25 @@ export function buildWaitForHeader(options: {
 
   if (result === undefined) {
     const label =
-      taskId === undefined ? 'Waiting for any background task' : 'Waiting for background task';
+      taskId === undefined ? t('Waiting for any background task') : t('Waiting for background task');
     return `${bullet}${currentTheme.boldFg('primary', label)}${argText}`;
   }
   if (result.is_error === true) {
-    return `${bullet}${currentTheme.boldFg('error', 'Could not wait for background task')}${argText}`;
+    return `${bullet}${currentTheme.boldFg('error', t('Could not wait for background task'))}${argText}`;
   }
 
   const status = parseWaitForOutput(result.output)?.status;
   if (status === 'timed_out') {
-    return `${currentTheme.fg('warning', STATUS_BULLET)}${currentTheme.boldFg('warning', 'Wait timed out')}${argText}${chip}`;
+    return `${currentTheme.fg('warning', STATUS_BULLET)}${currentTheme.boldFg('warning', t('Wait timed out'))}${argText}${chip}`;
   }
   if (status === 'no_tasks') {
-    return `${bullet}${currentTheme.boldFg('primary', 'No background tasks running')}${chip}`;
+    return `${bullet}${currentTheme.boldFg('primary', t('No background tasks running'))}${chip}`;
   }
   if (status === 'interrupted') {
-    return `${bullet}${currentTheme.boldFg('primary', 'Wait interrupted by new input')}${argText}${chip}`;
+    return `${bullet}${currentTheme.boldFg('primary', t('Wait interrupted by new input'))}${argText}${chip}`;
   }
-  const label = taskId === undefined ? 'Waited for a background task' : 'Waited for background task';
+  const label =
+    taskId === undefined ? t('Waited for a background task') : t('Waited for background task');
   return `${bullet}${currentTheme.boldFg('primary', label)}${argText}${chip}`;
 }
 
@@ -98,10 +100,12 @@ function glanceLines(view: WaitForResultView): string[] {
     case 'timed_out':
     case 'interrupted': {
       if (view.runningCount === 0) return [];
-      const summary = `${pluralizeTasks(view.runningCount)} still running`;
+      const summary = tFormat('{tasks} still running', {
+        tasks: pluralizeTasks(view.runningCount),
+      });
       if (view.runningSamples.length === 0) return [summary];
       const remaining = view.runningCount - view.runningSamples.length;
-      const tail = remaining > 0 ? `, +${String(remaining)} more` : '';
+      const tail = remaining > 0 ? tFormat(', +{count} more', { count: remaining }) : '';
       return [`${summary}: ${view.runningSamples.join(', ')}${tail}`];
     }
     case 'completed': {
@@ -114,8 +118,12 @@ function glanceLines(view: WaitForResultView): string[] {
           : ` · ${truncateOneLine(view.finishedDescription, DESCRIPTION_MAX)}`;
       const lines = [`${marker} ${taskId} ${status}${description}`];
       const parts: string[] = [];
-      if (view.extraCount > 0) parts.push(`+${String(view.extraCount)} more finished during wait`);
-      if (view.runningCount > 0) parts.push(`${pluralizeTasks(view.runningCount)} still running`);
+      if (view.extraCount > 0) {
+        parts.push(tFormat('+{count} more finished during wait', { count: view.extraCount }));
+      }
+      if (view.runningCount > 0) {
+        parts.push(tFormat('{tasks} still running', { tasks: pluralizeTasks(view.runningCount) }));
+      }
       if (parts.length > 0) lines.push(parts.join(' · '));
       return lines;
     }
@@ -123,7 +131,9 @@ function glanceLines(view: WaitForResultView): string[] {
 }
 
 function pluralizeTasks(count: number): string {
-  return `${String(count)} background task${count === 1 ? '' : 's'}`;
+  return count === 1
+    ? tFormat('{count} background task', { count })
+    : tFormat('{count} background tasks', { count });
 }
 
 export function parseWaitForOutput(output: string): WaitForResultView | undefined {

@@ -5,7 +5,7 @@
  * ctrl+o (or a click) shows every item.
  */
 
-import { t } from '#/tui/i18n';
+import { t, tFormat } from '#/tui/i18n';
 import { truncateToWidth, type Component } from '@moonshot-ai/pi-tui';
 
 import { OUTCOME_ROW_INDENT, TRUNCATION_ELLIPSIS } from '#/tui/constant/rendering';
@@ -41,7 +41,7 @@ const RESULT_ROW = /^ {2}\[(pending|in_progress|done)\] (.+)$/;
  */
 export function todoListFromResult(output: string): TodoItem[] {
   const lines = output.split('\n');
-  const start = lines.indexOf(t(LIST_HEADER));
+  const start = lines.indexOf(LIST_HEADER);
   if (start === -1) return [];
   const end = lines.indexOf('', start + 1);
   const todos: TodoItem[] = [];
@@ -160,11 +160,15 @@ export class TodoCardBody implements Component {
       for (const todo of rows) lines.push(renderRow(todo));
       if (hidden > 0) {
         const distribution = formatHiddenCounts(hiddenCounts);
-        const suffix = distribution.length > 0 ? ` (${distribution})` : '';
+        const hint =
+          distribution.length > 0
+            ? tFormat('+{count} more ({detail}) · ctrl+o to expand', {
+                count: hidden,
+                detail: distribution,
+              })
+            : tFormat('+{count} more · ctrl+o to expand', { count: hidden });
         lines.push(
-          currentTheme.dim(
-            `${OUTCOME_ROW_INDENT}${TRUNCATION_ELLIPSIS} +${String(hidden)} more${suffix} · ctrl+o to expand`,
-          ),
+          currentTheme.dim(`${OUTCOME_ROW_INDENT}${TRUNCATION_ELLIPSIS} ${hint}`),
         );
       }
     }

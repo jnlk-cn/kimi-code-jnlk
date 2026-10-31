@@ -13,6 +13,7 @@ import type { Component } from '@moonshot-ai/pi-tui';
 import { Text } from '@moonshot-ai/pi-tui';
 
 import { OUTCOME_GLANCE_SAMPLES, OUTCOME_ROW_INDENT } from '#/tui/constant/rendering';
+import { tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
 import { parseGlobOutput, parseGrepOutput, searchNoticeOnly } from './grep-output';
@@ -50,7 +51,8 @@ function withGlance(glance: GlanceFn | null): ResultRenderer {
       const parts = glance(toolCall, result);
       if (parts === 'fallback') return renderTruncated(toolCall, result, ctx);
       if (parts !== null) {
-        const tail = parts.moreCount > 0 ? `, +${String(parts.moreCount)} more` : '';
+        const tail =
+          parts.moreCount > 0 ? tFormat(', +{count} more', { count: parts.moreCount }) : '';
         out.push(
           ctx.expanded
             ? new Text(`  ${currentTheme.dim(`${parts.samples}${tail}`)}`, 0, 0)

@@ -6,6 +6,14 @@
  * rendering a raw key.
  */
 
+import { FRAGMENT as GROUP_A } from './fragments/group-a';
+import { FRAGMENT as GROUP_B } from './fragments/group-b';
+import { FRAGMENT as GROUP_C } from './fragments/group-c';
+import { FRAGMENT as GROUP_D } from './fragments/group-d';
+import { FRAGMENT as GROUP_E } from './fragments/group-e';
+import { FRAGMENT as GROUP_F } from './fragments/group-f';
+import { FRAGMENT as GROUP_G } from './fragments/group-g';
+import { FRAGMENT as GROUP_H } from './fragments/group-h';
 import { ZH_CN_DICTIONARY } from './zh-CN';
 
 export type UiLanguage = 'en' | 'zh-CN';
@@ -16,7 +24,17 @@ let currentLanguage: UiLanguage = 'en';
 
 const dictionaries: Record<UiLanguage, Readonly<Record<string, string>>> = {
   en: {},
-  'zh-CN': ZH_CN_DICTIONARY,
+  'zh-CN': {
+    ...ZH_CN_DICTIONARY,
+    ...GROUP_A,
+    ...GROUP_B,
+    ...GROUP_C,
+    ...GROUP_D,
+    ...GROUP_E,
+    ...GROUP_F,
+    ...GROUP_G,
+    ...GROUP_H,
+  },
 };
 
 export function registerDictionary(
