@@ -1,52 +1,40 @@
-# @moonshot-ai/kimi-code
+# GanyCode
 
 > The Starting Point for Next-Gen Agents
 
-[![npm](https://img.shields.io/npm/v/@moonshot-ai/kimi-code)](https://www.npmjs.com/package/@moonshot-ai/kimi-code) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)  [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/en/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Docs](https://img.shields.io/badge/docs-online-blue)](https://moonshotai.github.io/kimi-code/en/)
 
-## What is Kimi Code CLI
+## What is GanyCode
 
-Kimi Code CLI is an AI coding agent that runs in your terminal. It can read and edit code, run shell commands, search files, fetch web pages, and choose the next step based on the feedback it receives. It works out of the box with Moonshot AI's Kimi models and can also be configured to use other compatible providers.
+GanyCode is an AI coding agent that runs in your terminal. It can read and edit code, run shell commands, search files, fetch web pages, and choose the next step based on the feedback it receives. It works out of the box with DeepSeek V4 on the official API and can also be configured to use other compatible providers.
+
+This build is the community fork of Kimi Code CLI. See the repository README for what differs from upstream.
 
 ## Install
 
-The recommended install path is the official script. It does not require Node.js to be installed first.
+The recommended install path is the fork installer. It does not require Node.js to be installed first.
 
 - **macOS / Linux**:
 
 ```sh
-curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash
 ```
 
 - **Windows (PowerShell)**:
 
 ```powershell
-irm https://code.kimi.com/kimi-code/install.ps1 | iex
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
 ```
 
-> On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch because Kimi Code CLI uses the bundled Git Bash as its shell environment. If Git Bash is installed in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
+> On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch because GanyCode uses the bundled Git Bash as its shell environment. If Git Bash is installed in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
 
 Then run it with a new Terminal session:
 
 ```sh
-kimi --version
+ganycode --version
 ```
 
-### Alternative: npm
-
-If you prefer npm, use Node.js 22.19.0 or later:
-
-```sh
-npm install -g @moonshot-ai/kimi-code
-```
-
-Or with pnpm:
-
-```sh
-pnpm add -g @moonshot-ai/kimi-code
-```
-
-For upgrade and uninstall instructions, see the [Getting Started guide](https://moonshotai.github.io/kimi-code/en/guides/getting-started).
+GanyCode installs as `ganycode` into `~/.ganycode`, so it never replaces an existing Kimi CLI. The npm package `@moonshot-ai/kimi-code` is published by upstream and is not this fork's install path.
 
 ## Quick Start
 
@@ -54,10 +42,10 @@ Open a project and start the interactive UI:
 
 ```sh
 cd your-project
-kimi
+ganycode
 ```
 
-On first launch, run `/login` inside Kimi Code CLI and choose either Kimi Code OAuth or a Kimi Platform API key. After login, try a first task:
+On first launch, run `/login` inside GanyCode and choose either the managed Kimi Code OAuth flow or a Kimi Platform API key, or use `/provider` to configure any other provider. After login, try a first task:
 
 ```
 Take a look at this project and explain the main directories.
@@ -81,9 +69,9 @@ Take a look at this project and explain the main directories.
 
 ## Repository & Issues
 
-- Source: https://github.com/MoonshotAI/kimi-code
-- Issues: https://github.com/MoonshotAI/kimi-code/issues
-- Security: see SECURITY.md in the main repository
+- Source: https://github.com/jnlk-cn/kimi-code-jnlk
+- Issues: https://github.com/jnlk-cn/kimi-code-jnlk/issues
+- Security: see SECURITY.md in this repository
 
 ## License
 
