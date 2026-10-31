@@ -15,7 +15,7 @@ import {
   type ExperimentalFeatureDraftChange,
 } from '../components/dialogs/experiments-selector';
 import { LanguageSelectorComponent } from '../components/dialogs/language-selector';
-import { resolveUiLanguage, setUiLanguage } from '../i18n';
+import { resolveUiLanguage, setUiLanguage, tFormat } from '../i18n';
 import { writeAgentPreferences } from '../utils/agent-preferences-io';
 import { MermaidPreferenceSelectorComponent } from '../components/dialogs/mermaid-preference-selector';
 import { TerminalPreferenceSelectorComponent } from '../components/dialogs/terminal-preference-selector';
@@ -1053,7 +1053,7 @@ export async function applyLanguageChoice(
   try {
     await saveTuiConfig({ ...currentTuiConfig(host), language });
   } catch (error) {
-    host.showStatus(`Failed to save reply language: ${formatErrorMessage(error)}`, 'error');
+    host.showStatus(tFormat('Failed to save reply language: {error}', { error: formatErrorMessage(error) }), 'error');
     return;
   }
   await writeAgentPreferences({
@@ -1077,7 +1077,7 @@ export async function applyTerminalPreferenceChoice(
   try {
     await saveTuiConfig({ ...currentTuiConfig(host), terminalPreference: preference });
   } catch (error) {
-    host.showStatus(`Failed to save shell preference: ${formatErrorMessage(error)}`, 'error');
+    host.showStatus(tFormat('Failed to save shell preference: {error}', { error: formatErrorMessage(error) }), 'error');
     return;
   }
   await writeAgentPreferences({

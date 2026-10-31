@@ -174,4 +174,8 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   'Enter select': 'Enter 选择',
   'Alt+S session-only': 'Alt+S 仅本次会话',
   'Esc cancel': 'Esc 取消',
+  'Failed to save reply language: {error}': '保存回复语言失败：{error}',
+  'Failed to save shell preference: {error}': '保存 Shell 偏好失败：{error}',
+  'Unknown language: {value}. Use one of: {options}': '未知语言：{value}。可选：{options}',
+  'Unknown shell preference: {value}. Use one of: {options}': '未知 Shell 偏好：{value}。可选：{options}',
 };
