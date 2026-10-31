@@ -88,7 +88,7 @@ export class WrappingSelectList extends SelectList {
     const prefix = isSelected ? '→ ' : '  ';
     const prefixWidth = visibleWidth(prefix);
     const description = item.description
-      ? item.description.replaceAll(/[\r\n]+/g, ' ').trim()
+      ? t(item.description.replaceAll(/[\r\n]+/g, ' ').trim())
       : undefined;
 
     if (description && width > 40) {

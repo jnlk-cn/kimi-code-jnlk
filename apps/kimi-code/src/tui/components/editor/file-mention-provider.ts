@@ -1,4 +1,5 @@
 import { accessSync, constants as fsConstants, type Dirent, readdirSync, statSync } from 'node:fs';
+import { t } from '#/tui/i18n';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
@@ -739,7 +740,7 @@ function scoreTokens(tokens: readonly string[], text: string): number | null {
  * intercepted name completion keeps showing the argument hint.
  */
 function formatSlashCommandDescription(cmd: SlashAutocompleteCommand): string | undefined {
-  const desc = cmd.description ?? '';
+  const desc = t(cmd.description ?? '');
   const full = cmd.argumentHint
     ? desc
       ? `${cmd.argumentHint} — ${desc}`
