@@ -25,6 +25,7 @@ import { CHROME_GUTTER } from '#/tui/constant/rendering';
 import { KimiTUI } from '#/tui/index';
 import { startupTrace } from '#/utils/startup-trace';
 import { resolveUiLanguage, setUiLanguage } from '#/tui/i18n';
+import { writeAgentPreferences } from '#/tui/utils/agent-preferences-io';
 import { currentTheme, getColorPalette } from '#/tui/theme';
 import { toTerminalHyperlink } from '#/utils/terminal-hyperlink';
 import { restoreTerminalModes } from '#/utils/terminal-restore';
@@ -55,6 +56,10 @@ export async function runShell(
 
   // The UI language must be set before any component renders its copy.
   setUiLanguage(resolveUiLanguage(tuiConfig.language));
+  await writeAgentPreferences({
+    language: tuiConfig.language,
+    terminalPreference: tuiConfig.terminalPreference,
+  });
 
   // Initialise the global Theme singleton before pi-tui grabs stdin.
   const palette = await getColorPalette(tuiConfig.theme);

@@ -16,6 +16,7 @@ import {
 } from '../components/dialogs/experiments-selector';
 import { LanguageSelectorComponent } from '../components/dialogs/language-selector';
 import { resolveUiLanguage, setUiLanguage } from '../i18n';
+import { writeAgentPreferences } from '../utils/agent-preferences-io';
 import { MermaidPreferenceSelectorComponent } from '../components/dialogs/mermaid-preference-selector';
 import { TerminalPreferenceSelectorComponent } from '../components/dialogs/terminal-preference-selector';
 import { modelDisplayName, segmentsFor } from '../components/dialogs/model-selector';
@@ -1052,6 +1053,10 @@ export async function applyLanguageChoice(
     host.showStatus(`Failed to save reply language: ${formatErrorMessage(error)}`, 'error');
     return;
   }
+  await writeAgentPreferences({
+    language,
+    terminalPreference: currentTuiConfig(host).terminalPreference,
+  });
   setUiLanguage(resolveUiLanguage(language));
   host.state.ui.requestRender(true);
   host.showStatus(`Reply language set to ${language}.`);
@@ -1071,6 +1076,10 @@ export async function applyTerminalPreferenceChoice(
     host.showStatus(`Failed to save shell preference: ${formatErrorMessage(error)}`, 'error');
     return;
   }
+  await writeAgentPreferences({
+    language: currentTuiConfig(host).language,
+    terminalPreference: preference,
+  });
   host.showStatus(
     preference === 'default'
       ? 'Shell preference cleared; the agent picks the shell itself.'
