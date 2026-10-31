@@ -8,6 +8,8 @@
  * keyboard to the Updates panel; meanwhile the panel fades.
  */
 
+import { t, tFormat } from '#/tui/i18n';
+
 import {
   Input,
   matchesKey,
@@ -204,17 +206,17 @@ function isDuplicateBriefBlock(block: DisplayBlock, description: string): boolea
 function headerFor(toolName: string): string {
   switch (toolName) {
     case 'Bash':
-      return 'Run this command?';
+      return t('Run this command?');
     case 'Write':
-      return 'Write this file?';
+      return t('Write this file?');
     case 'Edit':
-      return 'Apply these edits?';
+      return t('Apply these edits?');
     case 'TaskStop':
-      return 'Stop this task?';
+      return t('Stop this task?');
     case 'ExitPlanMode':
-      return 'Ready to build with this plan?';
+      return t('Ready to build with this plan?');
     default:
-      return `Approve ${toolName}?`;
+      return tFormat('Approve {tool}?', { tool: toolName });
   }
 }
 
@@ -500,9 +502,9 @@ export class ApprovalPanelComponent extends DockSection implements Focusable {
 
     lines.push('');
     if (!this.focused) {
-      lines.push(indent(dim('esc back to approval')));
+      lines.push(indent(dim(t('esc back to approval'))));
     } else if (this.feedbackMode) {
-      lines.push(indent(dim('Type feedback · ↵ submit.')));
+      lines.push(indent(dim(t('Type feedback · ↵ submit.'))));
     } else {
       const expandHint = this.visibleBlocks().some(
         (block) => block.type === 'diff' || block.type === 'file_content',

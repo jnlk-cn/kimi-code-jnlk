@@ -6,6 +6,7 @@
  * lends the keyboard to the Updates panel; meanwhile the dialog fades.
  */
 
+import { t } from '#/tui/i18n';
 import {
   Container,
   Input,
@@ -577,9 +578,9 @@ export class QuestionDialogComponent extends Container implements Focusable {
     const lines: string[] = [this.rule(renderWidth), currentTheme.boldFg('primary', ' question'), ''];
     this.pushTabs(lines);
     lines.push('');
-    lines.push(currentTheme.boldFg('text', ` ${REVIEW_TITLE}`));
+    lines.push(currentTheme.boldFg('text', ` ${t(REVIEW_TITLE)}`));
     const reviewWarning =
-      this.reviewMessage ?? (this.hasUnansweredQuestions() ? UNANSWERED_WARNING : undefined);
+      this.reviewMessage ?? (this.hasUnansweredQuestions() ? t(UNANSWERED_WARNING) : undefined);
     if (reviewWarning !== undefined) {
       lines.push(warning(`  ${reviewWarning}`));
     }
@@ -605,12 +606,12 @@ export class QuestionDialogComponent extends Container implements Focusable {
           renderWidth,
         );
       } else {
-        lines.push(`  ${dim('→')}  ${dim(NOT_ANSWERED_LABEL)}`);
+        lines.push(`  ${dim('→')}  ${dim(t(NOT_ANSWERED_LABEL))}`);
       }
     }
 
     lines.push('');
-    lines.push(text(` ${SUBMIT_PROMPT}`));
+    lines.push(text(` ${t(SUBMIT_PROMPT)}`));
     lines.push('');
 
     for (let i = 0; i < SUBMIT_ACTIONS.length; i++) {

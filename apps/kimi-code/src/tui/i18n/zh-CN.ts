@@ -143,4 +143,17 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   Dark: '深色',
   Light: '浅色',
   'Select permission mode': '选择权限模式',
+  // Approval panel
+  'Run this command?': '要执行这条命令吗？',
+  'Write this file?': '要写入这个文件吗？',
+  'Apply these edits?': '要应用这些修改吗？',
+  'Stop this task?': '要停止这个任务吗？',
+  'Ready to build with this plan?': '准备按这个计划开始执行了吗？',
+  'Approve {tool}?': '是否允许 {tool}？',
+  'esc back to approval': 'esc 返回审批',
+  'Type feedback · ↵ submit.': '输入反馈 · ↵ 提交',
+  'Not answered': '未回答',
+  'Review your answer before submit': '提交前请检查你的回答',
+  'Ready to submit your answers?': '准备提交你的回答吗？',
+  'Some questions are still unanswered.': '还有问题没有回答。',
 };
