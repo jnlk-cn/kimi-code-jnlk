@@ -1,4 +1,5 @@
 import { effectiveModelAlias, type ModelAlias, type ThinkingEffort } from '@moonshot-ai/kimi-code-sdk';
+import { t } from '#/tui/i18n';
 import {
   Container,
   Key,
@@ -289,12 +290,12 @@ export class ModelSelectorComponent extends Container implements Focusable {
     // "type to search" already lives in the title suffix, so the hint only
     // surfaces the backspace shortcut once a query is active.
     const hintParts: string[] = [];
-    if (this.opts.providerSwitchHint) hintParts.push('Tab toggle provider');
+    if (this.opts.providerSwitchHint) hintParts.push(t('Tab toggle provider'));
     hintParts.push('↑↓ navigate');
-    if (searchable && view.query.length > 0) hintParts.push('Backspace clear');
-    hintParts.push('Enter select');
-    if (this.opts.onSessionOnlySelect !== undefined) hintParts.push('Alt+S session-only');
-    hintParts.push('Esc cancel');
+    if (searchable && view.query.length > 0) hintParts.push(t('Backspace clear'));
+    hintParts.push(t('Enter select'));
+    if (this.opts.onSessionOnlySelect !== undefined) hintParts.push(t('Alt+S session-only'));
+    hintParts.push(t('Esc cancel'));
 
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),

@@ -169,4 +169,9 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   'Waiting for your input': '等待你的输入',
   'Ran a command': '已执行一条命令',
   'Running a command': '正在执行命令',
+  'Tab toggle provider': 'Tab 切换供应商',
+  'Backspace clear': 'Backspace 清除',
+  'Enter select': 'Enter 选择',
+  'Alt+S session-only': 'Alt+S 仅本次会话',
+  'Esc cancel': 'Esc 取消',
 };
