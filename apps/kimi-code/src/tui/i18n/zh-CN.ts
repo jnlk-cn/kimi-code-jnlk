@@ -178,4 +178,13 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   'Failed to save shell preference: {error}': '保存 Shell 偏好失败：{error}',
   'Unknown language: {value}. Use one of: {options}': '未知语言：{value}。可选：{options}',
   'Unknown shell preference: {value}. Use one of: {options}': '未知 Shell 偏好：{value}。可选：{options}',
+  'Welcome to Kimi Code!': '欢迎使用 GanyCode！',
+  'Run /login or /provider to get started.': '运行 /login 或 /provider 开始使用。',
+  'Send /help for help information.': '输入 /help 查看帮助。',
+  'not set, run /login or /provider': '未设置，请运行 /login 或 /provider',
+  'Directory: ': '目录：  ',
+  'Session:   ': '会话：  ',
+  'Model:     ': '模型：  ',
+  'Version:   ': '版本：  ',
+  'MCP:       ': 'MCP：   ',
 };

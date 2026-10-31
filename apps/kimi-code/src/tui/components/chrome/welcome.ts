@@ -3,6 +3,7 @@
  * Renders a round-bordered box with the logo, session, model, and version.
  */
 
+import { t } from '#/tui/i18n';
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import chalk from 'chalk';
@@ -30,12 +31,12 @@ export class WelcomeComponent implements Component {
     const effectiveActiveModel = activeModel === undefined ? undefined : effectiveModelAlias(activeModel);
 
     if (safeWidth < 24) {
-      const title = chalk.bold.hex(currentTheme.palette.primary)('Welcome to Kimi Code!');
+      const title = chalk.bold.hex(currentTheme.palette.primary)(t('Welcome to Kimi Code!'));
       const prompt = isLoggedOut
-        ? chalk.hex(currentTheme.palette.warning)('Run /login or /provider to get started.')
-        : chalk.hex(currentTheme.palette.textDim)('Send /help for help information.');
+        ? chalk.hex(currentTheme.palette.warning)(t('Run /login or /provider to get started.'))
+        : chalk.hex(currentTheme.palette.textDim)(t('Send /help for help information.'));
       const model = isLoggedOut
-        ? chalk.hex(currentTheme.palette.warning)('not set, run /login or /provider')
+        ? chalk.hex(currentTheme.palette.warning)(t('not set, run /login or /provider'))
         : (effectiveActiveModel?.displayName ?? effectiveActiveModel?.model ?? this.state.model);
       return ['', title, prompt, `Model: ${model}`].map((line) =>
         truncateToWidth(line, safeWidth, '…'),
@@ -52,14 +53,14 @@ export class WelcomeComponent implements Component {
     const textWidth = Math.max(4, innerWidth - logoWidth - gap.length);
 
     const rightRow0 = truncateToWidth(
-      chalk.bold.hex(currentTheme.palette.primary)('Welcome to Kimi Code!'),
+      chalk.bold.hex(currentTheme.palette.primary)(t('Welcome to Kimi Code!')),
       textWidth,
       '…',
     );
     const dim = chalk.hex(currentTheme.palette.textDim);
     const labelStyle = chalk.bold.hex(currentTheme.palette.textDim);
     const rightRow1 = truncateToWidth(
-      dim(isLoggedOut ? 'Run /login or /provider to get started.' : 'Send /help for help information.'),
+      dim(isLoggedOut ? t('Run /login or /provider to get started.') : t('Send /help for help information.')),
       textWidth,
       '…',
     );
@@ -73,18 +74,18 @@ export class WelcomeComponent implements Component {
     }
 
     const modelValue = isLoggedOut
-      ? chalk.hex(currentTheme.palette.warning)('not set, run /login or /provider')
+      ? chalk.hex(currentTheme.palette.warning)(t('not set, run /login or /provider'))
       : (effectiveActiveModel?.displayName ?? effectiveActiveModel?.model ?? this.state.model);
 
     const infoLines = [
-      labelStyle('Directory: ') + this.state.workDir,
-      labelStyle('Session:   ') + this.state.sessionId,
-      labelStyle('Model:     ') + modelValue,
-      labelStyle('Version:   ') + this.state.version,
+      labelStyle(t('Directory: ')) + this.state.workDir,
+      labelStyle(t('Session:   ')) + this.state.sessionId,
+      labelStyle(t('Model:     ')) + modelValue,
+      labelStyle(t('Version:   ')) + this.state.version,
     ];
 
     if (this.state.mcpServersSummary) {
-      infoLines.push(labelStyle('MCP:       ') + this.state.mcpServersSummary);
+      infoLines.push(labelStyle(t('MCP:       ')) + this.state.mcpServersSummary);
     }
 
     const contentLines: string[] = [...renderedHeaderLines, '', ...infoLines];
