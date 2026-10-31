@@ -88,6 +88,9 @@ export function currentTuiConfig(host: Pick<SlashCommandHost, 'state'>): TuiConf
     upgrade: host.state.appState.upgrade,
     statusLine: host.state.appState.statusLine ?? DEFAULT_TUI_CONFIG.statusLine,
     markdown: host.state.appState.markdown ?? DEFAULT_MARKDOWN_CONFIG,
+    language: host.state.appState.language ?? DEFAULT_TUI_CONFIG.language,
+    terminalPreference:
+      host.state.appState.terminalPreference ?? DEFAULT_TUI_CONFIG.terminalPreference,
   };
 }
 
@@ -1057,6 +1060,7 @@ export async function applyLanguageChoice(
     language,
     terminalPreference: currentTuiConfig(host).terminalPreference,
   });
+  host.setAppState({ language });
   setUiLanguage(resolveUiLanguage(language));
   host.state.ui.requestRender(true);
   host.showStatus(`Reply language set to ${language}.`);
@@ -1080,6 +1084,7 @@ export async function applyTerminalPreferenceChoice(
     language: currentTuiConfig(host).language,
     terminalPreference: preference,
   });
+  host.setAppState({ terminalPreference: preference });
   host.showStatus(
     preference === 'default'
       ? 'Shell preference cleared; the agent picks the shell itself.'

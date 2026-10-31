@@ -70,6 +70,10 @@ export interface AppState {
    * default is used instead when unset.
    */
   lazySessionThinking?: ThinkingEffort;
+  /** Reply language preference (mirrors tui.toml.language). */
+  language?: 'auto' | 'en' | 'zh-CN';
+  /** Preferred shell hint for the agent (mirrors tui.toml [terminal]). */
+  terminalPreference?: 'default' | 'bash' | 'powershell' | 'powershell7';
   contextUsage: number;
   contextTokens: number;
   maxContextTokens: number;
