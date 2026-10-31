@@ -10441,7 +10441,7 @@ capabilities = ["image_in", "video_in"]
       expect(getStatus).toHaveBeenCalledTimes(previousStatusCalls + 1);
       const output = stripSgr(driver.state.transcriptContainer.render(120).join('\n'));
       expect(output).toContain(' Status ');
-      expect(output).toContain('>_ Kimi Code');
+      expect(output).toContain('>_ GanyCode');
       expect(output).toContain('Model');
       expect(output).toContain('thinking high');
       expect(output).toContain('Permissions  Never Ask');
@@ -11853,11 +11853,11 @@ capabilities = ["image_in", "video_in"]
         );
       });
       expect(copyTextToClipboard).toHaveBeenCalledWith(
-        "cd '/tmp/proj-a' && kimi --resume 'ses-fork'",
+        "cd '/tmp/proj-a' && ganycode --resume 'ses-fork'",
       );
       const transcript = driver.state.transcriptContainer.render(120).join('\n');
       expect(transcript).toContain(
-        "To enter the fork in a new process, run: cd '/tmp/proj-a' && kimi --resume 'ses-fork'",
+        "To enter the fork in a new process, run: cd '/tmp/proj-a' && ganycode --resume 'ses-fork'",
       );
       expect(transcript).toContain('Command copied to clipboard');
       expect(driver.getCurrentSessionId()).toBe('ses-source');
@@ -11884,7 +11884,7 @@ capabilities = ["image_in", "video_in"]
     await vi.waitFor(() => {
       const transcript = driver.state.transcriptContainer.render(120).join('\n');
       expect(transcript).toContain(
-        "To enter the fork in a new process, run: cd '/tmp/proj-a' && kimi --resume 'ses-fork'",
+        "To enter the fork in a new process, run: cd '/tmp/proj-a' && ganycode --resume 'ses-fork'",
       );
       expect(transcript).toContain('Failed to copy command to clipboard');
     });
@@ -11926,7 +11926,7 @@ capabilities = ["image_in", "video_in"]
 
       await vi.waitFor(() => {
         expect(copyTextToClipboard).toHaveBeenCalledWith(
-          'pushd "D:\\proj" && kimi --resume "ses-fork"',
+          'pushd "D:\\proj" && ganycode --resume "ses-fork"',
         );
       });
       expect(driver.getCurrentSessionId()).toBe('ses-source');
