@@ -24,6 +24,7 @@ import { basename, dirname, join } from 'node:path';
 import { log } from '@moonshot-ai/kimi-code-sdk';
 
 import {
+  FORK_BUILD,
   KIMI_CODE_NATIVE_STAGED_STATE_FILE_NAME,
   KIMI_CODE_UPDATE_REEXEC_ENV,
 } from '#/constant/app';
@@ -47,6 +48,10 @@ export interface NativeSwapDeps {
   readonly env: NodeJS.ProcessEnv;
   readonly currentVersion: string;
   readonly isNative: boolean;
+  // Build identity, injected so the swap stays testable as the upstream
+  // updater the rest of this module implements. Production reads the build's
+  // own identity; see FORK_BUILD.
+  readonly forkBuild?: boolean;
   readonly spawnImpl?: typeof spawn;
   readonly exitImpl?: (code: number) => void;
 }
@@ -490,6 +495,13 @@ export async function maybeRelaunchWithStagedNativeUpdate(
     // still need for rollback. Its re-exec — or our next launch — lands the
     // update, so this session simply runs the current exe.
     logSwap('another instance is mid-swap, skipping', { exePath: deps.exePath });
+    return false;
+  }
+  if (deps.forkBuild ?? FORK_BUILD) {
+    // A fork build is never the payload the official channel stages: applying
+    // one would swap this binary for the upstream product. Payloads staged
+    // before this guard existed stay on disk untouched, so nothing is lost.
+    logSwap('fork build never applies an official staged update', { exePath: deps.exePath });
     return false;
   }
 

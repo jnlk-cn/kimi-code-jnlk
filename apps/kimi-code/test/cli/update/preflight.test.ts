@@ -207,6 +207,7 @@ function captureOutput(): {
     stdout: { write(chunk: string): boolean };
     stderr: { write(chunk: string): boolean };
     isTTY: boolean;
+    forkBuild: boolean;
   };
 } {
   const stdout: string[] = [];
@@ -218,6 +219,9 @@ function captureOutput(): {
       stdout: { write: (chunk: string) => { stdout.push(chunk); return true; } },
       stderr: { write: (chunk: string) => { stderr.push(chunk); return true; } },
       isTTY: true,
+      // These cases cover the official updater's mechanics; the fork build's
+      // opt-out is asserted separately below.
+      forkBuild: false,
     },
   };
 }
@@ -301,6 +305,21 @@ describe('runUpdatePreflight', () => {
 
     expect(readUpdateCache).not.toHaveBeenCalled();
     expect(detectInstallSource).not.toHaveBeenCalled();
+  });
+
+  it('never consults the official update channel from a fork build', async () => {
+    mocks.readUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
+    mocks.refreshUpdateCache.mockResolvedValue(cacheWith('0.5.0'));
+    const { options } = captureOutput();
+
+    await expect(
+      runUpdatePreflight('0.4.0', { ...options, forkBuild: true }),
+    ).resolves.toBe('continue');
+
+    expect(readUpdateCache).not.toHaveBeenCalled();
+    expect(refreshUpdateCache).not.toHaveBeenCalled();
+    expect(detectInstallSource).not.toHaveBeenCalled();
+    expect(mocks.spawn).not.toHaveBeenCalled();
   });
 
   it('starts an automatic update from the first fresh check when the cache is empty', async () => {

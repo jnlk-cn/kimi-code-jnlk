@@ -170,6 +170,9 @@ function makeDeps(
     env: { PATH: '/usr/bin' },
     currentVersion: CURRENT_VERSION,
     isNative: true,
+    // These cases cover the official swap mechanics; the fork build's opt-out
+    // is asserted separately.
+    forkBuild: false,
     exitImpl: vi.fn(),
     ...overrides,
   };
@@ -221,6 +224,19 @@ describe('maybeRelaunchWithStagedNativeUpdate', () => {
     expect(relaunched).toBe(false);
     expect(calls).toHaveLength(0);
     expect(await readFile(exePath, 'utf-8')).toBe('old-binary');
+  });
+
+  it('never applies an official stage from a fork build', async () => {
+    await seedStagedUpdate(exePath, STAGED_VERSION);
+    const { calls, spawnImpl } = createSpawnMock({});
+    const relaunched = await maybeRelaunchWithStagedNativeUpdate(
+      makeDeps(exePath, { spawnImpl, forkBuild: true }),
+    );
+    expect(relaunched).toBe(false);
+    expect(calls).toHaveLength(0);
+    expect(await readFile(exePath, 'utf-8')).toBe('old-binary');
+    // The payload stays staged: nothing is lost if a later build accepts it.
+    await expect(stat(getNativeStagedStateFile(exePath))).resolves.toBeDefined();
   });
 
   it('does nothing when nothing is staged', async () => {

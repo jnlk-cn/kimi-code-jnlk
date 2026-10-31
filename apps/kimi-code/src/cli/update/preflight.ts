@@ -5,6 +5,7 @@ import type { TelemetryProperties } from '@moonshot-ai/kimi-telemetry';
 
 import {
   CLI_COMMAND_NAME,
+  FORK_BUILD,
   kimiCodeOfficialInstallUrl,
   nativeInstallCommandUnix,
   nativeInstallCommandWin,
@@ -58,6 +59,10 @@ export interface RunUpdatePreflightOptions {
   readonly isTTY?: boolean;
   readonly track?: (event: string, properties?: TelemetryProperties) => void;
   readonly logger?: UpdateLogger;
+  // Build identity, injected so the preflight stays testable as the upstream
+  // updater the rest of this module implements. Production reads the build's
+  // own identity; see FORK_BUILD.
+  readonly forkBuild?: boolean;
 }
 
 const AUTO_INSTALL_FAILURE_PROMPT_THRESHOLD = 2;
@@ -837,6 +842,12 @@ export async function runUpdatePreflight(
   const platform = process.platform;
 
   if (isAutoUpdateDisabledByEnv()) return 'continue';
+
+  // The official channel only publishes the upstream product. Acting on it
+  // here is what silently replaces a fork build with one carrying the upstream
+  // brand and `kimi` command, so a fork build never checks it at all; the
+  // explicit `upgrade` command explains how to update from the fork instead.
+  if (options.forkBuild ?? FORK_BUILD) return 'continue';
 
   try {
     const isInteractive = options.isTTY ?? (process.stdin.isTTY && process.stdout.isTTY);
