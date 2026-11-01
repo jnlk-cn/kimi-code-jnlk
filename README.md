@@ -32,16 +32,16 @@ Install this fork's script. No Node.js required.
 - **macOS or Linux**:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.sh | bash
 ```
 
 - **Windows (PowerShell)**:
 
 ```powershell
-irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.ps1 | iex
 ```
 
-To pin a version, append `-s -- --version v2.4.0-jnlk.0` (bash) or set `$env:KIMI_VERSION = 'v2.4.0-jnlk.0'` (PowerShell) before running.
+To pin a version, append `-s -- --version v2.4.1-jnlk.1` (bash) or set `$env:KIMI_VERSION = 'v2.4.1-jnlk.1'` (PowerShell) before running.
 
 > On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch because Kimi Code CLI uses the bundled Git Bash as its shell environment. If Git Bash is installed in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.
 

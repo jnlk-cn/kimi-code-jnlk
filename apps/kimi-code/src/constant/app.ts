@@ -58,7 +58,7 @@ export const FORK_REPOSITORY = 'jnlk-cn/kimi-code-jnlk';
 // Update checks and staged swaps stay off (see the update preflight and the
 // native swap); `ganycode upgrade` prints the fork installer hint instead.
 export const FORK_BUILD = FORK_REPOSITORY.length > 0;
-export const FORK_INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${FORK_REPOSITORY}/jnlk/2.4.0/install.sh`;
+export const FORK_INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${FORK_REPOSITORY}/jnlk/2.4.1/install.sh`;
 export const FORK_UPGRADE_NOTICE = `This build is ${FORK_REPOSITORY}, whose releases are not served by the official update channel.
 Upgrade it with the fork installer instead:
   curl -fsSL ${FORK_INSTALL_SCRIPT_URL} | bash

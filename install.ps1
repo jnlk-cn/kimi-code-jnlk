@@ -3,15 +3,15 @@
   GanyCode installer for Windows (PowerShell 5.1+). Installs alongside Kimi Code without touching it.
 
 .EXAMPLE
-  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
+  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.ps1 | iex
 
 .EXAMPLE
-  $env:KIMI_VERSION = 'v2.4.0-jnlk.0'
-  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
+  $env:KIMI_VERSION = 'v2.4.1-jnlk.1'
+  irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.ps1 | iex
 
 .NOTES
   Optional env:
-    KIMI_VERSION         GitHub Release tag (e.g. v2.4.0-jnlk.0); if unset, fetch latest release
+    KIMI_VERSION         GitHub Release tag (e.g. v2.4.1-jnlk.1); if unset, fetch latest release
     KIMI_INSTALL_DIR     Installation directory, default %USERPROFILE%\.ganycode
     KIMI_NO_MODIFY_PATH  Skip PATH modification when set to a non-empty value
 #>

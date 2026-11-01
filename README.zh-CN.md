@@ -35,16 +35,16 @@ Kimi Code CLI 是一个运行在终端里的 AI 编程 agent，可以帮你读�
 - **macOS / Linux**：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.sh | bash
 ```
 
 - **Windows（PowerShell）**：
 
 ```powershell
-irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.ps1 | iex
 ```
 
-需要固定版本时：bash 追加 `-s -- --version v2.4.0-jnlk.0`，PowerShell 先设置 `$env:KIMI_VERSION = 'v2.4.0-jnlk.0'`。
+需要固定版本时：bash 追加 `-s -- --version v2.4.1-jnlk.1`，PowerShell 先设置 `$env:KIMI_VERSION = 'v2.4.1-jnlk.1'`。
 
 > Windows 用户首次启动前还需要安装 [Git for Windows](https://gitforwindows.org/)，Kimi Code CLI 会使用其中的 Git Bash 作为 Shell 环境。如果 Git Bash 安装在非标准路径，请把 `KIMI_SHELL_PATH` 设为 `bash.exe` 的绝对路径。
 

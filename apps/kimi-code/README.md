@@ -17,13 +17,13 @@ The recommended install path is the fork installer. It does not require Node.js 
 - **macOS / Linux**:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.sh | bash
 ```
 
 - **Windows (PowerShell)**:
 
 ```powershell
-irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/jnlk-cn/kimi-code-jnlk/jnlk/2.4.1/install.ps1 | iex
 ```
 
 > On Windows, install [Git for Windows](https://gitforwindows.org/) before first launch because GanyCode uses the bundled Git Bash as its shell environment. If Git Bash is installed in a custom location, set `KIMI_SHELL_PATH` to the absolute path of `bash.exe`.

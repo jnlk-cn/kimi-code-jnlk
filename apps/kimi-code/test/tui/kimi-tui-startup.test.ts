@@ -2212,7 +2212,7 @@ describe('KimiTUI startup', () => {
 
     expect(resumeSession).not.toHaveBeenCalled();
     expect(driver.state.activeDialog).toBeNull();
-    const expectedResumeCmd = `cd ${quoteShellArg('/tmp/proj-b')} && kimi --resume ${quoteShellArg('ses-other-cwd')}`;
+    const expectedResumeCmd = `cd ${quoteShellArg('/tmp/proj-b')} && ganycode --resume ${quoteShellArg('ses-other-cwd')}`;
     expect(copyTextToClipboardMock).toHaveBeenCalledWith(expectedResumeCmd);
     const transcript = driver.state.transcriptContainer.render(160).join('\n');
     expect(transcript).toContain('Current session is in a different working directory.');
@@ -2250,7 +2250,7 @@ describe('KimiTUI startup', () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(resumeSession).not.toHaveBeenCalled();
-    const expectedResumeCmd = `cd ${quoteShellArg('/tmp/proj$(touch /tmp/pwned)')} && kimi --resume ${quoteShellArg('ses-other-cwd')}`;
+    const expectedResumeCmd = `cd ${quoteShellArg('/tmp/proj$(touch /tmp/pwned)')} && ganycode --resume ${quoteShellArg('ses-other-cwd')}`;
     expect(copyTextToClipboardMock).toHaveBeenCalledWith(expectedResumeCmd);
     const transcript = driver.state.transcriptContainer.render(160).join('\n');
     expect(transcript).toContain(`To resume, run: ${expectedResumeCmd}`);
@@ -2287,7 +2287,7 @@ describe('KimiTUI startup', () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(resumeSession).not.toHaveBeenCalled();
-    const expectedResumeCmd = `cd ${quoteShellArg('/tmp/proj-b')} && kimi --resume ${quoteShellArg('ses-other-cwd')}`;
+    const expectedResumeCmd = `cd ${quoteShellArg('/tmp/proj-b')} && ganycode --resume ${quoteShellArg('ses-other-cwd')}`;
     expect(copyTextToClipboardMock).toHaveBeenCalledWith(expectedResumeCmd);
     expect(stop).toHaveBeenCalledOnce();
     expect(stop).toHaveBeenCalledWith(0);
@@ -3548,7 +3548,7 @@ describe('KimiTUI startup', () => {
       }));
     const harness = makeHarness(makeSession(), { getWorkspaceTrustInfo });
     const driver = makeDriver(harness, {
-      ...makeStartupInput(),
+      ...makeStartupInput({ environment: 'fake-box', environmentCwd: '/remote/work' }),
       migrationPlan: MIGRATION_PLAN,
       migrateOnly: true,
     }) as unknown as MigrateExitDriver;
@@ -3563,7 +3563,11 @@ describe('KimiTUI startup', () => {
 
     await driver.start();
 
-    expect(getWorkspaceTrustInfo).toHaveBeenCalledWith('/tmp/proj-a');
+    expect(getWorkspaceTrustInfo).toHaveBeenCalledWith('/tmp/proj-a', {
+      additionalDirs: [],
+      environmentId: 'fake-box',
+      environmentCwd: '/remote/work',
+    });
     expect(getWorkspaceTrustInfo.mock.invocationCallOrder[0]!).toBeLessThan(
       migrationSpy.mock.invocationCallOrder[0]!,
     );
