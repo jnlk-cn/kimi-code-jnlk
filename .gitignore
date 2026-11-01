@@ -43,3 +43,8 @@ handover.md
 *-mockup.html
 *-demo.html
 *-demos.html
+
+# Declaration files the workspace dts build emits next to package sources
+# (dependencies resolve to their `src` types, so tsc emits alongside them).
+packages/*/src/**/*.d.ts
+packages/*/test/**/*.d.ts
