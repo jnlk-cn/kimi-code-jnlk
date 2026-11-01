@@ -75,6 +75,7 @@ import { errorReportHintLine } from '../constant/feedback';
 import { formatStepDebugTiming } from '#/utils/usage/debug-timing';
 import { nextTranscriptId } from '../utils/transcript-id';
 import type { BtwPanelController } from './btw-panel';
+import type { FooterTelemetryController } from './footer-telemetry-controller';
 import { isPluginMcpToolName, PluginUpdateNotifier } from './plugin-update-notifier';
 import type { StreamingUIController } from './streaming-ui';
 import type { ProgramStatusController } from './program-status';
@@ -101,6 +102,7 @@ export interface SessionEventHost {
   sessionEventUnsubscribe: (() => void) | undefined;
   readonly streamingUI: StreamingUIController;
   readonly programStatus?: ProgramStatusController;
+  readonly footerTelemetryController: FooterTelemetryController;
 
   requireSession(): Session;
   setAppState(patch: Partial<AppState>): void;
@@ -465,6 +467,7 @@ export class SessionEventHandler {
     this.host.streamingUI.flushNow();
     this.clearStepRetry();
     this.host.noteStepUsage(event.usage);
+    this.host.footerTelemetryController.onStepCompleted(event);
     this.maybeShowDebugTiming(event);
 
     if (event.providerFinishReason === 'filtered') {
@@ -781,6 +784,7 @@ export class SessionEventHandler {
     if (event.thinkingEffort !== undefined) patch.thinkingEffort = event.thinkingEffort;
     if (event.usage?.total !== undefined) {
       patch.cumulativeTokens = sumTokenUsage(event.usage.total);
+      this.host.footerTelemetryController.onStatusUpdate(event);
     }
     if (Object.keys(patch).length > 0) this.host.setAppState(patch);
     if (event.swarmMode === false) {

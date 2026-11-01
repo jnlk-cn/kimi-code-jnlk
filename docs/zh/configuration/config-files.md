@@ -659,6 +659,8 @@ defaultCwd = "/workspace"
 | `[status_line].items` | `string[]` | `[]` | 底部状态栏第一行的内置槽位及顺序：`mode`、`goal`、`model`、`tasks`、`cwd`、`git`、`tips`，未知 id 跳过并告警 |
 | `[status_line].command` | `string` | `""` | 自定义状态栏命令：stdout 首行替换状态栏，stdin 收 JSON 快照；上限 300ms、每秒一次，失败回退内置布局 |
 
+底部状态栏第二行还会显示会话的缓存命中率与 token 合计；当前模型走 DeepSeek 时，额外显示预估费用（带高峰/谷时标记）与账户余额。
+
 <details>
 <summary>command 的 stdin 输入</summary>
 

@@ -134,6 +134,7 @@ import { AuthFlowController } from './controllers/auth-flow';
 import { BtwPanelController } from './controllers/btw-panel';
 import { ClipboardImageHintController } from './controllers/clipboard-image-hint';
 import { EditorKeyboardController } from './controllers/editor-keyboard';
+import { FooterTelemetryController } from './controllers/footer-telemetry-controller';
 import { ModelMigrationController } from './controllers/model-migration';
 import { ProgramStatusController } from './controllers/program-status';
 import { SessionEventHandler } from './controllers/session-event-handler';
@@ -408,6 +409,7 @@ export class KimiTUI {
   readonly sessionReplay: SessionReplayRenderer;
   readonly tasksBrowserController: TasksBrowserController;
   readonly surveyController: SurveyController;
+  readonly footerTelemetryController: FooterTelemetryController;
   readonly editorKeyboard: EditorKeyboardController;
   readonly modelMigration: ModelMigrationController;
   private editorReplacementOnDisplaced: (() => void) | undefined;
@@ -497,6 +499,13 @@ export class KimiTUI {
     this.startupNotice = startupInput.startupNotice;
     this.state = createTUIState(tuiOptions);
     this.programStatus = new ProgramStatusController(this.state, this.state.terminal);
+    this.footerTelemetryController = new FooterTelemetryController(
+      () => this.state.footer,
+      () => this.state.appState,
+      () => {
+        this.state.ui.requestRender();
+      },
+    );
     this.state.footer.setExpandHintProvider(() => this.toolOutputExpandHint());
     this.state.transcriptContainer.setUnhandledClick((index) =>
       this.toggleClickedFoldBlock(index),
@@ -1212,6 +1221,7 @@ export class KimiTUI {
     this.disposeTranscriptChildren();
     this.editorKeyboard.dispose();
     this.surveyController.dispose();
+    this.footerTelemetryController.dispose();
     this.surveySettingSubscription?.();
     this.surveySettingSubscription = undefined;
     this.state.footer.dispose();
@@ -2857,6 +2867,9 @@ export class KimiTUI {
     Object.assign(this.state.appState, patch);
     if ('planMode' in patch) this.updateEditorBorderHighlight();
     this.state.footer.setState(this.state.appState);
+    if ('model' in patch || 'availableModels' in patch || 'availableProviders' in patch) {
+      this.footerTelemetryController.syncProviderContext();
+    }
     this.updateActivityPane();
     if (busyChanged) {
       this.updateQueueDisplay();
@@ -3417,6 +3430,7 @@ export class KimiTUI {
     this.tasksBrowserController.close();
     this.btwPanelController.clear();
     this.state.footer.setBackgroundCounts({ bashTasks: 0, agentTasks: 0 });
+    this.footerTelemetryController.reset();
     this.sessionEventHandler.notifications.clear();
     this.streamingUI.setTurnId(undefined);
     this.setAppState({ mcpServersSummary: null });

@@ -11,6 +11,7 @@ import { BRAILLE_SPINNER_INTERVAL_MS } from '#/tui/constant/rendering';
 import { setRainbowDance, type RainbowDanceController } from '#/tui/easter-eggs/dance';
 import { currentTheme, darkColors, lightColors } from '#/tui/theme';
 import type { ModelAlias } from '@moonshot-ai/kimi-code-sdk';
+import { EMPTY_FOOTER_TELEMETRY } from '@moonshot-ai/kimi-code-sdk';
 import type { AppState } from '#/tui/types';
 
 const gitStatusMocks = vi.hoisted(() => ({
@@ -444,5 +445,79 @@ describe('FooterComponent environment slot', () => {
     footer.dispose();
     vi.advanceTimersByTime(BRAILLE_SPINNER_INTERVAL_MS * 5);
     expect(onRefresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('FooterComponent billing line', () => {
+  function stripAnsi(text: string): string {
+    return text.replaceAll(/\[[0-9;]*m/g, '');
+  }
+
+  const sessionTelemetry = {
+    ...EMPTY_FOOTER_TELEMETRY,
+    sessionCacheHit: 780,
+    sessionCacheMiss: 220,
+    sessionInput: 1_000,
+    sessionOutput: 400,
+  };
+
+  it('adds cache, cost, balance, and session segments to line 2', () => {
+    const footer = new FooterComponent(appState);
+    footer.setTelemetry({
+      ...sessionTelemetry,
+      billingEnabled: true,
+      estimatedCostCny: 0.0123,
+      balanceCny: '12.34',
+      balanceAvailable: true,
+    });
+
+    const line2 = stripAnsi(footer.render(160)[1] ?? '');
+
+    expect(line2).toContain('cache 78%');
+    expect(line2).toMatch(/~¥0\.01 \((peak|off-peak)\)/);
+    expect(line2).toContain('balance ¥12.34');
+    expect(line2).toContain('session 1000 in / 400 out');
+    footer.dispose();
+  });
+
+  it('keeps the context usage right-aligned after the billing segments', () => {
+    const footer = new FooterComponent({
+      ...appState,
+      contextUsage: 0.42,
+      contextTokens: 84_000,
+      maxContextTokens: 200_000,
+    });
+    footer.setTelemetry({ ...sessionTelemetry, billingEnabled: true, estimatedCostCny: 0.0123 });
+
+    const line2 = stripAnsi(footer.render(160)[1] ?? '').trimEnd();
+
+    expect(line2).toMatch(/context: 42% \(82k\/195k\)$/);
+    footer.dispose();
+  });
+
+  it('drops the billing segments as the terminal narrows', () => {
+    const footer = new FooterComponent(appState);
+    footer.setTelemetry({
+      ...sessionTelemetry,
+      billingEnabled: true,
+      estimatedCostCny: 0.0123,
+      balanceCny: '12.34',
+      balanceAvailable: true,
+    });
+
+    const narrow = stripAnsi(footer.render(40)[1] ?? '');
+
+    expect(narrow).toContain('cache 78%');
+    expect(narrow).not.toContain('session 1000');
+    footer.dispose();
+  });
+
+  it('leaves line 2 unchanged when no telemetry is set', () => {
+    const footer = new FooterComponent(appState);
+
+    const line2 = stripAnsi(footer.render(160)[1] ?? '').trim();
+
+    expect(line2).toMatch(/^context: 0%$/);
+    footer.dispose();
   });
 });

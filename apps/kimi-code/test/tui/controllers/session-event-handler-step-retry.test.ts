@@ -39,6 +39,10 @@ function makeHost() {
     setAppState: vi.fn((patch: Record<string, unknown>) =>
       Object.assign(host.state.appState, patch),
     ),
+    footerTelemetryController: {
+      onStepCompleted: vi.fn(),
+      onStatusUpdate: vi.fn(),
+    },
     patchLivePane: vi.fn(),
     resetLivePane: vi.fn(),
     showError: vi.fn(),

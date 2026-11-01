@@ -10,7 +10,7 @@ import { t, tFormat } from '#/tui/i18n';
 import type { Component } from '@moonshot-ai/pi-tui';
 import { truncateToWidth, visibleWidth } from '@moonshot-ai/pi-tui';
 import chalk from 'chalk';
-import { effectiveModelAlias } from '@moonshot-ai/kimi-code-sdk';
+import { effectiveModelAlias, EMPTY_FOOTER_TELEMETRY, type FooterTelemetry } from '@moonshot-ai/kimi-code-sdk';
 
 import { ALL_TIPS, type ToolbarTip } from '#/tui/constant/tips';
 import { isRainbowDancing, renderDanceFooterModel } from '#/tui/easter-eggs/dance';
@@ -30,6 +30,10 @@ import {
   type GitStatus,
   type GitStatusCache,
 } from '#/utils/git/git-status';
+import {
+  buildTelemetrySegments,
+  joinTelemetrySegments,
+} from '#/utils/usage/footer-telemetry';
 import {
   formatTokenCount,
   usagePercent,
@@ -230,6 +234,7 @@ export class FooterComponent implements Component {
    */
   private backgroundBashTaskCount = 0;
   private backgroundAgentCount = 0;
+  private telemetry: FooterTelemetry = EMPTY_FOOTER_TELEMETRY;
 
   constructor(state: AppState, onRefresh: () => void = () => {}) {
     this.state = state;
@@ -319,6 +324,19 @@ export class FooterComponent implements Component {
     this.backgroundAgentCount = Math.max(0, counts.agentTasks);
   }
 
+  /**
+   * Billing telemetry for line 2: cache hit rate, estimated DeepSeek spend,
+   * balance, and session token totals. The controller owns the accumulation;
+   * the footer only decides what still fits on screen.
+   */
+  setTelemetry(telemetry: FooterTelemetry): void {
+    this.telemetry = telemetry;
+  }
+
+  getTelemetry(): FooterTelemetry {
+    return this.telemetry;
+  }
+
   refreshGitStatus(): void {
     this.gitCache.refresh();
   }
@@ -387,36 +405,45 @@ export class FooterComponent implements Component {
       }
     }
 
-    // ── Line 2: hint (bottom-left) + context (right) ──
+    // ── Line 2: hint + billing telemetry (left) + context (right) ──
     const contextText = formatContextStatus(
       state.contextUsage,
       state.contextTokens,
       state.maxContextTokens,
     );
+    const contextStyled = chalk.hex(colors.text)(contextText);
     const contextWidth = visibleWidth(contextText);
-    let line2: string;
+
     const hint = this.transientHint ?? this.warningHint;
+    let leftStyled = '';
+    let leftWidth = 0;
     if (hint) {
       const maxHintWidth = Math.max(0, width - contextWidth - 1);
       const shownHint =
         visibleWidth(hint) <= maxHintWidth ? hint : truncateToWidth(hint, maxHintWidth, '…');
-      const hintWidth = visibleWidth(shownHint);
-      const pad = Math.max(0, width - hintWidth - contextWidth);
-      line2 =
-        chalk.hex(colors.warning).bold(shownHint) +
-        ' '.repeat(pad) +
-        chalk.hex(colors.text)(contextText);
-    } else {
+      leftStyled = chalk.hex(colors.warning).bold(shownHint);
+      leftWidth = visibleWidth(shownHint);
+    } else if (customLine !== null) {
       // A status_line.command owns line 1 outright, so the ctrl+o hint moves
       // down here; the transient and warning hints above take precedence.
-      const shortcut = customLine !== null ? this.expandShortcut() : null;
-      const left =
-        shortcut !== null && visibleWidth(shortcut) + 1 + contextWidth <= width
-          ? chalk.hex(colors.textDim)(shortcut)
-          : '';
-      const leftPad = Math.max(0, width - visibleWidth(left) - contextWidth);
-      line2 = left + ' '.repeat(leftPad) + chalk.hex(colors.text)(contextText);
+      const shortcut = this.expandShortcut();
+      if (shortcut !== null && visibleWidth(shortcut) + 1 + contextWidth <= width) {
+        leftStyled = chalk.hex(colors.textDim)(shortcut);
+        leftWidth = visibleWidth(shortcut);
+      }
     }
+
+    const gapAfterLeft = leftWidth > 0 ? 1 : 0;
+    const telemetryBudget = Math.max(0, width - contextWidth - leftWidth - gapAfterLeft - 1);
+    const telemetry = joinTelemetrySegments(
+      buildTelemetrySegments(this.telemetry, colors),
+      telemetryBudget,
+    );
+    const telemetryWidth = visibleWidth(telemetry);
+    const gapBeforeTelemetry = leftWidth > 0 && telemetryWidth > 0 ? 1 : 0;
+    let line2 = leftStyled + ' '.repeat(gapBeforeTelemetry) + telemetry;
+    const line2Width = leftWidth + gapBeforeTelemetry + telemetryWidth;
+    line2 += ' '.repeat(Math.max(0, width - line2Width - contextWidth)) + contextStyled;
 
     return [truncateToWidth(line1, width), truncateToWidth(line2, width)];
   }

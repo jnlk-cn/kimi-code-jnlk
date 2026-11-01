@@ -197,4 +197,11 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   'Background agent killed': '后台代理已终止',
   'Background agent timed out': '后台代理超时',
   'Background agent failed': '后台代理失败',
+  'cache {percent}%': '缓存 {percent}%',
+  'peak': '高峰',
+  'off-peak': '谷时',
+  '~{cost}': '约 {cost}',
+  'balance {amount}': '余额 {amount}',
+  'balance insufficient': '余额不足',
+  'session {input} in / {output} out': '会话 {input}入/{output}出',
 };

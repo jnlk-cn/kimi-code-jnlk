@@ -660,6 +660,8 @@ Alongside `config.toml`, the CLI keeps terminal-UI and client preferences in a c
 | `[status_line].items` | `string[]` | `[]` | Built-in slots on the first footer line and their order: `mode`, `goal`, `model`, `tasks`, `cwd`, `git`, `tips`; unknown ids are skipped with a warning |
 | `[status_line].command` | `string` | `""` | Custom status line command: its first stdout line replaces the footer, and a JSON snapshot is passed on stdin; capped at 300ms, throttled to once per second, failures fall back to the built-in layout |
 
+The footer's second line also carries the session cache hit rate and token totals; while the active model runs on DeepSeek it adds the estimated spend with a peak/off-peak marker and the account balance.
+
 <details>
 <summary>Fields in the stdin JSON snapshot</summary>
 

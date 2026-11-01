@@ -23,8 +23,11 @@ import {
   usagePercent,
   type QuotaUsageRow,
 } from '#/utils/usage/usage-format';
+import type { DeepSeekBalanceReport } from '#/utils/usage/deepseek-balance';
 import { currentTheme } from '#/tui/theme';
 import type { ColorToken } from '#/tui/theme';
+
+export type { DeepSeekBalanceReport } from '#/utils/usage/deepseek-balance';
 
 const LEFT_MARGIN = 2;
 const SIDE_PADDING = 1;
@@ -66,13 +69,6 @@ export interface UsageReportOptions {
   readonly managedUsageError?: string;
   readonly deepSeekBalance?: DeepSeekBalanceReport;
   readonly deepSeekBalanceError?: string;
-}
-
-export interface DeepSeekBalanceReport {
-  readonly totalCny: string;
-  readonly grantedCny: string;
-  readonly toppedUpCny: string;
-  readonly available: boolean;
 }
 
 export interface ManagedUsageReportLineOptions {

@@ -1,11 +1,6 @@
 import { release as osRelease, type as osType } from 'node:os';
 
 import type { McpServerInfo, SessionStatus, SessionUsage } from '@moonshot-ai/kimi-code-sdk';
-import {
-  fetchDeepSeekBalance,
-  isDeepSeekProvider,
-  resolveDeepSeekProviderApiKey,
-} from '@moonshot-ai/kimi-code-sdk';
 
 import { buildMcpStatusReportLines } from '../components/messages/mcp-status-panel';
 import { buildStatusReportLines } from '../components/messages/status-panel';
@@ -16,6 +11,7 @@ import {
   type ManagedUsageReport,
 } from '../components/messages/usage-panel';
 import { isExperimentalFlagEnabled } from './experimental-flags';
+import { loadDeepSeekBalance } from '#/utils/usage/deepseek-balance';
 import { quotaUsageRows } from '#/utils/usage/usage-format';
 import {
   FEEDBACK_ISSUE_URL,
@@ -295,25 +291,9 @@ interface DeepSeekBalanceResult {
 async function loadDeepSeekBalanceReport(
   host: SlashCommandHost,
 ): Promise<DeepSeekBalanceResult | undefined> {
-  const alias = host.state.appState.model;
-  if (alias === undefined) return undefined;
+  const model = host.state.appState.model;
+  if (model === undefined) return undefined;
   const config = await host.harness.getConfig().catch(() => undefined);
   if (config === undefined) return undefined;
-  const providers = config.providers ?? {};
-  const models = config.models ?? {};
-  if (!isDeepSeekProvider(alias, models, providers)) return undefined;
-  const provider = models[alias] === undefined ? undefined : providers[models[alias].provider];
-  const apiKey = resolveDeepSeekProviderApiKey(provider);
-  if (apiKey === undefined) return undefined;
-  const res = await fetchDeepSeekBalance(apiKey, provider?.baseUrl);
-  return res.ok
-    ? {
-        balance: {
-          totalCny: res.totalCny,
-          grantedCny: res.grantedCny,
-          toppedUpCny: res.toppedUpCny,
-          available: res.available,
-        },
-      }
-    : { error: res.message };
+  return loadDeepSeekBalance(model, config.models ?? {}, config.providers ?? {});
 }
