@@ -8,6 +8,7 @@
 import { Container, truncateToWidth, visibleWidth, type Component, type TuiMouseDispatchResult, type TuiMouseEvent } from '@moonshot-ai/pi-tui';
 
 import { Markdown } from '#/tui/components/markdown/markdown';
+import { STREAMING_MARKDOWN_MAX_CHARS } from '#/tui/constant/streaming';
 import { MESSAGE_INDENT } from '#/tui/constant/rendering';
 import { STATUS_BULLET } from '#/tui/constant/symbols';
 import { currentTheme } from '#/tui/theme';
@@ -18,7 +19,23 @@ import { isRenderCacheEnabled } from '#/tui/utils/render-cache';
 
 type AssistantMarkdownOptions = {
   transient?: boolean;
+  streaming?: boolean;
 };
+
+const STREAMING_TAIL_MARKER = '…';
+
+/**
+ * While a message streams, the whole text would re-parse on every flush — for
+ * long answers that is seconds of blocked event loop. Parse only a bounded
+ * tail starting at a block boundary; the final render uses the full text.
+ */
+function streamedMarkdownSource(text: string): string {
+  if (text.length <= STREAMING_MARKDOWN_MAX_CHARS) return text;
+  const tail = text.slice(text.length - STREAMING_MARKDOWN_MAX_CHARS);
+  const boundary = tail.indexOf('\n\n', Math.floor(tail.length / 4));
+  const kept = boundary >= 0 ? tail.slice(boundary + 2) : tail;
+  return `${STREAMING_TAIL_MARKER}\n\n${kept}`;
+}
 
 export class AssistantMessageComponent implements Component {
   private contentContainer: Container;
@@ -26,6 +43,8 @@ export class AssistantMessageComponent implements Component {
   private markdownTransient = false;
   private lastText = '';
   private lastTransient = false;
+  private lastStreaming = false;
+  private lastSource = '';
   private showBullet: boolean;
 
   private renderCache: { width: number; lines: string[] } | undefined;
@@ -48,24 +67,34 @@ export class AssistantMessageComponent implements Component {
   updateContent(text: string, opts?: AssistantMarkdownOptions): void {
     const displayText = text.trim();
     const transient = opts?.transient === true;
+    const streaming = opts?.streaming === true;
 
-    if (displayText === this.lastText && transient === this.lastTransient) return;
+    if (
+      displayText === this.lastText &&
+      transient === this.lastTransient &&
+      streaming === this.lastStreaming
+    ) {
+      return;
+    }
 
     this.lastText = displayText;
     this.lastTransient = transient;
+    this.lastStreaming = streaming;
+    const source = streaming ? streamedMarkdownSource(displayText) : displayText;
     this.markRenderDirty();
 
     if (displayText.length === 0) {
       this.contentContainer.clear();
       this.markdown = undefined;
       this.markdownTransient = false;
+      this.lastSource = '';
       return;
     }
 
     if (this.markdown === undefined || this.markdownTransient !== transient) {
       this.contentContainer.clear();
       this.markdown = new Markdown(
-        displayText,
+        source,
         0,
         0,
         createMarkdownTheme({ transient }),
@@ -77,11 +106,15 @@ export class AssistantMessageComponent implements Component {
         },
       );
       this.markdownTransient = transient;
+      this.lastSource = source;
       this.contentContainer.addChild(this.markdown);
       return;
     }
 
-    this.markdown.setText(displayText);
+    const previousSource = this.lastSource;
+    this.lastSource = source;
+    if (previousSource === source) return;
+    this.markdown.setText(source);
   }
 
   invalidate(): void {
@@ -93,8 +126,11 @@ export class AssistantMessageComponent implements Component {
     this.markdown = undefined;
 
     if (this.lastText.trim().length > 0) {
+      const source = this.lastStreaming
+        ? streamedMarkdownSource(this.lastText.trim())
+        : this.lastText.trim();
       this.markdown = new Markdown(
-        this.lastText.trim(),
+        source,
         0,
         0,
         createMarkdownTheme({ transient: this.lastTransient }),
@@ -106,6 +142,7 @@ export class AssistantMessageComponent implements Component {
         },
       );
       this.markdownTransient = this.lastTransient;
+      this.lastSource = source;
       this.contentContainer.addChild(this.markdown);
     }
   }

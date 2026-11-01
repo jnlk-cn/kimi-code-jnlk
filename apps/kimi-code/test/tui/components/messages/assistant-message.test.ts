@@ -266,3 +266,44 @@ describe('AssistantMessageComponent', () => {
     }
   });
 });
+
+describe('AssistantMessageComponent streaming budget', () => {
+  const EARLY = 'EARLY-MARKER';
+  const TAIL = 'TAIL-MARKER';
+  const longText = `${EARLY}\n\n${'streamed body line\n\n'.repeat(1_500)}${TAIL}`;
+
+  it('parses only a bounded tail while streaming a long message', () => {
+    const component = new AssistantMessageComponent();
+
+    component.updateContent(longText, { transient: true, streaming: true });
+
+    const rendered = component.render(80).map(strip).join('\n');
+    expect(rendered).toContain('…');
+    expect(rendered).toContain(TAIL);
+    expect(rendered).not.toContain(EARLY);
+  });
+
+  it('renders the whole message once the stream ends', () => {
+    const component = new AssistantMessageComponent();
+    component.updateContent(longText, { transient: true, streaming: true });
+
+    component.updateContent(longText, { transient: false });
+
+    const rendered = component.render(80).map(strip).join('\n');
+    expect(rendered).toContain(EARLY);
+    expect(rendered).toContain(TAIL);
+    expect(rendered).not.toContain('…\n');
+  });
+
+  it('leaves short streamed messages fully rendered', () => {
+    const component = new AssistantMessageComponent();
+    const shortText = `${EARLY}\n\n${TAIL}`;
+
+    component.updateContent(shortText, { transient: true, streaming: true });
+
+    const rendered = component.render(80).map(strip).join('\n');
+    expect(rendered).toContain(EARLY);
+    expect(rendered).toContain(TAIL);
+    expect(rendered).not.toContain('…');
+  });
+});

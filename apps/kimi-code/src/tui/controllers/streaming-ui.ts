@@ -638,7 +638,7 @@ export class StreamingUIController {
     const block = this._streamingBlock;
     if (block !== null) {
       block.entry.content = fullText;
-      block.component.updateContent(fullText, { transient: true });
+      block.component.updateContent(fullText, { transient: true, streaming: true });
       this.host.state.ui.requestRender();
     }
   }
