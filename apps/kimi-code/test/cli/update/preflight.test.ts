@@ -27,6 +27,37 @@ import {
 import type { TuiConfig } from '#/tui/config';
 import { resetKimiRegionCache } from '#/utils/region';
 
+// The update spawn resolves package managers to their Windows shim and quotes
+// the result because it goes through cmd.exe, so the assertions have to expect
+// what the platform actually produces.
+function spawnedCommandName(base: 'npm' | 'pnpm' | 'yarn' | 'bun'): string {
+  if (process.platform !== 'win32') return base;
+  return base === 'bun' ? 'bun.exe' : `${base}.cmd`;
+}
+
+function spawnedCommand(base: 'npm' | 'pnpm' | 'yarn' | 'bun'): string {
+  if (process.platform !== 'win32') return base;
+  return `"${base === 'bun' ? 'bun.exe' : `${base}.cmd`}"`;
+}
+
+function foregroundSpawnOptions(): Record<string, unknown> {
+  return { stdio: 'inherit', shell: process.platform === 'win32' ? true : undefined };
+}
+
+function spawnedPath(path: string): string {
+  return process.platform === 'win32' ? `"${path}"` : path;
+}
+
+function backgroundSpawnOptions(): Record<string, unknown> {
+  const windows = process.platform === 'win32';
+  return {
+    detached: true,
+    stdio: 'ignore',
+    shell: windows ? true : undefined,
+    windowsHide: windows ? true : undefined,
+  };
+}
+
 const mocks = vi.hoisted(() => ({
   readUpdateCache: vi.fn(),
   readUpdateInstallState: vi.fn(),
@@ -338,9 +369,9 @@ describe('runUpdatePreflight', () => {
     expect(promptForInstallChoice).not.toHaveBeenCalled();
     expect(detectInstallSource).toHaveBeenCalledTimes(1);
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^npm(\.cmd)?$/),
+      spawnedCommand('npm'),
       ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { detached: true, stdio: 'ignore' },
+      backgroundSpawnOptions(),
     );
   });
 
@@ -405,9 +436,9 @@ describe('runUpdatePreflight', () => {
       }),
     );
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^npm(\.cmd)?$/),
+      spawnedCommand('npm'),
       ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { stdio: 'inherit' },
+      foregroundSpawnOptions(),
     );
     expect(stdout.join('')).toContain('Updated @moonshot-ai/kimi-code to 0.5.0');
   });
@@ -431,9 +462,9 @@ describe('runUpdatePreflight', () => {
       }),
     );
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^npm(\.cmd)?$/),
+      spawnedCommand('npm'),
       ['install', '-g', '@moonshot-ai/kimi-code@0.7.0'],
-      { stdio: 'inherit' },
+      foregroundSpawnOptions(),
     );
     expect(stdout.join('')).toContain('Updated @moonshot-ai/kimi-code to 0.7.0');
   });
@@ -473,9 +504,9 @@ describe('runUpdatePreflight', () => {
     const { options } = captureOutput();
     await runUpdatePreflight('0.4.0', options);
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^pnpm(\.cmd)?$/),
+      spawnedCommand('pnpm'),
       ['add', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { stdio: 'inherit' },
+      foregroundSpawnOptions(),
     );
   });
 
@@ -512,9 +543,9 @@ describe('runUpdatePreflight', () => {
     const { options } = captureOutput();
     await runUpdatePreflight('0.4.0', options);
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^yarn(\.cmd)?$/),
+      spawnedCommand('yarn'),
       ['global', 'add', '@moonshot-ai/kimi-code@0.5.0'],
-      { stdio: 'inherit' },
+      foregroundSpawnOptions(),
     );
   });
 
@@ -528,9 +559,9 @@ describe('runUpdatePreflight', () => {
     const { options } = captureOutput();
     await runUpdatePreflight('0.4.0', options);
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^bun(\.exe)?$/),
+      spawnedCommand('bun'),
       ['add', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { stdio: 'inherit' },
+      foregroundSpawnOptions(),
     );
   });
 
@@ -666,11 +697,11 @@ describe('runUpdatePreflight', () => {
 
     await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('exit');
 
-    expect(mocks.resolveCommandPath).toHaveBeenCalledWith('npm');
+    expect(mocks.resolveCommandPath).toHaveBeenCalledWith(spawnedCommandName('npm'));
     expect(mocks.spawn).toHaveBeenCalledWith(
-      '/usr/local/bin/npm',
+      spawnedPath('/usr/local/bin/npm'),
       ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { stdio: 'inherit' },
+      foregroundSpawnOptions(),
     );
   });
 
@@ -725,9 +756,9 @@ describe('runUpdatePreflight', () => {
     await expect(runUpdatePreflight('0.4.0', options)).resolves.toBe('continue');
     expect(promptForInstallChoice).not.toHaveBeenCalled();
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^npm(\.cmd)?$/),
+      spawnedCommand('npm'),
       ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { detached: true, stdio: 'ignore' },
+      backgroundSpawnOptions(),
     );
     expect(writeUpdateInstallState).toHaveBeenCalledWith(expect.objectContaining({
       active: expect.objectContaining({
@@ -884,9 +915,9 @@ describe('runUpdatePreflight', () => {
 
     expect(promptForInstallChoice).not.toHaveBeenCalled();
     expect(mocks.spawn).toHaveBeenCalledWith(
-      expect.stringMatching(/^npm(\.cmd)?$/),
+      spawnedCommand('npm'),
       ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-      { detached: true, stdio: 'ignore' },
+      backgroundSpawnOptions(),
     );
   });
 
@@ -1142,9 +1173,9 @@ describe('runUpdatePreflight', () => {
       await flushBackgroundInstall();
 
       expect(mocks.spawn).toHaveBeenCalledWith(
-        expect.stringMatching(/^npm(\.cmd)?$/),
+        spawnedCommand('npm'),
         ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-        { detached: true, stdio: 'ignore' },
+        backgroundSpawnOptions(),
       );
       expect(track).toHaveBeenCalledWith('update_background_install_started', expect.objectContaining({
         target_version: '0.5.0',
@@ -1268,9 +1299,9 @@ describe('runUpdatePreflight', () => {
       await flushBackgroundInstall();
 
       expect(mocks.spawn).toHaveBeenCalledWith(
-        expect.stringMatching(/^npm(\.cmd)?$/),
+        spawnedCommand('npm'),
         ['install', '-g', '@moonshot-ai/kimi-code@0.5.0'],
-        { detached: true, stdio: 'ignore' },
+        backgroundSpawnOptions(),
       );
       expect(track).toHaveBeenCalledWith('update_background_install_started', expect.objectContaining({
         target_version: '0.5.0',
@@ -1355,9 +1386,9 @@ describe('runUpdatePreflight', () => {
       await flushBackgroundInstall();
 
       expect(mocks.spawn).toHaveBeenCalledWith(
-        expect.stringMatching(/^npm(\.cmd)?$/),
+        spawnedCommand('npm'),
         ['install', '-g', `@moonshot-ai/kimi-code@${NEXT_CANARY}`],
-        { detached: true, stdio: 'ignore' },
+        backgroundSpawnOptions(),
       );
       expect(refreshUpdateCache).toHaveBeenCalledWith({ channel: 'canary' });
       expect(mocks.appendRolloutDecisionLog).toHaveBeenCalledWith(expect.objectContaining({
@@ -1468,10 +1499,10 @@ describe('runUpdatePreflight', () => {
       mockSpawnExit(0);
       const plan = switchPlan('stable', 'canary', CANARY);
       expect(installCommandFor('native', CANARY, 'darwin', 'canary')).toBe(
-        'KIMI_CODE_UPDATE_CHANNEL=canary kimi update --yes',
+        'KIMI_CODE_UPDATE_CHANNEL=canary ganycode update --yes',
       );
       expect(installCommandFor('native', CANARY, 'win32', 'canary')).toBe(
-        "$env:KIMI_CODE_UPDATE_CHANNEL='canary'; kimi update --yes",
+        "$env:KIMI_CODE_UPDATE_CHANNEL='canary'; ganycode update --yes",
       );
 
       await installUpdate('native', plan, 'darwin');

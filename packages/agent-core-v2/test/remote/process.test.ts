@@ -74,7 +74,9 @@ async function startProcess(
   return raw.nextResponse(id);
 }
 
-describe('process group over a subprocess loopback', () => {
+const describePosix = process.platform === 'win32' ? describe.skip : describe;
+
+describePosix('process group over a subprocess loopback', () => {
   let connection: RemoteExecConnection;
   let spawned: SpawnedExecutor;
   let processes: RemoteProcessService;
@@ -232,7 +234,7 @@ describe('process group over a subprocess loopback', () => {
   }, 15_000);
 });
 
-describe('process output backpressure', () => {
+describePosix('process output backpressure', () => {
   it('bounds an unread flood and resumes losslessly once the consumer catches up', async () => {
     const { connection, loopback } = await connectInProcess();
     const processes = new RemoteProcessService(connection, '/tmp', '/bin/bash');
@@ -261,7 +263,7 @@ describe('process output backpressure', () => {
   }, 15_000);
 });
 
-describe('stdin write chain recovery', () => {
+describePosix('stdin write chain recovery', () => {
   it('exempts process/write from the request timeout and settles pending writes when the process dies', async () => {
     const { connection, loopback } = await connectInProcess({
       connect: { requestCallTimeoutMs: 400 },
@@ -296,7 +298,7 @@ describe('stdin write chain recovery', () => {
   }, 15_000);
 });
 
-describe('process protocol semantics', () => {
+describePosix('process protocol semantics', () => {
   it('rejects reusing a finished process id while its group is being terminated', async () => {
     const loopback = createInProcessLoopback();
     const raw = new RawClient(loopback);
@@ -494,7 +496,7 @@ describe('process protocol semantics', () => {
   }, 15_000);
 });
 
-describe('shutdown of a process that is still starting', () => {
+describePosix('shutdown of a process that is still starting', () => {
   it('kills a spawn that finishes after shutdown begins', async () => {
     const host = new HostProcessService();
     const manager = new ProcessManager(() => {}, host);
@@ -538,7 +540,7 @@ describe('shutdown of a process that is still starting', () => {
   });
 });
 
-describe('finished process-group ownership', () => {
+describePosix('finished process-group ownership', () => {
   it('does not evict live groups at the former cache limit and reaps missing groups', async () => {
     vi.useFakeTimers();
     const kill = vi.spyOn(process, 'kill').mockImplementation(() => true);

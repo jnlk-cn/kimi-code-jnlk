@@ -25,7 +25,9 @@ function loopbackLauncher() {
   };
 }
 
-describe('RemoteSession over a subprocess loopback', () => {
+const describePosix = process.platform === 'win32' ? describe.skip : describe;
+
+describePosix('RemoteSession over a subprocess loopback', () => {
   let workDir: string;
 
   beforeAll(async () => {

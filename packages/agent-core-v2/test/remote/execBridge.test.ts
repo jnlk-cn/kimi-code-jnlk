@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ExecBridge } from '#/remote/client/execBridge';
 
-describe('ExecBridge disconnect guards', () => {
+const describePosix = process.platform === 'win32' ? describe.skip : describe;
+
+describePosix('ExecBridge disconnect guards', () => {
   it('survives writes after the spawned child exits — no uncaught EPIPE', async () => {
     const bridge = ExecBridge.spawn({
       program: process.execPath,
@@ -20,7 +22,7 @@ describe('ExecBridge disconnect guards', () => {
   });
 });
 
-describe('ExecBridge spawn environment', () => {
+describePosix('ExecBridge spawn environment', () => {
   async function captureStdout(bridge: ExecBridge): Promise<string> {
     let out = '';
     bridge.onData((chunk) => {
@@ -45,7 +47,7 @@ describe('ExecBridge spawn environment', () => {
   });
 });
 
-describe('ExecBridge shutdown', () => {
+describePosix('ExecBridge shutdown', () => {
   it('waits for EOF cleanup without interrupting the executor', async () => {
     const bridge = ExecBridge.spawn({
       program: process.execPath,

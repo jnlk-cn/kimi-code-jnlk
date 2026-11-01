@@ -98,7 +98,7 @@ describe('ssh remote command quoting', () => {
   });
 });
 
-describe('ssh remote command tilde expansion through a local shell', () => {
+describe.skipIf(process.platform === 'win32')('ssh remote command tilde expansion through a local shell', () => {
   function expandBinWord(command: string): string {
     const binWord = command.split(' ')[0]!;
     return execFileSync('sh', ['-c', `printf '%s' ${binWord}`], { encoding: 'utf8' });
@@ -116,7 +116,7 @@ describe('ssh remote command tilde expansion through a local shell', () => {
   });
 });
 
-describe('command launcher environment', () => {
+describe.skipIf(process.platform === 'win32')('command launcher environment', () => {
   it('resolves a bare command against the configured PATH', async () => {
     const sandbox = await mkdtemp(join(tmpdir(), 'remote-exec-configured-path-'));
     try {
@@ -190,7 +190,7 @@ describe('command launcher executor invocation', () => {
   });
 });
 
-describe('command program PATH resolution', () => {
+describe.skipIf(process.platform === 'win32')('command program PATH resolution', () => {
   let sandbox: string;
   let pathDir: string;
   let cwdDir: string;

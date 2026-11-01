@@ -1285,7 +1285,8 @@ describe('server-v2 /api/v1/sessions', () => {
       const text = JSON.stringify(after.body.data.items);
       expect(text).toContain('AGENTS.md');
       expect(text).toContain('were not included in your system prompt');
-      expect(text).toContain(`Added directories: ${extra}.`);
+      const escapedExtra = extra.replaceAll('\\', '\\\\');
+      expect(text).toContain(`Added directories: ${escapedExtra}.`);
       expect(
         after.body.data.items.filter(
           (item) => item.metadata?.origin?.variant === 'workspace_dirs_change',
@@ -1923,7 +1924,8 @@ describe('server-v2 /api/v1/sessions', () => {
     for (const agentId of ['main', 'agent-0', 'agent-150', `agent-${subagentCount - 1}`]) {
       const entry = forkedState.agents[agentId];
       const source = agents[agentId]!;
-      expect(entry.homedir).toBe(join(forkedDir, 'agents', agentId));
+      const normalize = (value: string): string => value.replaceAll('\\', '/');
+      expect(normalize(entry.homedir)).toBe(normalize(join(forkedDir, 'agents', agentId)));
       expect(entry.type).toBe(source.type);
       expect(entry.parentAgentId ?? null).toBe(source.parentAgentId);
       expect(entry.labels).toEqual(

@@ -16,7 +16,9 @@ import {
   type SpawnedExecutor,
 } from './helpers/loopback';
 
-describe('fs group over a subprocess loopback', () => {
+const describePosix = process.platform === 'win32' ? describe.skip : describe;
+
+describePosix('fs group over a subprocess loopback', () => {
   let connection: RemoteExecConnection;
   let spawned: SpawnedExecutor;
   let fs: RemoteFileSystem;
@@ -125,7 +127,7 @@ describe('fs group over a subprocess loopback', () => {
   });
 });
 
-describe('fs protocol semantics', () => {
+describePosix('fs protocol semantics', () => {
   it('reports capped directory listings on the wire and rejects them through the filesystem interface', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'remote-exec-readdir-cap-'));
     const smallDir = await mkdtemp(join(tmpdir(), 'remote-exec-readdir-small-'));
