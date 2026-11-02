@@ -49,7 +49,7 @@ function scanEventDeclarations(): {
     for (const [i, match] of matches.entries()) {
       const type = match[1];
       if (type === undefined) continue;
-      owners.set(type, relative(PKG, file));
+      owners.set(type, relative(PKG, file).replaceAll('\\', '/'));
       const windowEnd = i + 1 < matches.length ? matches[i + 1]!.index : source.length;
       if (DURABLE_DECL_RE.test(source.slice(match.index, windowEnd))) durableTypes.add(type);
     }
@@ -890,7 +890,7 @@ export async function buildWireManifest(): Promise<string> {
   const { owners, importFiles, durableTypes, classTypes } = scanEventDeclarations();
   await import('../src/index.ts');
   for (const file of importFiles) {
-    await import(relative(join(PKG, 'scripts'), file));
+    await import(pathToFileURL(file).href);
   }
   const { WIRE_PROTOCOL_VERSION } = (await import('#/wire/migration/migration')) as {
     WIRE_PROTOCOL_VERSION: string;
