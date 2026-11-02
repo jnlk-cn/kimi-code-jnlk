@@ -119,6 +119,12 @@ export interface AgentFacade {
   enterPlan(): Promise<void>;
   clearPlan(): Promise<void>;
   cancelPlan(input?: { id?: string }): Promise<void>;
+  getAskMode(): Promise<boolean>;
+  enterAskMode(): Promise<void>;
+  exitAskMode(): Promise<void>;
+  getDebugMode(): Promise<boolean>;
+  enterDebugMode(): Promise<void>;
+  exitDebugMode(): Promise<void>;
   getTasks(input?: { activeOnly?: boolean; limit?: number }): Promise<readonly AgentTaskInfo[]>;
   stopTask(input: { taskId: string; reason?: string }): Promise<void>;
   getTaskOutput(input: { taskId: string; tail?: number }): Promise<string>;
@@ -205,6 +211,12 @@ export function createAgentFacade(call: ScopedCaller, scope: ScopeRef): AgentFac
     clearPlan: () => call(scope, 'agentPlanService', 'clear', []) as Promise<void>,
     cancelPlan: (input) =>
       call(scope, 'agentPlanService', 'cancel', [input?.id]) as Promise<void>,
+    getAskMode: () => call(scope, 'agentAskModeService', 'isActive', []) as Promise<boolean>,
+    enterAskMode: () => call(scope, 'agentAskModeService', 'enter', []) as Promise<void>,
+    exitAskMode: () => call(scope, 'agentAskModeService', 'exit', []) as Promise<void>,
+    getDebugMode: () => call(scope, 'agentDebugModeService', 'isActive', []) as Promise<boolean>,
+    enterDebugMode: () => call(scope, 'agentDebugModeService', 'enter', []) as Promise<void>,
+    exitDebugMode: () => call(scope, 'agentDebugModeService', 'exit', []) as Promise<void>,
     getTasks: (input) =>
       call(scope, 'agentTaskService', 'list', [
         input?.activeOnly ?? false,

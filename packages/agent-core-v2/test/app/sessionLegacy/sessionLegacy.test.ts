@@ -13,6 +13,8 @@ import {
 } from '#/agent/scopeContext/scopeContext';
 import { IAgentPermissionModeService } from '#/agent/permissionMode/permissionMode';
 import { IAgentPlanService } from '#/features/plan/plan';
+import { IAgentAskModeService } from '#/features/ask/ask';
+import { IAgentDebugModeService } from '#/features/debug/debug';
 import { IAgentProfileService } from '#/agent/profile/profile';
 import { IAgentSwarmService } from '#/features/swarm/agent/swarm';
 import { IAgentTowerService } from '#/features/tower/tower';
@@ -139,6 +141,8 @@ describe('Session legacy status (best-effort runtime state)', () => {
         [ISessionTokenCountingService, { get: () => ({ size: 25, measured: 20, estimated: 5 }), statusSize: () => 25 }],
         [IAgentPermissionModeService, { mode: 'manual' }],
         [IAgentPlanService, { status: () => Promise.resolve(null) }],
+        [IAgentAskModeService, { isActive: () => false }],
+        [IAgentDebugModeService, { isActive: () => false }],
         [IAgentSwarmService, { isActive: false }],
         [IAgentTowerService, { isActive: false }],
         [IAgentLoopService, { snapshot: () => ({ state: 'idle' }) }],
@@ -200,6 +204,8 @@ describe('Session legacy status (best-effort runtime state)', () => {
         [ISessionTokenCountingService, { get: () => ({ size: 0, measured: 0, estimated: 0 }), statusSize: () => 0 }],
         [IAgentPermissionModeService, { mode: 'manual' }],
         [IAgentPlanService, { status: () => Promise.resolve(null) }],
+        [IAgentAskModeService, { isActive: () => false }],
+        [IAgentDebugModeService, { isActive: () => false }],
         [IAgentSwarmService, { isActive: false }],
         [IAgentTowerService, { isActive: false }],
         [IModelService, { getDefaultModel: () => undefined }],
@@ -262,6 +268,8 @@ describe('Session legacy status (best-effort runtime state)', () => {
         [ISessionTokenCountingService, { get: () => ({ size: 0, measured: 0, estimated: 0 }), statusSize: () => 0 }],
         [IAgentPermissionModeService, { mode: 'manual' }],
         [IAgentPlanService, { status: () => Promise.resolve(null) }],
+        [IAgentAskModeService, { isActive: () => false }],
+        [IAgentDebugModeService, { isActive: () => false }],
         [IAgentSwarmService, { isActive: false }],
         [IAgentTowerService, { isActive: false }],
         [IModelService, { getDefaultModel: () => 'default-model' }],
@@ -349,6 +357,8 @@ describe('Session legacy status (best-effort runtime state)', () => {
         [ISessionTokenCountingService, { get: () => ({ size: 120_000, measured: 110_000, estimated: 10_000 }), statusSize: () => 120_000 }],
         [IAgentPermissionModeService, { mode: 'manual' }],
         [IAgentPlanService, { status: () => Promise.resolve(null) }],
+        [IAgentAskModeService, { isActive: () => false }],
+        [IAgentDebugModeService, { isActive: () => false }],
         [IAgentSwarmService, { isActive: false }],
         [IAgentTowerService, { isActive: false }],
         [IAgentLoopService, { snapshot: () => ({ state: 'idle' }) }],

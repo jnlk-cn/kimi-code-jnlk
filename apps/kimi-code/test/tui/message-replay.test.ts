@@ -27,7 +27,7 @@ import {
 } from '#/tui/utils/transcript-window';
 import { ToolCallComponent } from '#/tui/components/messages/tool-call';
 import { ReadGroupComponent } from '#/tui/components/messages/read-group';
-import { replayBackgroundProjection } from '#/tui/utils/message-replay';
+import { appStateFromResumeAgent, replayBackgroundProjection } from '#/tui/utils/message-replay';
 import type { TaskNotificationOrigin } from '#/tui/utils/message-replay';
 
 vi.mock('#/utils/open-url', () => ({ openUrl: vi.fn() }));
@@ -175,6 +175,8 @@ function baseAgentState(
     replay,
     permission: { mode: 'manual', rules: [] },
     plan: null,
+    askMode: false,
+    debugMode: false,
     swarmMode: false,
     usage: {},
     tools: [],
@@ -1937,5 +1939,25 @@ describe('replayBackgroundProjection', () => {
     const meta = projection.backgroundAgentMetadata.get('agent-1');
     expect(meta?.model).toBeUndefined();
     expect(meta?.effort).toBeUndefined();
+  });
+});
+
+describe('appStateFromResumeAgent agent modes', () => {
+  it('projects the persisted ask and debug modes', () => {
+    const state = appStateFromResumeAgent(
+      baseAgentState([], { askMode: true, debugMode: false }),
+    );
+    expect(state.askMode).toBe(true);
+    expect(state.debugMode).toBe(false);
+    expect(state.planMode).toBe(false);
+  });
+
+  it('defaults missing mode fields to off', () => {
+    const agent = baseAgentState([], {});
+    delete (agent as { askMode?: boolean }).askMode;
+    delete (agent as { debugMode?: boolean }).debugMode;
+    const state = appStateFromResumeAgent(agent);
+    expect(state.askMode).toBe(false);
+    expect(state.debugMode).toBe(false);
   });
 });

@@ -13,6 +13,8 @@ import {
   type ServicesAccessor,
 } from '#/_base/di/instantiation';
 import { ISessionTokenCountingService } from '#/session/tokenCounting/sessionTokenCounting';
+import { IAgentAskModeService } from '#/features/ask/ask';
+import { IAgentDebugModeService } from '#/features/debug/debug';
 import { IAgentGoalService } from '#/features/goal/goalService';
 import { IAgentPermissionModeService } from '#/agent/permissionMode/permissionMode';
 import { IAgentPlanService } from '#/features/plan/plan';
@@ -78,6 +80,8 @@ export class SessionLegacyService implements ISessionLegacyService {
     const plan = agent.accessor.get(IAgentPlanService);
     const swarm = agent.accessor.get(IAgentSwarmService);
     const tower = agent.accessor.get(IAgentTowerService);
+    const ask = agent.accessor.get(IAgentAskModeService);
+    const debug = agent.accessor.get(IAgentDebugModeService);
 
     const model = profile.getModel();
     const capabilities = profile.getModelCapabilities();
@@ -94,6 +98,8 @@ export class SessionLegacyService implements ISessionLegacyService {
       thinking_level: model === '' ? '' : profile.getEffectiveThinkingLevel(),
       permission: permission.mode,
       plan_mode: planData !== null,
+      ask_mode: ask.isActive(),
+      debug_mode: debug.isActive(),
       swarm_mode: swarm.isActive,
       tower_mode: tower.isActive,
       context_tokens: tokens,

@@ -10,6 +10,38 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
   'Plan will be created here: {path}': '计划将创建在此路径：{path}',
   'Failed to set plan mode: {error}': '设置计划模式失败：{error}',
 
+  'Agent': 'Agent 模式',
+  'Plan': '计划模式',
+  'Ask': 'Ask 模式',
+  'Debug': 'Debug 模式',
+  'Mode': '模式',
+  'Select agent mode': '选择 Agent 模式',
+  'Read and edit files, run commands, and carry the task through.':
+    '读写文件、执行命令，完整推进任务。',
+  'Plan first: propose an approach and wait for approval before changing files.':
+    '先出方案：修改文件前给出计划并等待确认。',
+  'Read-only Q&A: explain the code without changing files or running commands.':
+    '只读问答：解释代码，不修改文件、不执行命令。',
+  'Debug with evidence: reproduce, instrument, fix the root cause, then verify.':
+    '基于证据排障：先复现并插桩取证，再修根因并验证。',
+  'Ask mode is read-only: answers only, no file changes or commands.':
+    'Ask 模式为只读：只回答问题，不修改文件、不执行命令。',
+  'Debug mode: reproduce and gather evidence before fixing, then verify.':
+    'Debug 模式：先复现并取证，再修复并验证。',
+  'Agent mode: full access again.': 'Agent 模式：恢复完整能力。',
+  '{mode} mode is already on': '{mode} 模式已处于开启状态',
+  '{mode} mode is already off': '{mode} 模式已处于关闭状态',
+  '{mode} mode: ON': '{mode} 模式：开启',
+  'Failed to switch agent mode: {error}': '切换 Agent 模式失败：{error}',
+  'Unknown {mode} subcommand: {subcommand}': '未知的 {mode} 子命令：{subcommand}',
+  'Usage: /mode': '用法：/mode',
+  'Toggle Ask mode (read-only answers, no file changes or commands)':
+    '切换 Ask 模式（只读问答，不修改文件、不执行命令）',
+  'Toggle Debug mode (reproduce and gather evidence before fixing)':
+    '切换 Debug 模式（先复现并取证，再修复）',
+  'Select agent mode (Agent / Plan / Ask / Debug)':
+    '选择 Agent 模式（Agent / Plan / Ask / Debug）',
+
   'Unknown theme: {theme}': '未知主题：{theme}',
   'Unknown model alias: {alias}': '未知的模型别名：{alias}',
   '"{choice}" is reserved by the subagent model pool — rename the [models] alias to use it here.':

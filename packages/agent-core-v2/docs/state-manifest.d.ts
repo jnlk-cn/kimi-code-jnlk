@@ -27,7 +27,7 @@
 // references become '(circular)', and class instances collapse to a '(ClassName)'
 // marker — the wire shape of an entry is the JSON projection of the type here.
 //
-// Index (App: 0 keys · Workspace: 8 keys · Session: 9 keys · Agent: 72 keys)
+// Index (App: 0 keys · Workspace: 8 keys · Session: 9 keys · Agent: 76 keys)
 //   App
 //   Workspace
 //     workspaceDirs.ephemeralDirs          src/workspace/workspaceDirs/workspaceDirsService.ts
@@ -53,9 +53,13 @@
 //     agentsMdReminder.cwd                            src/agent/agentsMdReminder/agentsMdReminderService.ts
 //     agentsMdReminder.known                          src/agent/agentsMdReminder/agentsMdReminderService.ts
 //     agentsMdReminder.seeded                         src/agent/agentsMdReminder/agentsMdReminderService.ts
+//     ask                                             src/features/ask/askOps.ts
+//     ask.wasActive                                   src/features/ask/injection/askModeInjection.ts
 //     changeNotifier.snapshot                         src/agent/changeNotifier/changeNotifierOps.ts
 //     contextMemory                                   src/agent/contextMemory/contextOps.ts
 //     contextProjector.lastRepairSignature            src/agent/loop/projector.ts
+//     debug                                           src/features/debug/debugOps.ts
+//     debug.wasActive                                 src/features/debug/injection/debugModeInjection.ts
 //     environmentBinding                              src/agent/environmentBinding/environmentBindingOps.ts
 //     externalHooks.stopHookContinuationUsed          src/features/externalHooks/agent/agentExternalHooksService.ts
 //     fileHistory                                     src/features/fileHistory/fileHistoryOps.ts
@@ -1981,6 +1985,20 @@ export interface AgentStateSnapshot {
     readonly parameters: Record<string, unknown>;
     readonly disclosure?: 'deferred' | 'inline';
   }>;
+  // src/features/ask/askOps.ts
+  // replayable · durable · undoable — folds: AskModeEnter, AskModeExit
+  'ask': /* AskModeState — packages/agent-core-v2/src/features/ask/askOps.ts */ {
+    readonly active: boolean;
+  };
+  // src/features/ask/injection/askModeInjection.ts
+  'ask.wasActive': boolean;
+  // src/features/debug/debugOps.ts
+  // replayable · durable · undoable — folds: DebugModeEnter, DebugModeExit
+  'debug': /* DebugModeState — packages/agent-core-v2/src/features/debug/debugOps.ts */ {
+    readonly active: boolean;
+  };
+  // src/features/debug/injection/debugModeInjection.ts
+  'debug.wasActive': boolean;
   // src/features/externalHooks/agent/agentExternalHooksService.ts
   'externalHooks.stopHookContinuationUsed': boolean;
   // src/features/fileHistory/fileHistoryOps.ts

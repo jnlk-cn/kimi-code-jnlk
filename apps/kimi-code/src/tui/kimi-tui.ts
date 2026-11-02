@@ -39,7 +39,7 @@ import {
 } from '@moonshot-ai/pi-tui';
 import { resolve } from 'pathe';
 
-import type { CLIOptions } from '#/cli/options';
+import { isStartupAgentMode, type CLIOptions } from '#/cli/options';
 import { MigrationScreenComponent, type MigrationScreenResult } from '#/migration/index';
 import { t, tFormat } from '#/tui/i18n';
 import { copyTextToClipboard } from '#/utils/clipboard/clipboard-text';
@@ -181,6 +181,7 @@ import {
   isExpandedComponent,
 } from './utils/component-capabilities';
 import { isDeadTerminalError } from './utils/dead-terminal';
+import { agentModeAppStatePatch, type AgentMode } from './utils/agent-mode';
 import { formatErrorMessage } from './utils/event-payload';
 import { pickForegroundTasks } from './utils/foreground-task';
 import { ImageAttachmentStore, type ImageAttachment, type MediaAttachment } from './utils/image-attachment-store';
@@ -272,19 +273,29 @@ type MutableCreateSessionOptions = {
   -readonly [P in keyof CreateSessionOptions]: CreateSessionOptions[P];
 };
 
+function startupAgentMode(input: KimiTUIStartupInput): AgentMode | undefined {
+  const mode = input.cliOptions.mode;
+  if (mode !== undefined) return isStartupAgentMode(mode) ? mode : undefined;
+  if (input.cliOptions.plan) return 'plan';
+  return undefined;
+}
+
 function createInitialAppState(input: KimiTUIStartupInput): AppState {
   const startupPermission: PermissionMode = input.cliOptions.auto
     ? 'auto'
     : input.cliOptions.yolo
       ? 'yolo'
       : 'manual';
+  const startupMode = startupAgentMode(input);
   return {
     model: '',
     workDir: input.workDir,
     additionalDirs: [...(input.additionalDirs ?? [])],
     sessionId: '',
     permissionMode: startupPermission,
-    planMode: input.cliOptions.plan,
+    planMode: startupMode === 'plan',
+    askMode: startupMode === 'ask',
+    debugMode: startupMode === 'debug',
     inputMode: 'prompt',
     swarmMode: false,
     towerMode: false,
@@ -482,7 +493,7 @@ export class KimiTUI {
         continueLast: startupInput.cliOptions.continue,
         yolo: startupInput.cliOptions.yolo,
         auto: startupInput.cliOptions.auto,
-        plan: startupInput.cliOptions.plan,
+        mode: startupAgentMode(startupInput),
         model: startupInput.cliOptions.model,
         additionalDirs: startupInput.additionalDirs,
         agentProfile: startupInput.agentProfile,
@@ -1076,7 +1087,9 @@ export class KimiTUI {
       workDir,
       model: startup.model,
       permission: startup.auto ? 'auto' : startup.yolo ? 'yolo' : undefined,
-      planMode: startup.plan ? true : undefined,
+      planMode: startup.mode === 'plan' ? true : undefined,
+      askMode: startup.mode === 'ask' ? true : undefined,
+      debugMode: startup.mode === 'debug' ? true : undefined,
       // --agent/--agent-file bind the startup session only; sessions created
       // later in this process fall back to the default profile.
       agentProfile: startup.agentProfile,
@@ -1405,8 +1418,8 @@ export class KimiTUI {
   // Input Dispatch
   // =========================================================================
 
-  handlePlanToggle(next: boolean): void {
-    void slashCommands.handlePlanCommand(this, next ? 'on' : 'off');
+  handleAgentModeSwitch(mode: AgentMode): void {
+    void slashCommands.applyAgentModeSelection(this, mode);
   }
 
   handleInputModeChange(mode: 'prompt' | 'bash'): void {
@@ -2865,7 +2878,9 @@ export class KimiTUI {
       !sameStringArrays(this.state.appState.additionalDirs, patch.additionalDirs ?? []);
     const busyChanged = 'streamingPhase' in patch || 'isCompacting' in patch;
     Object.assign(this.state.appState, patch);
-    if ('planMode' in patch) this.updateEditorBorderHighlight();
+    if ('planMode' in patch || 'askMode' in patch || 'debugMode' in patch) {
+      this.updateEditorBorderHighlight();
+    }
     this.state.footer.setState(this.state.appState);
     if ('model' in patch || 'availableModels' in patch || 'availableProviders' in patch) {
       this.footerTelemetryController.syncProviderContext();
@@ -2939,11 +2954,11 @@ export class KimiTUI {
       // elevated mode must not be passed to the first lazy-created session.
       patch.permissionMode = config.defaultPermissionMode ?? 'manual';
     }
-    // Track the config default itself (vs an explicit CLI --plan) so the lazy
-    // create path can tell which one would activate plan mode; a removed
-    // default also clears the hydrated footer value.
+    // Track the config default itself (vs an explicit CLI --mode plan/--plan)
+    // so the lazy create path can tell which one would activate plan mode; a
+    // removed default also clears the hydrated footer value.
     patch.configDefaultPlanMode = config.defaultPlanMode === true;
-    if (!startup.plan) {
+    if (startup.mode !== 'plan') {
       patch.planMode = config.defaultPlanMode === true;
     }
     if (startup.agentProfile !== undefined || startup.agentFiles !== undefined) {
@@ -2991,13 +3006,18 @@ export class KimiTUI {
     }
     // With an active session, carry the live plan state. Session-less (lazy
     // creation / `/new` before the first session) on v2, pass only the
-    // explicit CLI --plan intent — and only when the engine is not already
-    // applying `defaultPlanMode` at create time (sessionLifecycleService),
-    // since re-entering an active plan mode throws.
+    // explicit CLI --mode/--plan intent — and only when the engine is not
+    // already applying `defaultPlanMode` at create time
+    // (sessionLifecycleService), since re-entering an active plan mode throws.
+    const startupMode = this.options.startup.mode;
     const explicitPlanMode =
       this.session !== undefined
         ? this.state.appState.planMode
-        : this.options.startup.plan && this.state.appState.configDefaultPlanMode !== true;
+        : startupMode === 'plan' && this.state.appState.configDefaultPlanMode !== true;
+    const explicitAskMode =
+      this.session !== undefined ? this.state.appState.askMode : startupMode === 'ask';
+    const explicitDebugMode =
+      this.session !== undefined ? this.state.appState.debugMode : startupMode === 'debug';
     const options: MutableCreateSessionOptions = {
       workDir: this.state.appState.workDir,
       model,
@@ -3012,6 +3032,8 @@ export class KimiTUI {
           : this.state.appState.thinkingEffort,
       permission: this.state.appState.permissionMode,
       planMode: explicitPlanMode ? true : undefined,
+      askMode: explicitAskMode ? true : undefined,
+      debugMode: explicitDebugMode ? true : undefined,
     };
     const additionalDirs =
       this.session === undefined && this.state.appState.sessionId === '' && !this.hasSessionHistory
@@ -3167,6 +3189,8 @@ export class KimiTUI {
       thinkingEffort: status.thinkingEffort,
       permissionMode: status.permission,
       planMode: status.planMode,
+      askMode: status.askMode ?? false,
+      debugMode: status.debugMode ?? false,
       swarmMode: status.swarmMode ?? false,
       towerMode: status.towerMode ?? false,
       contextTokens: status.contextTokens,
@@ -3218,10 +3242,10 @@ export class KimiTUI {
     }
   }
 
-  // Apply --auto/--yolo/--plan startup flags to a resumed session. The resumed
-  // session may already be in plan mode from its persisted records, and
-  // re-entering plan mode throws, so only enable it when it is not active yet.
-  // setPermission is idempotent and needs no such guard.
+  // Apply --auto/--yolo and the --mode startup flag to a resumed session. The
+  // session may already be in that agent mode from its persisted records, and
+  // re-entering plan mode throws, so only enable each mode when it is not
+  // active yet. setPermission is idempotent and needs no such guard.
   private async applyStartupModesToResumedSession(session: Session): Promise<void> {
     const { startup } = this.options;
     if (startup.auto) {
@@ -3229,10 +3253,17 @@ export class KimiTUI {
     } else if (startup.yolo) {
       await session.setPermission('yolo');
     }
-    if (startup.plan) {
+    const mode = startup.mode;
+    if (mode === 'plan' || mode === 'ask' || mode === 'debug') {
       const status = await session.getStatus();
-      if (!status.planMode) {
+      if (mode === 'plan' && !status.planMode) {
         await session.setPlanMode(true);
+      }
+      if (mode === 'ask' && status.askMode !== true) {
+        await session.setAskMode(true);
+      }
+      if (mode === 'debug' && status.debugMode !== true) {
+        await session.setDebugMode(true);
       }
     }
   }
@@ -3247,8 +3278,8 @@ export class KimiTUI {
     } else if (startup.yolo) {
       this.setAppState({ permissionMode: 'yolo' });
     }
-    if (startup.plan) {
-      this.setAppState({ planMode: true });
+    if (startup.mode !== undefined && startup.mode !== 'agent') {
+      this.setAppState(agentModeAppStatePatch(startup.mode));
     }
   }
 
@@ -4638,9 +4669,10 @@ export class KimiTUI {
   updateEditorBorderHighlight(text?: string): void {
     const trimmed = (text ?? this.state.editor.getText()).trimStart();
     const isBash = this.state.appState.inputMode === 'bash';
-    const highlighted = this.state.appState.planMode || isBash || trimmed.startsWith('/');
+    const { planMode, askMode, debugMode } = this.state.appState;
+    const highlighted = planMode || askMode || debugMode || isBash || trimmed.startsWith('/');
     this.state.editor.borderHighlighted = highlighted;
-    // Shell mode gets its own hue; plan-mode and slash context stay primary.
+    // Shell mode gets its own hue; agent modes and slash context stay primary.
     const borderToken = isBash ? 'shellMode' : highlighted ? 'primary' : 'border';
     this.state.editor.borderColor = (s: string) => currentTheme.fg(borderToken, s);
     this.state.ui.requestRender();

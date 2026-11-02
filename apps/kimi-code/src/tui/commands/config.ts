@@ -17,6 +17,7 @@ import {
 import { LanguageSelectorComponent } from '../components/dialogs/language-selector';
 import { resolveUiLanguage, setUiLanguage, t, tFormat } from '../i18n';
 import { writeAgentPreferences } from '../utils/agent-preferences-io';
+import { agentModeAppStatePatch } from '../utils/agent-mode';
 import { MermaidPreferenceSelectorComponent } from '../components/dialogs/mermaid-preference-selector';
 import { TerminalPreferenceSelectorComponent } from '../components/dialogs/terminal-preference-selector';
 import { modelDisplayName, segmentsFor } from '../components/dialogs/model-selector';
@@ -130,7 +131,7 @@ export async function handlePlanCommand(host: SlashCommandHost, args: string): P
 async function applyPlanMode(host: SlashCommandHost, session: Session, enabled: boolean): Promise<void> {
   try {
     await session.setPlanMode(enabled);
-    host.setAppState({ planMode: enabled });
+    host.setAppState(agentModeAppStatePatch(enabled ? 'plan' : 'agent'));
     if (enabled) {
       const plan = await session.getPlan().catch(() => null);
       host.showNotice(

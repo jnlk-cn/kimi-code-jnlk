@@ -287,6 +287,8 @@ export interface CreateSessionOptions {
   readonly thinking?: string | undefined;
   readonly permission?: PermissionMode | undefined;
   readonly planMode?: boolean;
+  readonly askMode?: boolean;
+  readonly debugMode?: boolean;
   readonly metadata?: JsonObject | undefined;
   readonly additionalDirs?: readonly string[];
   /**
@@ -480,6 +482,8 @@ export interface SessionStatus {
   readonly thinkingEffort: string;
   readonly permission: PermissionMode;
   readonly planMode: boolean;
+  readonly askMode?: boolean;
+  readonly debugMode?: boolean;
   readonly swarmMode?: boolean;
   readonly towerMode?: boolean;
   readonly contextTokens: number;

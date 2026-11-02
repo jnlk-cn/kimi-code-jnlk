@@ -14,6 +14,10 @@ import { EventBusService } from '#/app/event/eventBusService';
 import { GoalUpdated } from '#/features/goal/goalOps';
 import { IAgentGoalService } from '#/features/goal/goalService';
 import type { GoalSnapshot } from '#/features/goal/types';
+import { IAgentAskModeService } from '#/features/ask/ask';
+import { AskModeEnter } from '#/features/ask/askOps';
+import { IAgentDebugModeService } from '#/features/debug/debug';
+import { DebugModeEnter } from '#/features/debug/debugOps';
 import { IAgentPlanService } from '#/features/plan/plan';
 import { PlanModeEnter, planKey } from '#/features/plan/planOps';
 import { IAgentSwarmService } from '#/features/swarm/agent/swarm';
@@ -28,12 +32,16 @@ describe('AgentModeMutexService', () => {
   let disposables: DisposableStore;
   let ix: TestInstantiationService;
   let planExit: ReturnType<typeof vi.fn>;
+  let askExit: ReturnType<typeof vi.fn>;
+  let debugExit: ReturnType<typeof vi.fn>;
   let swarmExit: ReturnType<typeof vi.fn>;
   let towerExit: ReturnType<typeof vi.fn>;
   let goalPause: ReturnType<typeof vi.fn>;
   let dispatch: ReturnType<typeof vi.fn>;
   let swarmActive: boolean;
   let towerActive: boolean;
+  let askActive: boolean;
+  let debugActive: boolean;
   let goalStatus: string | undefined;
 
   beforeEach(() => {
@@ -45,14 +53,26 @@ describe('AgentModeMutexService', () => {
       eventBus: ix.get(IEventBus),
     });
     planExit = vi.fn();
+    askExit = vi.fn();
+    debugExit = vi.fn();
     swarmExit = vi.fn();
     towerExit = vi.fn();
     goalPause = vi.fn();
     dispatch = vi.fn();
     swarmActive = false;
     towerActive = false;
+    askActive = false;
+    debugActive = false;
     goalStatus = undefined;
     ix.stub(IAgentPlanService, { exit: planExit } as unknown as IAgentPlanService);
+    ix.stub(IAgentAskModeService, {
+      exit: askExit,
+      isActive: () => askActive,
+    } as unknown as IAgentAskModeService);
+    ix.stub(IAgentDebugModeService, {
+      exit: debugExit,
+      isActive: () => debugActive,
+    } as unknown as IAgentDebugModeService);
     ix.stub(IAgentSwarmService, {
       exit: swarmExit,
       get isActive() {
@@ -76,10 +96,72 @@ describe('AgentModeMutexService', () => {
   });
   afterEach(() => disposables.dispose());
 
-  function publish(event: PlanModeEnter | SwarmModeEnter | TowerModeEnter | GoalUpdated): void {
+  function publish(
+    event:
+      | PlanModeEnter
+      | AskModeEnter
+      | DebugModeEnter
+      | SwarmModeEnter
+      | TowerModeEnter
+      | GoalUpdated,
+  ): void {
     const agentContext = ix.get(IAgentScopeContext).agentContext;
     ix.get(IEventBus).publish(event, agentContext);
   }
+
+  it('ask mode entry exits an active plan, swarm, and tower mode', () => {
+    ix.get(IAgentStateService).set(planKey, { active: true, id: 'plan_1' });
+    swarmActive = true;
+    towerActive = true;
+    publish(new AskModeEnter({ agentId: 'test-agent' }));
+    expect(planExit).toHaveBeenCalledTimes(1);
+    expect(swarmExit).toHaveBeenCalledTimes(1);
+    expect(towerExit).toHaveBeenCalledTimes(1);
+    expect(debugExit).not.toHaveBeenCalled();
+  });
+
+  it('debug mode entry exits an active plan, swarm, and tower mode', () => {
+    ix.get(IAgentStateService).set(planKey, { active: true, id: 'plan_1' });
+    swarmActive = true;
+    towerActive = true;
+    publish(new DebugModeEnter({ agentId: 'test-agent' }));
+    expect(planExit).toHaveBeenCalledTimes(1);
+    expect(swarmExit).toHaveBeenCalledTimes(1);
+    expect(towerExit).toHaveBeenCalledTimes(1);
+    expect(askExit).not.toHaveBeenCalled();
+  });
+
+  it('plan mode entry exits an active ask and debug mode', () => {
+    askActive = true;
+    debugActive = true;
+    publish(new PlanModeEnter({ agentId: 'test-agent', id: 'plan_1' }));
+    expect(askExit).toHaveBeenCalledTimes(1);
+    expect(debugExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('plan mode entry leaves inactive ask and debug modes alone', () => {
+    publish(new PlanModeEnter({ agentId: 'test-agent', id: 'plan_1' }));
+    expect(askExit).not.toHaveBeenCalled();
+    expect(debugExit).not.toHaveBeenCalled();
+  });
+
+  it('swarm mode entry exits active ask and debug modes but keeps plan mode', () => {
+    ix.get(IAgentStateService).set(planKey, { active: true, id: 'plan_1' });
+    askActive = true;
+    debugActive = true;
+    publish(new SwarmModeEnter({ agentId: 'test-agent', trigger: 'manual' }));
+    expect(askExit).toHaveBeenCalledTimes(1);
+    expect(debugExit).toHaveBeenCalledTimes(1);
+    expect(planExit).not.toHaveBeenCalled();
+  });
+
+  it('tower mode entry exits active ask and debug modes', () => {
+    askActive = true;
+    debugActive = true;
+    publish(new TowerModeEnter({ agentId: 'test-agent' }));
+    expect(askExit).toHaveBeenCalledTimes(1);
+    expect(debugExit).toHaveBeenCalledTimes(1);
+  });
 
   it('plan mode entry exits an active tower mode', () => {
     towerActive = true;

@@ -22,6 +22,7 @@ import {
 import { Key, matchesKey } from '@moonshot-ai/pi-tui';
 import { MEDIA_STAGING_TTL_SECONDS } from '../constant/media';
 import { formatErrorMessage } from '../utils/event-payload';
+import { currentAgentMode, nextAgentMode, type AgentMode } from '../utils/agent-mode';
 import type {
   ImageAttachment,
   ImageAttachmentStore,
@@ -77,7 +78,7 @@ export interface EditorKeyboardHost {
   openUndoSelector(): void;
   stop(exitCode?: number): Promise<void>;
   ensureSession(): Promise<Session | undefined>;
-  handlePlanToggle(next: boolean): void;
+  handleAgentModeSwitch(mode: AgentMode): void;
   handleInputModeChange(mode: 'prompt' | 'bash'): void;
   clearQueuedMessages(): void;
   setExternalEditorRunning(running: boolean): void;
@@ -272,21 +273,22 @@ export class EditorKeyboardController {
     };
 
     editor.onShiftTab = () => {
-      const togglePlan = (): void => {
-        const next = !host.state.appState.planMode;
-        host.track('shortcut_plan_toggle', { enabled: next });
-        host.track('shortcut_mode_switch', { to_mode: next ? 'plan' : 'agent' });
-        host.handlePlanToggle(next);
+      const cycleMode = (): void => {
+        const from = currentAgentMode(host.state.appState);
+        const to = nextAgentMode(from);
+        host.track('shortcut_plan_toggle', { enabled: to === 'plan' });
+        host.track('shortcut_mode_switch', { from_mode: from, to_mode: to });
+        host.handleAgentModeSwitch(to);
       };
       if (host.session === undefined) {
-        // v2 session-less: lazy-create the session, then toggle — the same
-        // path /plan takes.
+        // v2 session-less: lazy-create the session, then cycle — the same path
+        // /plan and /ask take.
         void host.ensureSession().then((session) => {
-          if (session !== undefined) togglePlan();
+          if (session !== undefined) cycleMode();
         });
         return;
       }
-      togglePlan();
+      cycleMode();
     };
 
     editor.onInputModeChange = (mode) => {

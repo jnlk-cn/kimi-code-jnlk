@@ -77,6 +77,8 @@ export interface ResumedAgentState {
   readonly userTurnCount?: number;
   readonly permission: PermissionData;
   readonly plan: PlanData;
+  readonly askMode?: boolean | undefined;
+  readonly debugMode?: boolean | undefined;
   readonly swarmMode?: boolean | undefined;
   readonly usage: UsageStatus;
   readonly tools: readonly ToolInfo[];

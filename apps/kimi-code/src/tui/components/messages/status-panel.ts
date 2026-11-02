@@ -17,6 +17,8 @@ import { visibleWidth } from '@moonshot-ai/pi-tui';
 import { PRODUCT_NAME } from '#/constant/app';
 import { t, tFormat } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
+import { currentAgentMode } from '#/tui/utils/agent-mode';
+import { agentModeLabel } from '#/tui/utils/agent-mode-display';
 import { PERMISSION_MODE_DISPLAY_NAMES } from '#/tui/utils/permission-mode';
 import {
   formatTokenCount,
@@ -47,6 +49,8 @@ export interface StatusReportOptions {
   readonly thinkingEffort: ThinkingEffort;
   readonly permissionMode: PermissionMode;
   readonly planMode: boolean;
+  readonly askMode: boolean;
+  readonly debugMode: boolean;
   readonly towerMode: boolean;
   /** Whether the tower experiment is enabled on engine v2 — gates the Tower mode row. */
   readonly towerAvailable: boolean;
@@ -119,13 +123,16 @@ export function buildStatusReportLines(options: StatusReportOptions): string[] {
 
   const permission = options.status?.permission ?? options.permissionMode;
   const planMode = options.status?.planMode ?? options.planMode;
+  const askMode = options.status?.askMode ?? options.askMode;
+  const debugMode = options.status?.debugMode ?? options.debugMode;
+  const mode = currentAgentMode({ planMode, askMode, debugMode });
   const towerMode = options.status?.towerMode ?? options.towerMode;
   const sessionId = options.sessionId.trim().length > 0 ? options.sessionId : t('none');
   const rows: FieldRow[] = [
     { label: t('Model'), value: formatModelStatus(options) },
     { label: t('Directory'), value: options.workDir },
     { label: t('Permissions'), value: PERMISSION_MODE_DISPLAY_NAMES[permission] },
-    { label: t('Plan mode'), value: planMode ? t('on') : t('off') },
+    { label: t('Mode'), value: agentModeLabel(mode) },
   ];
   if (options.towerAvailable) {
     rows.push({ label: t('Tower mode'), value: towerMode ? t('on') : t('off') });

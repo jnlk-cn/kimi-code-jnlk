@@ -3091,7 +3091,10 @@ command = "vim"
       expect(session.setPlanMode).toHaveBeenCalledWith(true);
     });
     expect(harness.track).toHaveBeenCalledWith('shortcut_plan_toggle', { enabled: true });
-    expect(harness.track).toHaveBeenCalledWith('shortcut_mode_switch', { to_mode: 'plan' });
+    expect(harness.track).toHaveBeenCalledWith('shortcut_mode_switch', {
+      from_mode: 'agent',
+      to_mode: 'plan',
+    });
   });
 
   it('routes /yolo through session permission state without app-layer telemetry duplication', async () => {
@@ -10445,7 +10448,7 @@ capabilities = ["image_in", "video_in"]
       expect(output).toContain('Model');
       expect(output).toContain('thinking high');
       expect(output).toContain('Permissions  Never Ask');
-      expect(output).toContain('Plan mode    on');
+      expect(output).toContain('Mode         Plan');
       expect(output).toContain('Context window');
       expect(output).toContain('25%');
     });

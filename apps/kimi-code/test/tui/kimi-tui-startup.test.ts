@@ -150,6 +150,8 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     setThinking: vi.fn(async () => {}),
     setPermission: vi.fn(async () => {}),
     setPlanMode: vi.fn(async () => {}),
+    setAskMode: vi.fn(async () => {}),
+    setDebugMode: vi.fn(async () => {}),
     getGoal: vi.fn(async () => ({ goal: null })),
     onEvent: vi.fn(() => () => {}),
     getResumeState: vi.fn(() => null),
@@ -1148,6 +1150,90 @@ describe('KimiTUI startup', () => {
 
     expect(session.setPlanMode).not.toHaveBeenCalled();
     expect(driver.state.appState.planMode).toBe(true);
+  });
+
+  it('applies --ask mode when resuming a session via --continue', async () => {
+    let askMode = false;
+    const session = makeSession({
+      id: 'ses-latest',
+      getStatus: vi.fn(async () => ({
+        model: 'k2',
+        thinkingEffort: 'off',
+        permission: 'manual',
+        planMode: false,
+        askMode,
+        contextTokens: 10,
+        maxContextTokens: 100,
+        contextUsage: 0.1,
+      })),
+      setAskMode: vi.fn(async (enabled: boolean) => {
+        askMode = enabled;
+      }),
+    });
+    const harness = makeHarness(session, {
+      listSessions: vi.fn(async () => [{ id: 'ses-latest' }]),
+    });
+    const driver = makeDriver(harness, makeStartupInput({ continue: true, mode: 'ask' }));
+
+    await expect(driver.init()).resolves.toBe(true);
+
+    expect(session.setAskMode).toHaveBeenCalledWith(true);
+    expect(driver.state.appState.askMode).toBe(true);
+  });
+
+  it('skips setAskMode when the resumed session is already in Ask mode', async () => {
+    const session = makeSession({
+      id: 'ses-latest',
+      getStatus: vi.fn(async () => ({
+        model: 'k2',
+        thinkingEffort: 'off',
+        permission: 'manual',
+        planMode: false,
+        askMode: true,
+        contextTokens: 10,
+        maxContextTokens: 100,
+        contextUsage: 0.1,
+      })),
+      setAskMode: vi.fn(async () => {
+        throw new Error('Already in ask mode');
+      }),
+    });
+    const harness = makeHarness(session, {
+      listSessions: vi.fn(async () => [{ id: 'ses-latest' }]),
+    });
+    const driver = makeDriver(harness, makeStartupInput({ continue: true, mode: 'ask' }));
+
+    await expect(driver.init()).resolves.toBe(true);
+
+    expect(session.setAskMode).not.toHaveBeenCalled();
+    expect(driver.state.appState.askMode).toBe(true);
+  });
+
+  it('applies --debug mode when resuming a session via --continue', async () => {
+    const session = makeSession({
+      id: 'ses-latest',
+      getStatus: vi.fn(async () => ({
+        model: 'k2',
+        thinkingEffort: 'off',
+        permission: 'manual',
+        planMode: false,
+        askMode: false,
+        debugMode: false,
+        contextTokens: 10,
+        maxContextTokens: 100,
+        contextUsage: 0.1,
+      })),
+      setDebugMode: vi.fn(async () => {}),
+    });
+    const harness = makeHarness(session, {
+      listSessions: vi.fn(async () => [{ id: 'ses-latest' }]),
+    });
+    const driver = makeDriver(harness, makeStartupInput({ continue: true, mode: 'debug' }));
+
+    await expect(driver.init()).resolves.toBe(true);
+
+    expect(session.setDebugMode).toHaveBeenCalledWith(true);
+    expect(driver.state.appState.debugMode).toBe(true);
   });
 
   it('forces footer state to reflect --auto even if getStatus lags behind', async () => {

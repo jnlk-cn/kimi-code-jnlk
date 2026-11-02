@@ -77,6 +77,8 @@ const appState: AppState = {
   streamingStartTime: 0,
   stepRetry: null,
   planMode: false,
+  askMode: false,
+  debugMode: false,
   inputMode: 'prompt',
   swarmMode: false,
   towerMode: false,

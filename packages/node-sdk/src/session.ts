@@ -359,6 +359,28 @@ export class Session {
     await this.rpc.setPlanMode({ sessionId: this.id, enabled });
   }
 
+  async setAskMode(enabled: boolean): Promise<void> {
+    this.ensureOpen();
+    if (typeof enabled !== 'boolean') {
+      throw new KimiError(
+        ErrorCodes.SESSION_AGENT_MODE_INVALID,
+        'Session ask mode must be a boolean',
+      );
+    }
+    await this.rpc.setAskMode({ sessionId: this.id, enabled });
+  }
+
+  async setDebugMode(enabled: boolean): Promise<void> {
+    this.ensureOpen();
+    if (typeof enabled !== 'boolean') {
+      throw new KimiError(
+        ErrorCodes.SESSION_AGENT_MODE_INVALID,
+        'Session debug mode must be a boolean',
+      );
+    }
+    await this.rpc.setDebugMode({ sessionId: this.id, enabled });
+  }
+
   async setSwarmMode(enabled: boolean, trigger: SwarmModeTrigger): Promise<void> {
     this.ensureOpen();
     if (typeof enabled !== 'boolean') {

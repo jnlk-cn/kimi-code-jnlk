@@ -149,7 +149,8 @@ export class KimiHarness {
   }
 
   async createSession(options: CreateSessionOptions): Promise<Session> {
-    const { planMode, sessionStartedProperties, ...coreOptions } = stripLegacyKaosOptions(options);
+    const { planMode, askMode, debugMode, sessionStartedProperties, ...coreOptions } =
+      stripLegacyKaosOptions(options);
     const summary = await this.rpc.createSession(coreOptions);
     const session = new Session({
       id: summary.id,
@@ -165,6 +166,12 @@ export class KimiHarness {
     this.activeSessions.set(session.id, session);
     if (planMode === true) {
       await session.setPlanMode(true);
+    }
+    if (askMode === true) {
+      await session.setAskMode(true);
+    }
+    if (debugMode === true) {
+      await session.setDebugMode(true);
     }
     this.trackSessionStarted(summary.id, false, sessionStartedProperties);
     this.trackSessionEvent(session.id, 'session_new');

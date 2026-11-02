@@ -15,6 +15,8 @@ function fakeInitialAppState(): AppState {
     sessionId: 'sess-1',
     permissionMode: 'manual',
     planMode: false,
+    askMode: false,
+    debugMode: false,
     inputMode: 'prompt',
     swarmMode: false,
     towerMode: false,
@@ -47,7 +49,6 @@ describe('createTUIState', () => {
         continueLast: false,
         yolo: false,
         auto: false,
-        plan: false,
       },
     };
     const state = createTUIState(opts);
@@ -98,7 +99,6 @@ describe('createTUIState', () => {
         continueLast: false,
         yolo: false,
         auto: false,
-        plan: false,
       },
     });
 
@@ -114,7 +114,6 @@ describe('createTUIState', () => {
         continueLast: false,
         yolo: false,
         auto: false,
-        plan: false,
       },
     });
 

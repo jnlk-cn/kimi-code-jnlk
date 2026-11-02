@@ -36,6 +36,8 @@ export interface EnvironmentSlotState {
   readonly connectError?: string;
 }
 
+export type AgentMode = 'agent' | 'plan' | 'ask' | 'debug';
+
 export interface AppState {
   model: string;
   workDir: string;
@@ -43,6 +45,8 @@ export interface AppState {
   sessionId: string;
   permissionMode: PermissionMode;
   planMode: boolean;
+  askMode: boolean;
+  debugMode: boolean;
   /** Resolved profile name from --agent/--agent-file, carried to the
    * lazy-created first session when the TUI starts session-less. */
   agentProfile?: string;
@@ -356,7 +360,7 @@ export interface TUIStartupOptions {
   readonly continueLast: boolean;
   readonly yolo: boolean;
   readonly auto: boolean;
-  readonly plan: boolean;
+  readonly mode?: AgentMode;
   readonly model?: string;
   readonly additionalDirs?: readonly string[];
   /** Resolved profile name from --agent/--agent-file; bound to the startup session only. */

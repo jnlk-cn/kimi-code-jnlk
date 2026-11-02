@@ -23,6 +23,12 @@ export {
 } from './config';
 export { handleSwarmCommand } from './swarm';
 export { handleTowerCommand } from './tower';
+export {
+  applyAgentModeSelection,
+  handleAskCommand,
+  handleDebugCommand,
+  handleModeCommand,
+} from './mode';
 export { handleFeedbackCommand, showMcpServers, showStatusReport, showUsage } from './info';
 export { handlePluginsCommand } from './plugins';
 export { handleReloadCommand, handleReloadTuiCommand } from './reload';

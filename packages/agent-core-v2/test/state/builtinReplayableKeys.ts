@@ -21,6 +21,8 @@ import { taskNotificationDeliveryKey } from '#/agent/task/taskService';
 import { toolSelectKey } from '#/agent/toolSelect/toolSelectOps';
 import { userToolKey } from '#/agent/userTool/userToolOps';
 import { fileHistoryKey } from '#/features/fileHistory/fileHistoryOps';
+import { askKey } from '#/features/ask/askOps';
+import { debugKey } from '#/features/debug/debugOps';
 import { planKey } from '#/features/plan/planOps';
 import { swarmKey } from '#/features/swarm/swarmOps';
 import { towerKey, towerOwnerKey } from '#/features/tower/towerOps';
@@ -47,6 +49,8 @@ export const BUILTIN_REPLAYABLE_STATE_KEYS: readonly ReplayableStateKey<any>[] =
   toolSelectKey,
   userToolKey,
   fileHistoryKey,
+  askKey,
+  debugKey,
   planKey,
   swarmKey,
   towerKey,

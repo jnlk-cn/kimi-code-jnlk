@@ -140,7 +140,11 @@ export function createProgram(
         'Set the working directory on the environment selected by --environment.',
       ).hideHelp(),
     )
-    .option('--plan', 'Start in plan mode.', false);
+    .option('--plan', 'Start in plan mode.', false)
+    .option(
+      '--mode <mode>',
+      'Start in an agent mode: agent, plan, ask, or debug (ask is read-only; debug requires evidence before fixing).',
+    );
 
   registerExportCommand(program);
   registerForkCommand(program);
@@ -224,6 +228,7 @@ export function createProgram(
       yolo: yoloValue,
       auto: autoValue,
       plan: raw['plan'] as boolean,
+      mode: raw['mode'] as CLIOptions['mode'],
       model: raw['model'] as string | undefined,
       outputFormat: raw['outputFormat'] as CLIOptions['outputFormat'],
       prompt: raw['prompt'] as string | undefined,

@@ -8,7 +8,7 @@ export interface SessionTelemetryContext {
 
 export interface AgentTelemetryContext {
   readonly agent_id: string;
-  readonly mode: 'agent' | 'plan';
+  readonly mode: 'agent' | 'plan' | 'ask' | 'debug';
   readonly provider_type?: string;
   readonly protocol?: string;
 }

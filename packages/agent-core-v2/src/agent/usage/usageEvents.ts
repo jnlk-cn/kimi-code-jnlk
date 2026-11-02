@@ -13,6 +13,8 @@ export interface AgentStatusUpdatedPayload {
   towerMode?: boolean;
   towerExitReason?: TowerExitReason;
   planMode?: boolean;
+  askMode?: boolean;
+  debugMode?: boolean;
   model?: string;
   thinkingEffort?: string;
   maxContextTokens?: number;
@@ -87,6 +89,8 @@ export interface AgentStatusUpdatedEvent {
   readonly maxContextTokens?: number;
   readonly contextUsage?: number;
   readonly planMode?: boolean;
+  readonly askMode?: boolean;
+  readonly debugMode?: boolean;
   readonly swarmMode?: boolean;
   readonly towerMode?: boolean;
   readonly towerExitReason?: TowerExitReason;

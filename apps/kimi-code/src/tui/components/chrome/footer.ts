@@ -17,6 +17,7 @@ import { isRainbowDancing, renderDanceFooterModel } from '#/tui/easter-eggs/danc
 import { currentTheme } from '#/tui/theme';
 import type { ColorPalette } from '#/tui/theme/colors';
 import type { AppState, EnvironmentSlotState } from '#/tui/types';
+import { currentAgentMode } from '#/tui/utils/agent-mode';
 import { PERMISSION_MODE_DISPLAY_NAMES } from '#/tui/utils/permission-mode';
 import { SpinnerTicker } from '#/tui/utils/spinner-ticker';
 import {
@@ -498,6 +499,8 @@ export class FooterComponent implements Component {
     if (state.permissionMode === 'auto') modes.push(chalk.hex(colors.warning).bold(t(PERMISSION_MODE_DISPLAY_NAMES.auto)));
     if (state.permissionMode === 'yolo') modes.push(chalk.hex(colors.warning).bold(t(PERMISSION_MODE_DISPLAY_NAMES.yolo)));
     if (state.planMode) modes.push(chalk.hex(colors.primary).bold(t('plan')));
+    if (state.askMode) modes.push(chalk.hex(colors.accent).bold(t('ask')));
+    if (state.debugMode) modes.push(chalk.hex(colors.warning).bold(t('debug')));
     if (state.swarmMode) modes.push(chalk.hex(colors.accent).bold(t('swarm')));
     if (state.towerMode) modes.push(chalk.hex(colors.accent).bold('tower'));
     if (modes.length > 0) slots['mode'] = [modes.join(' ')];
@@ -620,6 +623,7 @@ export class FooterComponent implements Component {
       gitBranch: isRemoteEnvironment(state.environment) ? null : (this.gitCache.getStatus()?.branch ?? null),
       permissionMode: state.permissionMode,
       planMode: state.planMode,
+      mode: currentAgentMode(state),
       contextUsage: state.contextUsage,
       contextTokens: state.contextTokens,
       maxContextTokens: state.maxContextTokens,

@@ -1,9 +1,9 @@
 import { Service } from '#/_base/di/service';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
-import type { ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentStateService } from '#/agent/state/agentState';
 import { IAgentPlanService } from '#/features/plan/plan';
 import type { PlanFilePath } from '#/features/plan/plan';
+import { injectionCadence } from '#/features/reminder/injectionCadence';
 import type { IAgentReminderService } from '#/features/reminder/reminderService';
 import { defineState } from '#/state/state';
 
@@ -47,37 +47,16 @@ export class PlanModeInjection extends Service {
           }
           return fullReminder(planFilePath);
         }
-        const variant = planModeReminderVariant(injectedAt, this.context.get());
-        if (variant === 'full') return fullReminder(planFilePath);
-        if (variant === 'sparse') return sparseReminder(planFilePath);
+        const cadence = injectionCadence(injectedAt, this.context.get(), {
+          dedupMinTurns: PLAN_MODE_DEDUP_MIN_TURNS,
+          fullRefreshTurns: PLAN_MODE_FULL_REFRESH_TURNS,
+        });
+        if (cadence === 'full') return fullReminder(planFilePath);
+        if (cadence === 'sparse') return sparseReminder(planFilePath);
         return undefined;
       }),
     );
   }
-}
-
-type PlanModeReminderVariant = 'full' | 'sparse';
-
-function planModeReminderVariant(
-  injectedAt: number | null,
-  history: readonly ContextMessage[],
-): PlanModeReminderVariant | null {
-  if (injectedAt === null) return 'full';
-  let assistantTurnsSince = 0;
-  for (let i = injectedAt + 1; i < history.length; i++) {
-    const message = history[i];
-    if (message === undefined) continue;
-    if (message.role === 'assistant') {
-      assistantTurnsSince += 1;
-      continue;
-    }
-    if (message.role === 'user' && message.origin?.kind !== 'injection') {
-      return 'full';
-    }
-  }
-  if (assistantTurnsSince >= PLAN_MODE_FULL_REFRESH_TURNS) return 'full';
-  if (assistantTurnsSince >= PLAN_MODE_DEDUP_MIN_TURNS) return 'sparse';
-  return null;
 }
 
 function withPlanFileFooter(body: string, planFilePath: PlanFilePath): string {

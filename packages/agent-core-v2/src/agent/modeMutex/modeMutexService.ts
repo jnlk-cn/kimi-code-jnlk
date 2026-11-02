@@ -4,6 +4,10 @@ import { IAgentStateService } from '#/agent/state/agentState';
 import { AgentStatusUpdated } from '#/agent/usage/usageEvents';
 import { IEventBus } from '#/app/event/eventBus';
 import { LifecycleScope } from '#/app/scopes';
+import { IAgentAskModeService } from '#/features/ask/ask';
+import { AskModeEnter } from '#/features/ask/askOps';
+import { IAgentDebugModeService } from '#/features/debug/debug';
+import { DebugModeEnter } from '#/features/debug/debugOps';
 import { GoalUpdated } from '#/features/goal/goalOps';
 import { IAgentGoalService } from '#/features/goal/goalService';
 import { IAgentPlanService } from '#/features/plan/plan';
@@ -16,11 +20,15 @@ import { IEventDispatcher } from '#/state/eventDispatcher';
 
 import { IAgentModeMutexService } from './modeMutex';
 
+type InteractionMode = 'plan' | 'ask' | 'debug';
+
 export class AgentModeMutexService extends Disposable implements IAgentModeMutexService {
   declare readonly _serviceBrand: undefined;
 
   constructor(
     @IAgentPlanService private readonly plan: IAgentPlanService,
+    @IAgentAskModeService private readonly ask: IAgentAskModeService,
+    @IAgentDebugModeService private readonly debug: IAgentDebugModeService,
     @IAgentSwarmService private readonly swarm: IAgentSwarmService,
     @IAgentTowerService private readonly tower: IAgentTowerService,
     @IAgentGoalService private readonly goal: IAgentGoalService | undefined,
@@ -31,17 +39,33 @@ export class AgentModeMutexService extends Disposable implements IAgentModeMutex
     super();
     this._register(
       eventBus.subscribe(PlanModeEnter, () => {
+        this.exitOtherInteractionModes('plan');
+        if (this.tower.isActive) void this.tower.exit('mode-mutex');
+      }),
+    );
+    this._register(
+      eventBus.subscribe(AskModeEnter, () => {
+        this.exitOtherInteractionModes('ask');
+        if (this.swarm.isActive) this.swarm.exit();
+        if (this.tower.isActive) void this.tower.exit('mode-mutex');
+      }),
+    );
+    this._register(
+      eventBus.subscribe(DebugModeEnter, () => {
+        this.exitOtherInteractionModes('debug');
+        if (this.swarm.isActive) this.swarm.exit();
         if (this.tower.isActive) void this.tower.exit('mode-mutex');
       }),
     );
     this._register(
       eventBus.subscribe(SwarmModeEnter, () => {
+        this.exitOtherInteractionModes('plan');
         if (this.tower.isActive) void this.tower.exit('mode-mutex');
       }),
     );
     this._register(
       eventBus.subscribe(TowerModeEnter, () => {
-        if (this.agentState.get(planKey).active) this.plan.exit();
+        this.exitOtherInteractionModes(undefined);
         if (this.swarm.isActive) this.swarm.exit();
         if (this.goal?.getGoal().goal?.status === 'active') {
           void this.goal.pauseGoal({ reason: 'Paused after tower mode entered' }, 'system');
@@ -62,6 +86,12 @@ export class AgentModeMutexService extends Disposable implements IAgentModeMutex
         void this.tower.exit('mode-mutex');
       }),
     );
+  }
+
+  private exitOtherInteractionModes(keep: InteractionMode | undefined): void {
+    if (keep !== 'plan' && this.agentState.get(planKey).active) this.plan.exit();
+    if (keep !== 'ask' && this.ask.isActive()) this.ask.exit();
+    if (keep !== 'debug' && this.debug.isActive()) this.debug.exit();
   }
 }
 

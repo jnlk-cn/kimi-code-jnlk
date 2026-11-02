@@ -438,12 +438,12 @@ describe('EditorKeyboardController input changes', () => {
   });
 });
 
-describe('EditorKeyboardController Shift-Tab plan toggle', () => {
+describe('EditorKeyboardController Shift-Tab mode cycle', () => {
   function createShiftTabHarness(options: { sessionless?: boolean } = {}) {
     const editor: Record<string, ((...args: never[]) => unknown) | undefined> = {
       setHistoryFilter: vi.fn() as unknown as (...args: never[]) => unknown,
     };
-    const handlePlanToggle = vi.fn();
+    const handleAgentModeSwitch = vi.fn();
     const track = vi.fn();
     const showError = vi.fn();
     const ensureSession = vi.fn(async (): Promise<{ id: string } | undefined> => ({ id: 'ses-lazy' }));
@@ -451,13 +451,19 @@ describe('EditorKeyboardController Shift-Tab plan toggle', () => {
       state: {
         editor,
         activeDialog: null,
-        appState: { streamingPhase: 'idle', isCompacting: false, planMode: false },
+        appState: {
+          streamingPhase: 'idle',
+          isCompacting: false,
+          planMode: false,
+          askMode: false,
+          debugMode: false,
+        },
         footer: { setTransientHint: vi.fn() },
         ui: { requestRender: vi.fn() },
       },
       session: options.sessionless ? undefined : { cancel: vi.fn(async () => {}) },
       ensureSession,
-      handlePlanToggle,
+      handleAgentModeSwitch,
       track,
       showError,
       btwPanelController: { cancelRunning: vi.fn(), closeOrCancel: vi.fn() },
@@ -465,35 +471,39 @@ describe('EditorKeyboardController Shift-Tab plan toggle', () => {
 
     new EditorKeyboardController(host, undefined as unknown as ImageAttachmentStore).install();
     const onShiftTab = editor['onShiftTab'] as unknown as () => void;
-    return { onShiftTab, handlePlanToggle, track, showError, ensureSession };
+    return { onShiftTab, handleAgentModeSwitch, track, showError, ensureSession };
   }
 
-  it('toggles plan mode directly with an active session', () => {
-    const { onShiftTab, handlePlanToggle, ensureSession } = createShiftTabHarness();
+  it('cycles from Agent to Plan directly with an active session', () => {
+    const { onShiftTab, handleAgentModeSwitch, ensureSession } = createShiftTabHarness();
 
     onShiftTab();
 
     expect(ensureSession).not.toHaveBeenCalled();
-    expect(handlePlanToggle).toHaveBeenCalledWith(true);
+    expect(handleAgentModeSwitch).toHaveBeenCalledWith('plan');
   });
 
-  it('lazy-creates the session before toggling on v2 when session-less', async () => {
-    const { onShiftTab, ensureSession, handlePlanToggle, track } = createShiftTabHarness({
+  it('lazy-creates the session before cycling on v2 when session-less', async () => {
+    const { onShiftTab, ensureSession, handleAgentModeSwitch, track } = createShiftTabHarness({
       sessionless: true,
     });
 
     onShiftTab();
-    expect(handlePlanToggle).not.toHaveBeenCalled();
+    expect(handleAgentModeSwitch).not.toHaveBeenCalled();
 
     await vi.waitFor(() => {
-      expect(handlePlanToggle).toHaveBeenCalledWith(true);
+      expect(handleAgentModeSwitch).toHaveBeenCalledWith('plan');
     });
     expect(ensureSession).toHaveBeenCalledOnce();
     expect(track).toHaveBeenCalledWith('shortcut_plan_toggle', { enabled: true });
+    expect(track).toHaveBeenCalledWith('shortcut_mode_switch', {
+      from_mode: 'agent',
+      to_mode: 'plan',
+    });
   });
 
-  it('does not toggle when the lazy creation fails on v2', async () => {
-    const { onShiftTab, ensureSession, handlePlanToggle } = createShiftTabHarness({
+  it('does not cycle when the lazy creation fails on v2', async () => {
+    const { onShiftTab, ensureSession, handleAgentModeSwitch } = createShiftTabHarness({
       sessionless: true,
     });
     ensureSession.mockResolvedValue(undefined);
@@ -501,7 +511,7 @@ describe('EditorKeyboardController Shift-Tab plan toggle', () => {
     onShiftTab();
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(handlePlanToggle).not.toHaveBeenCalled();
+    expect(handleAgentModeSwitch).not.toHaveBeenCalled();
   });
 });
 

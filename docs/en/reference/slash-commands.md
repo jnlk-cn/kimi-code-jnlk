@@ -53,6 +53,9 @@ Some commands are only available in the idle state. Executing these commands whi
 | `/yolo` | `/yes` | Open the permission mode list with Ask When Needed preselected; press `Enter` to confirm. In this mode, routine edits and commands run automatically; risky actions, questions, and plans still ask | Yes |
 | `/auto` | — | Open the permission mode list with Never Ask preselected; press `Enter` to confirm. In this mode, everything runs and is decided automatically; only plans in Plan mode wait for your review | Yes |
 | `/plan [on\|off]` | — | Toggle Plan mode. Without arguments, flips the current state; explicitly passing `on`/`off` forces the setting. Simply toggling does not create an empty plan file | Yes |
+| `/ask [on\|off]` | — | Toggle Ask mode: read-only Q&A. File edits, shell commands, subagents, and scheduled tasks are rejected while it is active | Yes |
+| `/debug [on\|off]` | — | Toggle Debug mode: reproduce and gather evidence before fixing, then verify with the reproduction and related tests | Yes |
+| `/mode` | — | Pick an agent mode from a list: Agent, Plan, Ask, or Debug | Yes |
 | `/plan clear` | — | Clear the current plan | No |
 | `/swarm on\|off` | — | Turn swarm mode on or off without sending a prompt. `AgentSwarm` only runs while swarm mode is on. | Yes |
 | `/swarm <task>` | — | Turn swarm mode on, then send `<task>` as a normal prompt. If the turn completes normally, swarm mode turns off automatically. In `manual` permission mode, Kimi Code asks whether to switch to Ask When Needed or Never Ask mode before starting. | No |

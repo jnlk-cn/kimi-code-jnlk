@@ -73,6 +73,12 @@ import {
   handleTitleCommand,
 } from './session';
 import { handleSwarmCommand } from './swarm';
+import {
+  applyAgentModeSelection,
+  handleAskCommand,
+  handleDebugCommand,
+  handleModeCommand,
+} from './mode';
 import { handleTowerCommand } from './tower';
 import { handleUndoCommand } from './undo';
 import { handleRemoteControlCommand, handleWebCommand } from './web';
@@ -101,6 +107,12 @@ export {
 } from './config';
 export { handleSwarmCommand } from './swarm';
 export { handleTowerCommand } from './tower';
+export {
+  applyAgentModeSelection,
+  handleAskCommand,
+  handleDebugCommand,
+  handleModeCommand,
+} from './mode';
 export { handleFeedbackCommand, showMcpServers, showStatusReport, showUsage } from './info';
 export { handlePluginsCommand } from './plugins';
 export { handleReloadCommand, handleReloadTuiCommand } from './reload';
@@ -521,6 +533,15 @@ async function handleBuiltInSlashCommand(
       return;
     case 'plan':
       await handlePlanCommand(host, args);
+      return;
+    case 'ask':
+      await handleAskCommand(host, args);
+      return;
+    case 'debug':
+      await handleDebugCommand(host, args);
+      return;
+    case 'mode':
+      handleModeCommand(host, args);
       return;
     case 'swarm':
       await handleSwarmCommand(host, args);

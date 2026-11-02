@@ -2398,7 +2398,7 @@ interface ActiveTurn {
   partials: ContentPart[];
   forceContentPartBoundary: boolean;
   readyResolved: boolean;
-  mode: 'agent' | 'plan' | undefined;
+  mode: 'agent' | 'plan' | 'ask' | 'debug' | undefined;
   providerType: string | undefined;
   protocol: string | undefined;
 }

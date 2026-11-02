@@ -23,6 +23,7 @@ All flags are optional — run `kimi` directly to enter an interactive session:
 | `--yolo` | `-y` | Start in Ask When Needed mode: routine edits and commands run automatically; risky actions, questions, and plans still ask |
 | `--auto` | | Start in Never Ask mode: everything runs and is decided automatically; only plans in Plan mode wait for your review |
 | `--plan` | | Start a new session in Plan mode — the AI will prioritize read-only tools for exploration and planning |
+| `--mode <mode>` | | Start a new session in the given agent mode: `agent`, `plan`, `ask`, or `debug`. `ask` is read-only; `debug` requires evidence before fixing. Cannot be combined with `--plan` |
 | `--skills-dir <dir>` | | Load Skills from the specified directory, replacing the automatically discovered user and project directories. Can be repeated |
 | `--agent <name>` | | Start a new session with the specified agent as the main Agent. Cannot be combined with `--session`/`--continue` |
 | `--agent-file <path>` | | Load a custom agent from a Markdown file for the new session and select it. Cannot be repeated or combined with `--agent`, `--session`, or `--continue` |
@@ -40,7 +41,8 @@ The following combinations are rejected at startup:
 
 - `--continue` and `--session` are mutually exclusive — both mean "resume a previous session"
 - `--yolo` and `--auto` are mutually exclusive — the two permission modes cannot be combined
-- `--prompt` cannot be used with `--yolo`, `--auto`, or `--plan` — non-interactive mode uses `auto` permission by default
+- `--prompt` cannot be used with `--yolo`, `--auto`, `--plan`, or `--mode` — non-interactive mode uses `auto` permission by default
+- `--plan` and `--mode` are mutually exclusive — use `--mode plan` instead of combining them
 - `--output-format` can only be used together with `--prompt`
 - `--environment` cannot be combined with `--session`/`--continue` — the environment is bound at session creation and the bound environment is restored automatically on resume
 - `--environment-cwd` requires `--environment`; both flags are creation-only and cannot be combined with `--session`/`--continue`

@@ -57,7 +57,7 @@ export type StrictPropertyCheck<T, E> = string extends keyof T
 
 export interface TurnStartedEvent {
   turn_id: number;
-  mode: 'agent' | 'plan';
+  mode: 'agent' | 'plan' | 'ask' | 'debug';
   provider_type?: string;
   protocol?: string;
   thinking_effort?: string;
@@ -67,7 +67,7 @@ export interface TurnStartedEvent {
 export interface TurnInterruptedEvent {
   turn_id: number;
   at_step: number;
-  mode: 'agent' | 'plan';
+  mode: 'agent' | 'plan' | 'ask' | 'debug';
   interrupt_reason: 'user_cancelled' | 'aborted' | 'max_steps' | 'error' | 'filtered' | 'blocked';
   provider_type?: string;
   protocol?: string;
@@ -79,7 +79,7 @@ export interface TurnEndedEvent {
   turn_id: number;
   reason: 'completed' | 'cancelled' | 'failed';
   duration_ms: number;
-  mode: 'agent' | 'plan';
+  mode: 'agent' | 'plan' | 'ask' | 'debug';
   error_type?: string;
   provider_type?: string;
   protocol?: string;

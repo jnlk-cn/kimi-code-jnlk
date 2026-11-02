@@ -163,6 +163,8 @@ import {
   reloadOnStale,
   agentContextOf,
   IAgentChangeNotifierService,
+  IAgentAskModeService,
+  IAgentDebugModeService,
   IAgentContextMemoryService,
   IAgentConversationUndoService,
   IAgentCronService,
@@ -291,6 +293,7 @@ import {
   type SetSessionModelRpcResult,
   type SetSessionPermissionRpcInput,
   type SetSessionPlanModeRpcInput,
+  type SetSessionAgentModeRpcInput,
   type SetSessionSwarmModeRpcInput,
   type SetSessionThinkingRpcInput,
   type SetSessionTowerModeRpcInput,
@@ -1383,6 +1386,8 @@ export class SDKRpcClientV2 extends SDKRpcClientBase {
         rules: [...agent.accessor.get(IAgentPermissionRulesService).rules],
       } as ResumedAgentState['permission'],
       plan: plan as ResumedAgentState['plan'],
+      askMode: agent.accessor.get(IAgentAskModeService).isActive(),
+      debugMode: agent.accessor.get(IAgentDebugModeService).isActive(),
       swarmMode: agent.accessor.get(IAgentSwarmService).isActive,
       usage: usage as ResumedAgentState['usage'],
       tools: tools as ResumedAgentState['tools'],
@@ -2094,6 +2099,18 @@ export class SDKRpcClientV2 extends SDKRpcClientBase {
     return agent.enterPlan();
   }
 
+  override async setAskMode(input: SetSessionAgentModeRpcInput): Promise<void> {
+    const agent = await this.agentFacade(input.sessionId);
+    if (!input.enabled) return agent.exitAskMode();
+    return agent.enterAskMode();
+  }
+
+  override async setDebugMode(input: SetSessionAgentModeRpcInput): Promise<void> {
+    const agent = await this.agentFacade(input.sessionId);
+    if (!input.enabled) return agent.exitDebugMode();
+    return agent.enterDebugMode();
+  }
+
   override async getPlan(input: SessionIdRpcInput): Promise<SessionPlan> {
     const agent = await this.agentFacade(input.sessionId);
     return agent.getPlan();
@@ -2216,6 +2233,8 @@ export class SDKRpcClientV2 extends SDKRpcClientBase {
       thinkingEffort: profile.thinkingLevel,
       permission: agent.accessor.get(IAgentPermissionModeService).mode,
       planMode: plan !== null,
+      askMode: agent.accessor.get(IAgentAskModeService).isActive(),
+      debugMode: agent.accessor.get(IAgentDebugModeService).isActive(),
       swarmMode: agent.accessor.get(IAgentSwarmService).isActive,
       towerMode: agent.accessor.get(IAgentTowerService).isActive,
       contextTokens,

@@ -3,6 +3,7 @@ export * from './chrome/footer';
 export * from './chrome/moon-loader';
 export * from './chrome/welcome';
 export * from './dialogs/approval-panel';
+export * from './dialogs/agent-mode-selector';
 export * from './dialogs/choice-picker';
 export * from './dialogs/compaction';
 export * from './dialogs/editor-selector';

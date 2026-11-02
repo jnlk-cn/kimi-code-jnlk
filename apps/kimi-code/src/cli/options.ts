@@ -6,6 +6,12 @@ export const OUTPUT_FORMAT_ENV = 'KIMI_MODEL_OUTPUT_FORMAT';
 
 const OUTPUT_FORMATS = ['text', 'stream-json'] as const;
 
+const STARTUP_MODES = ['agent', 'plan', 'ask', 'debug'] as const;
+
+export function isStartupAgentMode(value: string): value is StartupAgentMode {
+  return (STARTUP_MODES as readonly string[]).includes(value);
+}
+
 function isOutputFormat(value: string): value is PromptOutputFormat {
   return (OUTPUT_FORMATS as readonly string[]).includes(value);
 }
@@ -34,12 +40,15 @@ export function resolveOutputFormat(
   return raw;
 }
 
+export type StartupAgentMode = 'agent' | 'plan' | 'ask' | 'debug';
+
 export interface CLIOptions {
   session: string | undefined;
   continue: boolean;
   yolo: boolean;
   auto: boolean;
   plan: boolean;
+  mode?: string;
   model: string | undefined;
   outputFormat: PromptOutputFormat | undefined;
   prompt: string | undefined;
@@ -92,6 +101,17 @@ export function validateOptions(
   }
   if (promptMode && opts.plan) {
     throw new OptionConflictError('Cannot combine --prompt with --plan.');
+  }
+  if (promptMode && opts.mode !== undefined) {
+    throw new OptionConflictError('Cannot combine --prompt with --mode.');
+  }
+  if (opts.mode !== undefined && opts.plan) {
+    throw new OptionConflictError('Cannot combine --plan with --mode: use --mode plan instead.');
+  }
+  if (opts.mode !== undefined && !isStartupAgentMode(opts.mode)) {
+    throw new OptionConflictError(
+      `Invalid --mode value "${opts.mode}". Expected one of: agent, plan, ask, debug.`,
+    );
   }
   if (opts.agent !== undefined && opts.agent.trim().length === 0) {
     throw new OptionConflictError('Agent cannot be empty.');

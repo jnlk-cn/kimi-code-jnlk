@@ -72,16 +72,32 @@ Approvals are not triggered for regular tool calls in Ask When Needed mode, nor 
 **Never Ask mode** (formerly Auto), enabled with `/auto`, is the fully unattended mode: every tool approval is handled automatically, including sensitive files, and the agent never asks you questions — it decides everything on its own. The one exception is Plan mode: a plan still waits for your review before the agent carries it out. The built-in dangerous-command guard asks for your confirmation before commands such as `shutdown`, `reboot`, or `rm -rf` in Always Ask and Ask When Needed mode; in Never Ask mode these commands run without interruption.
 
 
-## Mode switching
+## Agent modes
+
+Kimi Code has four agent modes: Agent (the default), Plan, Ask, and Debug. They are mutually exclusive — entering one leaves whichever mode was active. Press `Shift-Tab` to cycle Agent → Plan → Ask → Debug, or run `/mode` to pick one from a list. The active mode shows as a badge in the status bar, and `/status` reports it on the `Mode` line.
 
 ### Plan mode
 
 In Plan mode the agent first outputs an action plan and waits for your approval before modifying any files — useful for complex or high-risk tasks. Only you can turn Plan mode on; the agent never enters it on its own, even when you ask it to in chat.
 
-- Toggle: `Shift-Tab` or `/plan`
+- Toggle: `Shift-Tab` until Plan is active, or `/plan`
 - Clear the current plan: `/plan clear` (only while idle)
 
 After producing a plan the agent pauses for your review — you can approve it, reject it, or ask for revisions. Exiting Plan mode always requires your confirmation, in every permission mode, including Never Ask.
+
+### Ask mode
+
+Ask mode answers questions about the code without touching it. File edits, shell commands, subagent launches, and scheduled tasks are blocked, and the agent explains what it found with `path:line` references instead of making changes. It is read-only in the strict sense: even `Bash` is unavailable, so the agent cannot run commands to gather evidence.
+
+- Toggle: `/ask`, `/ask on`, or `/ask off`
+- Use it to understand unfamiliar code, compare approaches, or get a review before switching back to Agent mode. If you ask for a change, the agent describes the edit and tells you to leave Ask mode.
+
+### Debug mode
+
+Debug mode keeps the full toolset but changes the discipline. The agent reproduces the failure first, lists candidate causes with the observation that would confirm or refute each, adds minimal temporary instrumentation to collect runtime evidence, fixes the root cause, and re-runs the reproduction plus related tests before reporting. It does not claim a fix without a passing reproduction.
+
+- Toggle: `/debug`, `/debug on`, or `/debug off`
+- Use it when something is broken and you want the cause found instead of a plausible patch.
 
 ### Shell mode
 

@@ -99,6 +99,18 @@ export const agentPlanContract = {
   cancel: { input: z.tuple([z.string().optional()]), output: noResult },
 } satisfies ServiceContract;
 
+export const agentAskModeContract = {
+  isActive: { input: z.tuple([]), output: z.boolean() },
+  enter: { input: z.tuple([]), output: noResult },
+  exit: { input: z.tuple([]), output: noResult },
+} satisfies ServiceContract;
+
+export const agentDebugModeContract = {
+  isActive: { input: z.tuple([]), output: z.boolean() },
+  enter: { input: z.tuple([]), output: noResult },
+  exit: { input: z.tuple([]), output: noResult },
+} satisfies ServiceContract;
+
 /** `McpServerEntry` from the engine's `mcpCore/connection-manager`. */
 export const mcpServerEntrySchema = z.object({
   name: z.string(),

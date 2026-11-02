@@ -182,6 +182,34 @@ describe('CLI options parsing', () => {
     });
   });
 
+  describe('--mode', () => {
+    it('parses every supported agent mode', () => {
+      for (const mode of ['agent', 'plan', 'ask', 'debug'] as const) {
+        const opts = parse(['--mode', mode]);
+        expect(opts.mode).toBe(mode);
+        expect(validateOptions(opts).uiMode).toBe('shell');
+      }
+    });
+
+    it('rejects an unknown mode', () => {
+      expect(() => validateOptions(parse(['--mode', 'turbo']))).toThrow(
+        'Invalid --mode value "turbo". Expected one of: agent, plan, ask, debug.',
+      );
+    });
+
+    it('rejects --plan combined with --mode', () => {
+      expect(() => validateOptions(parse(['--plan', '--mode', 'ask']))).toThrow(
+        'Cannot combine --plan with --mode',
+      );
+    });
+
+    it('rejects --mode in prompt mode', () => {
+      expect(() => validateOptions(parse(['-p', 'hi', '--mode', 'ask']))).toThrow(
+        'Cannot combine --prompt with --mode.',
+      );
+    });
+  });
+
   describe('--auto / --yolo / --plan with --session / --continue', () => {
     it('allows --auto with --continue', () => {
       const opts = parse(['--auto', '--continue']);

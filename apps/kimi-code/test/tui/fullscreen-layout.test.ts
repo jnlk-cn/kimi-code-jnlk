@@ -63,6 +63,8 @@ function fakeInitialAppState(): AppState {
     sessionId: 'sess-1',
     permissionMode: 'manual',
     planMode: false,
+    askMode: false,
+    debugMode: false,
     inputMode: 'prompt',
     swarmMode: false,
     towerMode: false,
@@ -103,7 +105,7 @@ async function mountFullscreen(height = HEIGHT): Promise<{
 }> {
   const opts: KimiTUIOptions = {
     initialAppState: { ...fakeInitialAppState(), tuiMode: 'fullscreen' },
-    startup: { continueLast: false, yolo: false, auto: false, plan: false },
+    startup: { continueLast: false, yolo: false, auto: false },
   };
   const state = createTUIState(opts);
   const vt = new VirtualTerminal(WIDTH, height);
