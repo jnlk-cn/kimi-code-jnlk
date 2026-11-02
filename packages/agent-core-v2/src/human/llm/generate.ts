@@ -1,4 +1,5 @@
 import { resolveEndpoint } from '#/llm/endpoint';
+import { createStreamIdleWatchdog, resolveLlmStreamIdleTimeoutMs } from '#/llm/idleTimeout';
 import { isAbortError, toLlmErrorMessage, toLlmSyntaxErrorMessage } from '#/llm/protocol/errors';
 import type { DecodeSink, LlmModule, ProtocolReply } from '#/llm/protocol/protocol';
 import { withProtocolCapabilities } from '#/llm/protocol/rules/model';
@@ -90,15 +91,42 @@ export async function generate(request: LlmRequest, control: LlmAttemptControl):
         : clientFactory(endpoint);
     const sink = createEventSink(onEvent);
     onEvent?.({ type: 'attempt.sending' });
-    const chunks = stream
-      ? receive(await base.sendStream(client, encodedRequest, signal), onEvent)
-      : base.replay(receive(await base.send(client, encodedRequest, signal), onEvent));
-    const decoder = base.decoder(module, sink);
-    for await (const chunk of chunks) {
-      decoder.push(chunk);
-      if (sink.failed()) return;
+    if (!stream) {
+      const chunks = base.replay(receive(await base.send(client, encodedRequest, signal), onEvent));
+      const decoder = base.decoder(module, sink);
+      for (const chunk of chunks) {
+        decoder.push(chunk);
+        if (sink.failed()) return;
+      }
+      decoder.end();
+      return;
     }
-    decoder.end();
+    const watchdog = createStreamIdleWatchdog(resolveLlmStreamIdleTimeoutMs(), signal);
+    try {
+      const decoder = base.decoder(module, sink);
+      const sent = await watchdog.race(() =>
+        base.sendStream(client, encodedRequest, watchdog.signal),
+      );
+      if (sent.timedOut) {
+        onEvent?.({ type: 'attempt.failed', error: watchdog.error() });
+        return;
+      }
+      const chunks = receive(sent.value, onEvent)[Symbol.asyncIterator]();
+      for (;;) {
+        const step = await watchdog.race(() => chunks.next());
+        if (step.timedOut) {
+          void Promise.resolve(chunks.return?.()).catch(() => {});
+          onEvent?.({ type: 'attempt.failed', error: watchdog.error() });
+          return;
+        }
+        if (step.value.done === true) break;
+        decoder.push(step.value.value);
+        if (sink.failed()) return;
+      }
+      decoder.end();
+    } finally {
+      watchdog.dispose();
+    }
   } catch (error) {
     onEvent?.({ type: 'attempt.failed', error: remoteErrorOf(request, error), rawError: error });
   }
