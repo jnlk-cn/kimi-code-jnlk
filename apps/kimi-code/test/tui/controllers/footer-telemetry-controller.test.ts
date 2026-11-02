@@ -13,8 +13,8 @@ vi.mock('#/utils/usage/deepseek-balance', () => ({
 }));
 
 const DEEPSEEK_STATE = {
-  model: 'deepseek-chat',
-  availableModels: { 'deepseek-chat': { provider: 'deepseek', model: 'deepseek-chat' } },
+  model: 'deepseek-flash',
+  availableModels: { 'deepseek-flash': { provider: 'deepseek', model: 'deepseek-flash' } },
   availableProviders: { deepseek: { type: 'openai', baseUrl: 'https://api.deepseek.com' } },
 } as unknown as AppState;
 

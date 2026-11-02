@@ -8,10 +8,11 @@ export {
   DEEPSEEK_V4_MODEL_PREFIX,
   deepSeekBaseModelId,
   deepseekOpenAIProtocol,
+  isDeepSeekBaseUrl,
   isDeepSeekV4Model,
 } from './protocol';
 
-const deepseekEndpoint: LlmEndpoint = {
+export const deepseekEndpoint: LlmEndpoint = {
   defaultBaseUrl: DEEPSEEK_DEFAULT_BASE_URL,
 };
 

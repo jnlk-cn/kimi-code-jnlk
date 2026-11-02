@@ -37,6 +37,15 @@ const ADD_DIR_ARG_COMPLETIONS: readonly ArgCompletionSpec[] = [
   { value: 'list', description: 'Show configured additional workspace directories' },
 ];
 
+const CONTEXT_ARG_COMPLETIONS: readonly ArgCompletionSpec[] = [
+  { value: '128k', description: 'Working budget of 128k tokens' },
+  { value: '256k', description: 'Working budget of 256k tokens' },
+  { value: '320k', description: 'Working budget of 320k tokens' },
+  { value: '512k', description: 'Working budget of 512k tokens' },
+  { value: '768k', description: 'Working budget of 768k tokens' },
+  { value: '1m', description: 'Working budget of 1M tokens' },
+];
+
 /** Argument autocompletion for the `/goal` command (subcommands). */
 export function goalArgumentCompletions(argumentPrefix: string): AutocompleteItem[] | null {
   const nextMatch = argumentPrefix.match(/^next\s+(\S*)$/i);
@@ -59,6 +68,11 @@ export function swarmArgumentCompletions(argumentPrefix: string): AutocompleteIt
 /** Argument autocompletion for the `/tower` command (subcommands). */
 export function towerArgumentCompletions(argumentPrefix: string): AutocompleteItem[] | null {
   return completeLeadingArg(TOWER_ARG_COMPLETIONS, argumentPrefix);
+}
+
+/** Argument autocompletion for the `/context` command (working budgets). */
+export function contextArgumentCompletions(argumentPrefix: string): AutocompleteItem[] | null {
+  return completeLeadingArg(CONTEXT_ARG_COMPLETIONS, argumentPrefix);
 }
 
 /** Argument autocompletion for the `/add-dir` command. */
@@ -245,6 +259,14 @@ export const BUILTIN_SLASH_COMMANDS = [
     description: 'Switch thinking effort',
     priority: 95,
     availability: 'always',
+  },
+  {
+    name: 'context',
+    aliases: [],
+    description: 'Switch the model context window',
+    priority: 95,
+    availability: 'always',
+    completeArgs: contextArgumentCompletions,
   },
   {
     name: 'provider',

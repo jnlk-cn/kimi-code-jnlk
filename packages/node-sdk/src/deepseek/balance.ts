@@ -15,7 +15,8 @@ export type FetchDeepSeekBalanceResult = DeepSeekBalanceResult | DeepSeekBalance
 
 function normalizeBaseUrl(baseUrl: string | undefined): string {
   const trimmed = (baseUrl ?? 'https://api.deepseek.com').trim().replace(/\/+$/, '');
-  return trimmed.length > 0 ? trimmed : 'https://api.deepseek.com';
+  if (trimmed.length === 0) return 'https://api.deepseek.com';
+  return trimmed.replace(/\/(?:v1|anthropic|beta)$/i, '').replace(/\/+$/, '');
 }
 
 export async function fetchDeepSeekBalance(

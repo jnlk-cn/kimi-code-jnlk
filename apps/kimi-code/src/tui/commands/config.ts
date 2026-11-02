@@ -9,7 +9,17 @@ import {
 } from '@moonshot-ai/kimi-code-sdk';
 
 import { EditorSelectorComponent } from '../components/dialogs/editor-selector';
-import { EffortSelectorComponent } from '../components/dialogs/effort-selector';
+import { SegmentedSelectorComponent } from '../components/dialogs/segmented-selector';
+import {
+  applyContextSize,
+  COMPACTION_TRIGGER_RATIO,
+  contextSizeChoices,
+  contextSizeLabel,
+  contextSizeOptions,
+  declaredContextSize,
+  effectiveContextSize,
+  parseContextSizeArg,
+} from '../utils/context-size';
 import {
   ExperimentsSelectorComponent,
   type ExperimentalFeatureDraftChange,
@@ -286,8 +296,9 @@ function showEffortPicker(
   const liveEffort = host.state.appState.thinkingEffort;
   const currentValue = segments.includes(liveEffort) ? liveEffort : (segments[0] ?? 'off');
   host.mountEditorReplacement(
-    new EffortSelectorComponent({
-      efforts: segments,
+    new SegmentedSelectorComponent({
+      title: t('Select thinking effort'),
+      values: segments,
       currentValue,
       warning: hasConversationHistory(host) ? t(EFFORT_SWITCH_CACHE_WARNING) : undefined,
       descriptions: model.provider === DEFAULT_OAUTH_PROVIDER_NAME ? effortDescriptions() : undefined,
@@ -337,6 +348,69 @@ function effortDescriptions(): Record<string, string> | undefined {
     if (localized.en !== undefined) descriptions[effort] = localized.en;
   }
   return descriptions;
+}
+
+export async function handleContextCommand(host: SlashCommandHost, args: string): Promise<void> {
+  const alias = host.state.appState.model;
+  const model = host.state.appState.availableModels[alias];
+  if (model === undefined) {
+    host.showError(t('No model selected. Run /model to select one first.'));
+    return;
+  }
+  const arg = args.trim();
+  if (arg.length === 0) {
+    showContextPicker(host, model);
+    return;
+  }
+  const size = parseContextSizeArg(arg);
+  if (size === undefined) {
+    host.showError(
+      tFormat('Unknown context size "{size}". Available: {options}', {
+        size: arg,
+        options: contextSizeChoices(),
+      }),
+    );
+    return;
+  }
+  const declared = declaredContextSize(model);
+  if (size > declared) {
+    host.showError(
+      tFormat('{size} exceeds the {window} context window of {model}.', {
+        size: contextSizeLabel(size),
+        window: contextSizeLabel(declared),
+        model: modelDisplayName(alias, model),
+      }),
+    );
+    return;
+  }
+  await applyContextSize(host, size);
+}
+
+function showContextPicker(host: SlashCommandHost, model: ModelAlias): void {
+  const values = contextSizeOptions(model).map(String);
+  const current = String(effectiveContextSize(model));
+  const descriptions: Record<string, string> = {};
+  for (const value of values) {
+    descriptions[value] = tFormat('Compacts at about {size}', {
+      size: contextSizeLabel(Math.floor(Number(value) * COMPACTION_TRIGGER_RATIO)),
+    });
+  }
+  host.mountEditorReplacement(
+    new SegmentedSelectorComponent({
+      title: t('Select the context window'),
+      values,
+      currentValue: values.includes(current) ? current : (values[0] ?? current),
+      label: (value) => contextSizeLabel(Number(value)),
+      descriptions,
+      onSelect: (value) => {
+        host.restoreEditor();
+        void applyContextSize(host, Number(value));
+      },
+      onCancel: () => {
+        host.restoreEditor();
+      },
+    }),
+  );
 }
 
 async function ensureEffortSwitchConfig(host: SlashCommandHost): Promise<void> {

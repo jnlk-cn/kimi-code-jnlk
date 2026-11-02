@@ -189,6 +189,8 @@ function modelsDevEndpointRequired(entry: ModelsDevProviderEntry, wire: Provider
 
 const DEEPSEEK_V4_MODEL_PREFIX = 'deepseek-v4-';
 
+const DEEPSEEK_FLASH_MODEL = 'deepseek-flash';
+
 function modelsDevBaseModelId(modelName: string): string {
   const slash = modelName.lastIndexOf('/');
   return (slash >= 0 ? modelName.slice(slash + 1) : modelName).toLowerCase();
@@ -197,8 +199,11 @@ function modelsDevBaseModelId(modelName: string): string {
 function deepSeekV4Efforts(
   modelName: string,
 ): { readonly supportEfforts: readonly string[]; readonly defaultEffort: string } | undefined {
-  if (!modelsDevBaseModelId(modelName).startsWith(DEEPSEEK_V4_MODEL_PREFIX)) return undefined;
-  return { supportEfforts: ['high', 'max'], defaultEffort: 'high' };
+  const base = modelsDevBaseModelId(modelName);
+  if (!base.startsWith(DEEPSEEK_V4_MODEL_PREFIX) && base !== DEEPSEEK_FLASH_MODEL) {
+    return undefined;
+  }
+  return { supportEfforts: ['low', 'high', 'max'], defaultEffort: 'high' };
 }
 
 export function modelsDevModelToCapability(model: ModelsDevModelEntry): ModelsDevModel | undefined {

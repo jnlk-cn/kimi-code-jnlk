@@ -136,5 +136,6 @@ export * from '#/events';
 export type * from '#/types';
 
 export * from '#/deepseek/balance';
+export * from '#/deepseek/defaults';
 export * from '#/deepseek/pricing';
 export * from '#/deepseek/telemetry';

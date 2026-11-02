@@ -34,7 +34,7 @@ import {
   resetModelSwitchConfirmConfigCache,
 } from '#/utils/model-switch-confirm-config';
 import { resetEffortSwitchConfigCache } from '#/utils/effort-switch-config';
-import { EffortSelectorComponent } from '#/tui/components/dialogs/effort-selector';
+import { SegmentedSelectorComponent } from '#/tui/components/dialogs/segmented-selector';
 import { kimiCodePluginMarketplaceUrl } from '#/constant/app';
 import { MOON_SPINNER_FRAMES } from '#/tui/constant/rendering';
 import { promptApiKey, promptPlatformSelection } from '#/tui/commands/prompts';
@@ -11492,9 +11492,9 @@ capabilities = ["image_in", "video_in"]
     driver.handleUserInput('/effort');
 
     await vi.waitFor(() => {
-      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(EffortSelectorComponent);
+      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(SegmentedSelectorComponent);
     });
-    (driver.state.editorContainer.children[0] as EffortSelectorComponent).handleInput('\r');
+    (driver.state.editorContainer.children[0] as SegmentedSelectorComponent).handleInput('\r');
 
     await vi.waitFor(() => {
       expect(renderTranscript(driver)).toContain('Already using Kimi K2 with thinking high.');
@@ -12406,9 +12406,9 @@ describe('/effort support_efforts override', () => {
     driver.handleUserInput('/effort');
 
     await vi.waitFor(() => {
-      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(EffortSelectorComponent);
+      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(SegmentedSelectorComponent);
     });
-    const picker = driver.state.editorContainer.children[0] as EffortSelectorComponent;
+    const picker = driver.state.editorContainer.children[0] as SegmentedSelectorComponent;
     expect(picker.render(80).join('\n')).toContain('Max');
   });
 
@@ -12432,9 +12432,9 @@ describe('/effort support_efforts override', () => {
     driver.handleUserInput('/effort');
 
     await vi.waitFor(() => {
-      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(EffortSelectorComponent);
+      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(SegmentedSelectorComponent);
     });
-    const picker = driver.state.editorContainer.children[0] as EffortSelectorComponent;
+    const picker = driver.state.editorContainer.children[0] as SegmentedSelectorComponent;
     expect(picker.render(80).join('\n')).not.toContain('Max');
   });
 
@@ -12459,9 +12459,9 @@ describe('/effort support_efforts override', () => {
     driver.handleUserInput('/effort');
 
     await vi.waitFor(() => {
-      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(EffortSelectorComponent);
+      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(SegmentedSelectorComponent);
     });
-    const picker = driver.state.editorContainer.children[0] as EffortSelectorComponent;
+    const picker = driver.state.editorContainer.children[0] as SegmentedSelectorComponent;
     expect(picker.render(80).join('\n')).not.toContain('Max');
   });
 
@@ -12484,9 +12484,9 @@ describe('/effort support_efforts override', () => {
     driver.handleUserInput('/effort');
 
     await vi.waitFor(() => {
-      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(EffortSelectorComponent);
+      expect(driver.state.editorContainer.children[0]).toBeInstanceOf(SegmentedSelectorComponent);
     });
-    const picker = driver.state.editorContainer.children[0] as EffortSelectorComponent;
+    const picker = driver.state.editorContainer.children[0] as SegmentedSelectorComponent;
     expect(picker.render(80).join('\n')).toContain('Max');
   });
 

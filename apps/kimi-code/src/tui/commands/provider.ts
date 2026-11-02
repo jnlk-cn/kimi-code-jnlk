@@ -1,5 +1,6 @@
 import {
   applyCatalogProvider,
+  applyDeepSeekModelDefaults,
   catalogProviderModels,
   CatalogFetchError,
   RegistryImportError,
@@ -361,10 +362,11 @@ async function handleCatalogProviderAdd(host: SlashCommandHost): Promise<void> {
     selectedModelId: '', // no default yet; user picks in the model selector
     thinking: false,    // will be resolved by the model selector
   });
+  const defaults = applyDeepSeekModelDefaults(config);
 
   await host.harness.setConfig({
-    providers: config.providers,
-    models: config.models,
+    providers: defaults.providers,
+    models: defaults.models,
   });
 
   await host.authFlow.refreshConfigAfterLogin();

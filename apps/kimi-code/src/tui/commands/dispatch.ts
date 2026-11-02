@@ -31,6 +31,7 @@ import { handleCopyCommand } from './copy';
 import { handleDesktopCommand } from './desktop';
 import {
   handleCompactCommand,
+  handleContextCommand,
   handleEditorCommand,
   handleEffortCommand,
   handleModelCommand,
@@ -94,6 +95,7 @@ export { handleDesktopCommand } from './desktop';
 export { handleAddDirCommand } from './add-dir';
 export {
   handleCompactCommand,
+  handleContextCommand,
   handleEditorCommand,
   handleEffortCommand,
   handleModelCommand,
@@ -500,6 +502,9 @@ async function handleBuiltInSlashCommand(
       return;
     case 'effort':
       await handleEffortCommand(host, args);
+      return;
+    case 'context':
+      await handleContextCommand(host, args);
       return;
     case 'provider':
       await handleProviderCommand(host, args);

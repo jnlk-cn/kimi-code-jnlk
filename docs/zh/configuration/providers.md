@@ -113,6 +113,30 @@ base_url = "https://api.openai.com/v1"
 api_key = "sk-xxxxx"
 ```
 
+### DeepSeek
+
+DeepSeek 官方 API 兼容 OpenAI 协议：把 `base_url` 设为 `https://api.deepseek.com`，模型名使用 `deepseek-flash` 或 `deepseek-v4-pro`。旧名 `deepseek-v4-flash` 仍可调用，实际由当前 Flash 模型提供服务。
+
+在这个端点上，Thinking 模式交给 DeepSeek 自己的参数控制：`low`、`high`、`max` 会作为 `reasoning_effort` 发送，选择 `off` 则把 `thinking` 字段设为 `disabled`。输出上限按模型的 384K 计算。
+
+DeepSeek 声明了 1M 的上下文窗口，但真的填满它既慢、未命中输入又贵，长上下文的指令跟随通常还会退化。所以用 `/provider` 导入时，会写入 256K 的工作预算（`max_input_size = 262144`），而声明的 1M 窗口（`max_context_size`）和声明的 384K 输出上限（`max_output_size`）都保持原样。自动压缩在工作预算的 85% 处触发，之后随时可以用 `/context` 在 `128k`、`256k`、`320k`、`512k`、`768k`、`1m` 之间切换，无需重启会话。
+
+如果没有配置 `[services.moonshot_search]`，也没有可用的 Kimi 托管供应商，`WebSearch` 会回退到 DeepSeek 的 Search API（`/v1/tools/search`）；每次成功搜索由 DeepSeek 按请求计费。
+
+```toml
+[providers.deepseek]
+type = "openai"
+base_url = "https://api.deepseek.com"
+api_key = "YOUR_API_KEY"
+
+[models."deepseek/deepseek-flash"]
+provider = "deepseek"
+model = "deepseek-flash"
+max_context_size = 1048576
+max_input_size = 262144
+max_output_size = 393216
+```
+
 ## `openai_responses`
 
 对应 OpenAI 较新的 Responses API，始终以流式方式工作。配置方式与 `openai` 相同。

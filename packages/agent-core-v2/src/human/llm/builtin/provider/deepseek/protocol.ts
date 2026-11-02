@@ -6,6 +6,8 @@ export const DEEPSEEK_DEFAULT_BASE_URL = 'https://api.deepseek.com';
 
 export const DEEPSEEK_V4_MODEL_PREFIX = 'deepseek-v4-';
 
+const DEEPSEEK_FLASH_MODEL = 'deepseek-flash';
+
 const DEEPSEEK_V4_MAX_OUTPUT_TOKENS_CEILING = 384 * 1024;
 
 export function deepSeekBaseModelId(modelName: string): string {
@@ -14,7 +16,18 @@ export function deepSeekBaseModelId(modelName: string): string {
 }
 
 export function isDeepSeekV4Model(modelName: string): boolean {
-  return deepSeekBaseModelId(modelName).toLowerCase().startsWith(DEEPSEEK_V4_MODEL_PREFIX);
+  const base = deepSeekBaseModelId(modelName).toLowerCase();
+  return base.startsWith(DEEPSEEK_V4_MODEL_PREFIX) || base === DEEPSEEK_FLASH_MODEL;
+}
+
+export function isDeepSeekBaseUrl(baseUrl: string | undefined): boolean {
+  if (baseUrl === undefined || baseUrl.length === 0) return false;
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return host === 'deepseek.com' || host.endsWith('.deepseek.com');
+  } catch {
+    return false;
+  }
 }
 
 function replaysThinking(messages: readonly Message[]): boolean {
@@ -23,15 +36,17 @@ function replaysThinking(messages: readonly Message[]): boolean {
 
 function reasoningEffortOf(effort: string): string | undefined {
   switch (effort) {
-    case 'on':
-      return 'high';
-    case 'max':
-    case 'xhigh':
-      return 'max';
+    case 'minimal':
     case 'low':
+      return 'low';
+    case 'on':
     case 'medium':
     case 'high':
-      return effort;
+    case 'xhigh':
+      return 'high';
+    case 'max':
+    case 'ultra':
+      return 'max';
     default:
       return undefined;
   }

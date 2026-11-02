@@ -853,9 +853,19 @@ describe('deepseek V4 thinking metadata', () => {
       limit: { context: 128000 },
       tool_call: true,
     });
-    expect(model?.supportEfforts).toEqual(['high', 'max']);
+    expect(model?.supportEfforts).toEqual(['low', 'high', 'max']);
     expect(model?.defaultEffort).toBe('high');
     expect(model?.capability.thinking).toBe(true);
+
+    const flash = catalogModelToCapability({
+      id: 'deepseek/deepseek-flash',
+      name: 'DeepSeek V4.1 Flash',
+      limit: { context: 1048576 },
+      tool_call: true,
+    });
+    expect(flash?.supportEfforts).toEqual(['low', 'high', 'max']);
+    expect(flash?.defaultEffort).toBe('high');
+    expect(flash?.capability.thinking).toBe(true);
   });
 
   it('keeps the declared reasoning_options when the catalog has them', () => {

@@ -14,6 +14,11 @@ import { isOAuthCatalogVendor } from '#/llm-adapter/provider/provider-definition
 
 import { SERVICES_SECTION, type ServicesConfig } from '../configSection';
 import { MoonshotWebSearchProvider } from './providers/moonshot-web-search';
+import {
+  DeepSeekWebSearchProvider,
+  deepSeekProviderApiKey,
+  isDeepSeekProviderBaseUrl,
+} from './providers/deepseek-web-search';
 import type { WebSearchProvider } from '#/agent/tools/web-search/web-search';
 import { IWebSearchProviderService } from './webSearch';
 
@@ -29,11 +34,15 @@ export class WebSearchProviderService implements IWebSearchProviderService {
   ) {}
 
   getWebSearchProvider(): WebSearchProvider | undefined {
-    return this.fromServicesConfig() ?? this.fromManagedOAuth();
+    return this.fromServicesConfig() ?? this.fromManagedOAuth() ?? this.fromDeepSeek();
   }
 
   hasWebSearchProvider(): boolean {
-    return this.configuredSearch() !== undefined || this.managedTokenProvider() !== undefined;
+    return (
+      this.configuredSearch() !== undefined ||
+      this.managedTokenProvider() !== undefined ||
+      this.deepSeekProvider() !== undefined
+    );
   }
 
   private configuredSearch(): (ServicesConfig['moonshotSearch'] & { baseUrl: string }) | undefined {
@@ -84,6 +93,28 @@ export class WebSearchProviderService implements IWebSearchProviderService {
       defaultHeaders: { ...this.bootstrap.args.requestHeaders },
       customHeaders: provider.customHeaders,
     });
+  }
+
+  private fromDeepSeek(): WebSearchProvider | undefined {
+    const provider = this.deepSeekProvider();
+    if (provider === undefined) return undefined;
+    const apiKey = deepSeekProviderApiKey(provider);
+    if (apiKey === undefined) return undefined;
+    return new DeepSeekWebSearchProvider({
+      baseUrl: provider.baseUrl,
+      apiKey,
+      customHeaders: provider.customHeaders,
+    });
+  }
+
+  private deepSeekProvider(): ProviderConfig | undefined {
+    const candidates = Object.entries(this.providers.list()).filter(
+      ([, provider]) =>
+        isDeepSeekProviderBaseUrl(provider.baseUrl) &&
+        deepSeekProviderApiKey(provider) !== undefined,
+    );
+    const preferred = candidates.find(([name]) => name === 'deepseek');
+    return (preferred ?? candidates[0])?.[1];
   }
 }
 

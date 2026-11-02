@@ -3,11 +3,17 @@ import { LifecycleScope } from '#/app/scopes';
 import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
 import {
   anthropicRequester,
+  deepseekEndpoint,
+  deepseekRequester,
   googleGenAIRequester,
   googleVertexRequester,
   openAIRequester,
   openAIResponsesRequester,
 } from '#human/llm/builtin/provider/index';
+import {
+  isDeepSeekBaseUrl,
+  isDeepSeekV4Model,
+} from '#human/llm/builtin/provider/deepseek/index';
 import type { OpenAIOptions } from '#human/llm/builtin/protocol/openai/index';
 import { mergeHeaders } from '#human/llm/endpoint';
 import type { LlmEndpoint, LlmSampling } from '#human/llm/request';
@@ -49,15 +55,22 @@ function openAIReasoningKeyFor(model: Model): string | undefined {
   return model.providerOptions?.reasoningKey ?? model.reasoningKey;
 }
 
+function isDeepSeekRoute(model: Model): boolean {
+  if (!isDeepSeekV4Model(model.name)) return false;
+  if (model.providerType === 'deepseek' || model.providerName === 'deepseek') return true;
+  return isDeepSeekBaseUrl(model.baseUrl);
+}
+
 function routeFor(model: Model): AdapterRoute {
   const definition =
     model.providerType === undefined
       ? undefined
       : getProviderDefinition(model.providerType, model.protocol);
   switch (model.protocol) {
-    case 'openai':
+    case 'openai': {
+      const deepseek = definition?.requester === undefined && isDeepSeekRoute(model);
       return {
-        requester: definition?.requester ?? openAIRequester,
+        requester: definition?.requester ?? (deepseek ? deepseekRequester : openAIRequester),
         options: (params) => ({
           extras: samplingExtraParams('openai', params?.sampling),
           reasoningKey:
@@ -65,11 +78,12 @@ function routeFor(model: Model): AdapterRoute {
           toolMessageConversion:
             definition?.requester === undefined ? undefined : 'keep_parts',
         }),
-        endpoint: definition?.endpoint ?? openAIEndpoint,
+        endpoint: deepseek ? deepseekEndpoint : (definition?.endpoint ?? openAIEndpoint),
         defaultHeaders: definition?.defaultHeaders,
         classifyError: definition?.classifyError,
         providerId: 'openai',
       };
+    }
     case 'openai_responses':
       return {
         requester: definition?.requester ?? openAIResponsesRequester,

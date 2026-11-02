@@ -7,47 +7,49 @@ import {
   type Focusable,
 } from '@moonshot-ai/pi-tui';
 
-import type { ThinkingEffort } from '@moonshot-ai/kimi-code-sdk';
-
 import { t } from '#/tui/i18n';
 import { currentTheme } from '#/tui/theme';
 
-import { effortLabel } from './model-selector';
-
-export interface EffortSelectorOptions {
-  readonly title?: string;
-  /** Selectable thinking efforts for the current model (e.g. ["off","low","high","max"]). */
-  readonly efforts: readonly ThinkingEffort[];
-  /** Currently active effort (highlighted). */
-  readonly currentValue: ThinkingEffort;
-  readonly onSelect: (effort: ThinkingEffort) => void;
+export interface SegmentedSelectorOptions<T extends string = string> {
+  readonly title: string;
+  /** Selectable values, rendered left to right in this order. */
+  readonly values: readonly T[];
+  /** Currently active value (highlighted). */
+  readonly currentValue: T;
+  /** Segment text for a value; defaults to the value with a capital first letter. */
+  readonly label?: (value: T) => string;
+  readonly onSelect: (value: T) => void;
   /** When provided, Alt+S applies the choice to the current session only. */
-  readonly onSessionOnlySelect?: (effort: ThinkingEffort) => void;
+  readonly onSessionOnlySelect?: (value: T) => void;
   readonly onCancel: () => void;
   /** When set, rendered as warning-colored lines directly below the key-hint
-   * line; wraps instead of truncating when it exceeds the width (e.g. the
-   * mid-conversation switch cost notice). */
+   * line; wraps instead of truncating when it exceeds the width. */
   readonly warning?: string;
   readonly descriptions?: Readonly<Record<string, string>>;
 }
 
+function defaultLabel(value: string): string {
+  return value.length === 0 ? value : value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 /**
- * Horizontal segmented picker for the `/effort` command.
- *
- * Mirrors the thinking control rendered under `/model` (see
- * `renderThinkingControl` in model-selector.ts): a single row of segments,
- * the active one wrapped in `[ ]`. ←/→ step the active segment, Enter
+ * Horizontal segmented picker shared by `/effort` and `/context`: one row of
+ * segments with the active one wrapped in `[ ]` (the same shape as the
+ * thinking control under `/model`). ←/→ step the active segment, Enter
  * commits, and Alt+S (when provided) applies session-only.
  */
-export class EffortSelectorComponent extends Container implements Focusable {
+export class SegmentedSelectorComponent<T extends string = string>
+  extends Container
+  implements Focusable
+{
   focused = false;
-  private readonly opts: EffortSelectorOptions;
+  private readonly opts: SegmentedSelectorOptions<T>;
   private activeIndex: number;
 
-  constructor(opts: EffortSelectorOptions) {
+  constructor(opts: SegmentedSelectorOptions<T>) {
     super();
     this.opts = opts;
-    const idx = opts.efforts.indexOf(opts.currentValue);
+    const idx = opts.values.indexOf(opts.currentValue);
     this.activeIndex = Math.max(idx, 0);
   }
 
@@ -61,15 +63,15 @@ export class EffortSelectorComponent extends Container implements Focusable {
       return;
     }
     if (matchesKey(data, Key.right)) {
-      this.activeIndex = Math.min(this.opts.efforts.length - 1, this.activeIndex + 1);
+      this.activeIndex = Math.min(this.opts.values.length - 1, this.activeIndex + 1);
       return;
     }
     if (matchesKey(data, Key.alt('s')) && this.opts.onSessionOnlySelect !== undefined) {
-      this.opts.onSessionOnlySelect(this.opts.efforts[this.activeIndex]!);
+      this.opts.onSessionOnlySelect(this.opts.values[this.activeIndex]!);
       return;
     }
     if (matchesKey(data, Key.enter)) {
-      this.opts.onSelect(this.opts.efforts[this.activeIndex]!);
+      this.opts.onSelect(this.opts.values[this.activeIndex]!);
       return;
     }
   }
@@ -81,7 +83,7 @@ export class EffortSelectorComponent extends Container implements Focusable {
 
     const lines: string[] = [
       currentTheme.fg('primary', '─'.repeat(width)),
-      currentTheme.boldFg('primary', ` ${this.opts.title ?? t('Select thinking effort')}`),
+      currentTheme.boldFg('primary', ` ${this.opts.title}`),
       currentTheme.fg('textMuted', ` ${hintParts.join(' · ')}`),
     ];
     if (this.opts.warning !== undefined) {
@@ -91,14 +93,16 @@ export class EffortSelectorComponent extends Container implements Focusable {
     }
     lines.push('');
 
-    const segments = this.opts.efforts.map((effort, index) => {
-      const label = effortLabel(effort);
+    const label = this.opts.label ?? defaultLabel;
+    const segments = this.opts.values.map((value, index) => {
+      const text = label(value);
       return index === this.activeIndex
-        ? currentTheme.boldFg('primary', `[ ${label} ]`)
-        : currentTheme.fg('text', `  ${label}  `);
+        ? currentTheme.boldFg('primary', `[ ${text} ]`)
+        : currentTheme.fg('text', `  ${text}  `);
     });
     lines.push(`  ${segments.join('  ')}`);
-    const description = this.opts.descriptions?.[this.opts.efforts[this.activeIndex]!];
+    const active = this.opts.values[this.activeIndex];
+    const description = active === undefined ? undefined : this.opts.descriptions?.[active];
     if (description !== undefined) lines.push(currentTheme.fg('textMuted', ` ${description}`));
 
     lines.push('');

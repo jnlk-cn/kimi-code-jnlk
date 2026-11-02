@@ -34,6 +34,10 @@ export function beijingHour(date: Date): number {
 }
 
 export function isDeepSeekPeakHour(date: Date): boolean {
-  const hour = beijingHour(date);
+  const shifted = new Date(date.getTime() + BEIJING_OFFSET_MS);
+  const weekday = shifted.getUTCDay();
+  if (weekday === 0 || weekday === 6) return false;
+  // Chinese public holidays are not modeled; they are billed as off-peak by DeepSeek.
+  const hour = shifted.getUTCHours();
   return (hour >= 9 && hour < 12) || (hour >= 14 && hour < 18);
 }

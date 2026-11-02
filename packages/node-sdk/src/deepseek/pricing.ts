@@ -8,10 +8,10 @@ export interface DeepSeekRateCny {
 
 /** CNY per 1M tokens — off-peak baseline from api-docs.deepseek.com/zh-cn/quick_start/pricing */
 export const DEEPSEEK_CNY_RATES: Record<string, DeepSeekRateCny> = {
-  'deepseek-v4-flash': { hit: 0.02, miss: 1.0, out: 2.0 },
-  'deepseek-v4-pro': { hit: 0.025, miss: 3.0, out: 6.0 },
-  'deepseek-chat': { hit: 0.02, miss: 1.0, out: 2.0 },
-  'deepseek-reasoner': { hit: 0.02, miss: 1.0, out: 2.0 },
+  'deepseek-flash': { hit: 0.02, miss: 1.0, out: 4.0 },
+  'deepseek-v4-flash': { hit: 0.02, miss: 1.0, out: 4.0 },
+  'deepseek-v4-flash-vision-exp': { hit: 0.02, miss: 1.0, out: 4.0 },
+  'deepseek-v4-pro': { hit: 0.15, miss: 4.5, out: 13.5 },
 };
 
 export const DEEPSEEK_PEAK_MULTIPLIER = 2;
@@ -58,6 +58,16 @@ export function estimateStepCostCny(input: StepCostInput): number {
   return base * mult;
 }
 
+export function isDeepSeekHost(baseUrl: string | undefined): boolean {
+  if (baseUrl === undefined) return false;
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return host === 'deepseek.com' || host.endsWith('.deepseek.com');
+  } catch {
+    return false;
+  }
+}
+
 export function isDeepSeekProvider(
   model: string,
   availableModels: Record<string, ModelAlias>,
@@ -66,9 +76,7 @@ export function isDeepSeekProvider(
   const alias = availableModels[model];
   if (alias === undefined) return false;
   const provider = availableProviders[alias.provider];
-  if (provider?.type !== 'openai') return false;
-  const base = (provider.baseUrl ?? '').toLowerCase();
-  return base.includes('api.deepseek.com');
+  return isDeepSeekHost(provider?.baseUrl);
 }
 
 export function wireModelId(
@@ -88,9 +96,14 @@ export function resolveDeepSeekProviderApiKey(
   if (provider.apiKey !== undefined && provider.apiKey.trim().length > 0) {
     return provider.apiKey.trim();
   }
+  const envName = provider.apiKeyEnv?.trim();
+  if (envName !== undefined && envName.length > 0) {
+    const value = process.env[envName]?.trim();
+    if (value !== undefined && value.length > 0) return value;
+  }
   const env = provider.env;
   if (env === undefined) return undefined;
-  for (const key of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY']) {
+  for (const key of ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY']) {
     const value = env[key]?.trim();
     if (value !== undefined && value.length > 0) return value;
   }

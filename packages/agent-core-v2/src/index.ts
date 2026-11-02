@@ -597,6 +597,7 @@ export * from '#/app/auth/configSection';
 export * from '#/app/auth/webSearch/webSearch';
 export * from '#/app/auth/webSearch/webSearchService';
 export * from '#/app/auth/webSearch/providers/moonshot-web-search';
+export * from '#/app/auth/webSearch/providers/deepseek-web-search';
 export * from '#/app/authLegacy/authLegacy';
 export * from '#/app/authLegacy/authLegacyService';
 export * from '#/app/file/fileService';

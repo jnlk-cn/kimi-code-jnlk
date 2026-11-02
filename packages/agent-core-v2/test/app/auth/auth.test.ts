@@ -1230,6 +1230,8 @@ describe('WebSearchProviderService', () => {
       additionalServices: (reg) => {
         reg.definePartialInstance(IProviderService, {
           get: ((name: string) => providers[name]) as IProviderService['get'],
+          list: (() => providers) as IProviderService['list'],
+          getDefaultProvider: (() => undefined) as IProviderService['getDefaultProvider'],
         });
         reg.definePartialInstance(IOAuthService, {
           resolveTokenProvider:
@@ -1441,7 +1443,10 @@ describe('WebSearchProviderService', () => {
       moonshotSearch: { baseUrl: 'https://search.example.com/search', apiKey: 'k' },
     };
     const svc = new WebSearchProviderService(
-      { get: ((name: string) => providers[name]) as IProviderService['get'] } as IProviderService,
+      {
+        get: ((name: string) => providers[name]) as IProviderService['get'],
+        list: (() => providers) as IProviderService['list'],
+      } as IProviderService,
       {
         resolveTokenProvider:
           resolveTokenProvider as unknown as IOAuthService['resolveTokenProvider'],
@@ -1469,6 +1474,100 @@ describe('WebSearchProviderService', () => {
       },
     };
     expect(svc.hasWebSearchProvider()).toBe(true);
+  });
+
+  it('falls back to a configured DeepSeek provider for web search', async () => {
+    providers = {
+      deepseek: { type: 'openai', baseUrl: 'https://api.deepseek.com', apiKey: 'ds-key' },
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => ({
+        results: [
+          {
+            title: 'Title',
+            url: 'https://example.com',
+            snippet: 'Snippet',
+            site_name: 'Example',
+            date: '2026-06-01T00:00:00+00:00',
+          },
+          { title: 'Other', url: 'https://example.org', summary: 'Long summary' },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const provider = createService().getWebSearchProvider();
+    expect(provider).not.toBeUndefined();
+    expect(createService().hasWebSearchProvider()).toBe(true);
+    const results = await provider!.search('hello');
+
+    expect(results).toEqual([
+      {
+        title: 'Title',
+        url: 'https://example.com',
+        snippet: 'Snippet',
+        date: '2026-06-01T00:00:00+00:00',
+        siteName: 'Example',
+      },
+      { title: 'Other', url: 'https://example.org', snippet: 'Long summary' },
+    ]);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.deepseek.com/v1/tools/search');
+    const headers = init.headers as Record<string, string>;
+    expect(headers['Authorization']).toBe('Bearer ds-key');
+    expect(headers['User-Agent']).toBeUndefined();
+    expect(JSON.parse(init.body as string)).toEqual({
+      query: 'hello',
+      count: 10,
+      need_content: false,
+    });
+    expect(resolveTokenProvider).not.toHaveBeenCalled();
+  });
+
+  it('normalizes the DeepSeek search URL from the Anthropic-compatible base', async () => {
+    providers = {
+      deepseek: {
+        type: 'anthropic',
+        baseUrl: 'https://api.deepseek.com/anthropic',
+        apiKey: 'ds-key',
+      },
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createService().getWebSearchProvider()!.search('hello');
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.deepseek.com/v1/tools/search');
+  });
+
+  it('does not build a DeepSeek search provider without an API key', () => {
+    providers = {
+      deepseek: { type: 'openai', baseUrl: 'https://api.deepseek.com' },
+    };
+    expect(createService().getWebSearchProvider()).toBeUndefined();
+    expect(createService().hasWebSearchProvider()).toBe(false);
+  });
+
+  it('prefers the services config over the DeepSeek provider', async () => {
+    servicesConfig = {
+      moonshotSearch: { baseUrl: 'https://config.example.com/search', apiKey: 'config-key' },
+    };
+    providers = {
+      deepseek: { type: 'openai', baseUrl: 'https://api.deepseek.com', apiKey: 'ds-key' },
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => ({ search_results: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createService().getWebSearchProvider()!.search('hello');
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://config.example.com/search');
   });
 });
 

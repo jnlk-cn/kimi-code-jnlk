@@ -113,6 +113,30 @@ base_url = "https://api.openai.com/v1"
 api_key = "sk-xxxxx"
 ```
 
+### DeepSeek
+
+The official DeepSeek API is OpenAI-compatible: set `base_url` to `https://api.deepseek.com` and use `deepseek-flash` or `deepseek-v4-pro`. The legacy `deepseek-v4-flash` name is still accepted and is served by the current Flash model.
+
+On this endpoint Thinking mode follows DeepSeek's own controls: `low`, `high`, and `max` are sent as `reasoning_effort`, while `off` sends the `thinking` field set to `disabled`. The output ceiling follows the model's 384K limit.
+
+DeepSeek declares a 1M-token window, but filling it is slow, expensive on uncached input, and usually worse for instruction following. Importing the provider with `/provider` therefore writes a 256K working budget (`max_input_size = 262144`) while leaving the declared 1M window (`max_context_size`) and the declared 384K output ceiling (`max_output_size`) untouched. Auto-compaction triggers at 85% of the working budget, and tapping `/context` later switches it between `128k`, `256k`, `320k`, `512k`, `768k`, and `1m` without a restart.
+
+When you have not configured `[services.moonshot_search]` and no Kimi managed provider is available, `WebSearch` falls back to DeepSeek's Search API (`/v1/tools/search`); each successful search is billed by DeepSeek per request.
+
+```toml
+[providers.deepseek]
+type = "openai"
+base_url = "https://api.deepseek.com"
+api_key = "YOUR_API_KEY"
+
+[models."deepseek/deepseek-flash"]
+provider = "deepseek"
+model = "deepseek-flash"
+max_context_size = 1048576
+max_input_size = 262144
+max_output_size = 393216
+```
+
 ## `openai_responses`
 
 Corresponds to OpenAI's newer Responses API, always operating in streaming mode. Configuration is the same as `openai`.

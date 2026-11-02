@@ -1055,7 +1055,7 @@ describe('deepseek protocol encoding', () => {
       thinking: { type: 'enabled' },
       reasoning_effort: 'max',
     });
-    expect(encodeDeepSeek({ effort: 'xhigh' })).toMatchObject({ reasoning_effort: 'max' });
+    expect(encodeDeepSeek({ effort: 'xhigh' })).toMatchObject({ reasoning_effort: 'high' });
   });
 
   it('encodes off as a disabled thinking object without reasoning_effort', () => {
@@ -1080,5 +1080,12 @@ describe('deepseek protocol encoding', () => {
     });
     expect(params['max_tokens']).toBe(384 * 1024);
     expect(params['model']).toBe('deepseek-v4-pro');
+
+    const flash = encodeDeepSeek({
+      maxOutputTokens: 500_000,
+      modelName: 'deepseek/deepseek-flash',
+    });
+    expect(flash['max_tokens']).toBe(384 * 1024);
+    expect(flash['model']).toBe('deepseek-flash');
   });
 });

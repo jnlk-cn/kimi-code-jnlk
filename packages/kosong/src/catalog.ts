@@ -311,20 +311,26 @@ function catalogEndpointRequired(entry: CatalogProviderEntry, wire: ProviderType
 
 const DEEPSEEK_V4_MODEL_PREFIX = 'deepseek-v4-';
 
+const DEEPSEEK_FLASH_MODEL = 'deepseek-flash';
+
 function catalogModelBaseId(modelId: string): string {
   const slash = modelId.lastIndexOf('/');
   return (slash >= 0 ? modelId.slice(slash + 1) : modelId).toLowerCase();
 }
 
 /**
- * Thinking metadata for DeepSeek V4, which accepts `high` and `max` but is not
- * always described by a `reasoning_options` entry in the public catalog.
+ * Thinking metadata for DeepSeek's thinking models, which accept `low`, `high`,
+ * and `max` but are not always described by a `reasoning_options` entry in the
+ * public catalog.
  */
 export function deepSeekV4Efforts(
   modelId: string,
 ): { readonly supportEfforts: readonly string[]; readonly defaultEffort: string } | undefined {
-  if (!catalogModelBaseId(modelId).startsWith(DEEPSEEK_V4_MODEL_PREFIX)) return undefined;
-  return { supportEfforts: ['high', 'max'], defaultEffort: 'high' };
+  const base = catalogModelBaseId(modelId);
+  if (!base.startsWith(DEEPSEEK_V4_MODEL_PREFIX) && base !== DEEPSEEK_FLASH_MODEL) {
+    return undefined;
+  }
+  return { supportEfforts: ['low', 'high', 'max'], defaultEffort: 'high' };
 }
 
 /** Normalizes one catalog model entry into a {@link CatalogModel}; skips invalid entries. */

@@ -152,8 +152,8 @@ KIMI_BASE_URL = "https://api.moonshot.ai/v1"
 | `provider` | `string` | 是 | 使用的供应商名称，必须在 `providers` 中定义 |
 | `model` | `string` | 是 | 调用 API 时实际传给服务端的模型 ID |
 | `max_context_size` | `integer` | 是 | 最大上下文长度（token 数），必须 ≥ 1 |
-| `max_input_size` | `integer` | 否 | 模型声明的单次请求输入上限；压缩、溢出检查与用量比率优先使用它，补全预算仍用总窗口 |
-| `max_output_size` | `integer` | 否 | 单次请求的输出 token 上限（对应 `max_tokens`），目前仅 `anthropic` 供应商读取 |
+| `max_input_size` | `integer` | 否 | 模型声明的单次请求输入上限；压缩、溢出检查与用量比率优先使用它，补全预算仍用总窗口。`/context` 写入的就是这个字段 |
+| `max_output_size` | `integer` | 否 | 单次请求的输出 token 上限（对应 `max_tokens`），实际请求还会被剩余上下文窗口进一步夹取 |
 | `capabilities` | `array<string>` | 否 | 显式追加的能力标签：`thinking`、`always_thinking`、`image_in`、`video_in`、`audio_in`、`tool_use`、`dynamically_loaded_tools`，只能追加不能移除 |
 | `support_efforts` | `array<string>` | 否 | 模型接受的 Thinking 档位；解析时配置值不受支持会回落到模型的 `default_effort` 并同步给 UI；选列表外的值会报错，managed 刷新会改写（固定请用 overrides） |
 | `default_effort` | `string` | 否 | 模型的默认 Thinking 档位；managed/open-platform 刷新可能改写，固定请用 [模型覆盖项](#模型覆盖项) |
@@ -525,6 +525,8 @@ require_trust = false
 | `custom_headers` | `table<string, string>` | 否 | 请求时附加的自定义 HTTP 头 |
 
 `base_url` 和 `api_key` 也可由环境变量提供，环境变量优先于配置文件：`KIMI_WEB_SEARCH_BASE_URL` / `KIMI_WEB_SEARCH_API_KEY` 对应 `moonshot_search`，`KIMI_WEB_FETCH_BASE_URL` / `KIMI_WEB_FETCH_API_KEY` 对应 `moonshot_fetch`。`KIMI_WEB_SEARCH_BASE_URL` 和 `KIMI_WEB_FETCH_BASE_URL` 定义的是独立服务端点，因此文件中持久化的 API 密钥、OAuth 引用和自定义 header 都不会发送给它；该端点需要鉴权时，请同时设置对应的环境变量 API 密钥。只设置环境变量 API 密钥时，配置中的端点和自定义 header 保持不变，但两种配置凭据都会被替换。不写配置段、只通过环境变量设置 base URL 和 API 密钥，也可以启用对应服务。
+
+既没有配置 `moonshot_search`、也没有可用的 Kimi 托管供应商时，配置在 `api.deepseek.com` 上的供应商会让 `WebSearch` 走 DeepSeek 的 Search API（`/v1/tools/search`）；每次成功搜索由 DeepSeek 按请求计费。
 
 ```toml
 [services.moonshot_search]

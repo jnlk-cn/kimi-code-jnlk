@@ -3,6 +3,9 @@ import {
   APIRequestTooLargeError,
   APIStatusError,
 } from '#/llm-adapter/contract/errors';
+import { ProtocolAdapterRegistry } from '#/llm-adapter/protocol/protocolAdapterRegistry';
+import { deepseekOpenAIProtocol } from '#human/llm/builtin/provider/deepseek/index';
+import { contentsOf } from '#human/llm/requester';
 import { TOOL_SELECT_FLAG_ENV } from '#/agent/toolSelect/flag';
 import type {
   Message,
@@ -751,3 +754,55 @@ async function collectLLMRequest(
   });
   return { parts, finish };
 }
+
+describe('DeepSeek protocol routing', () => {
+  const baseModel = {
+    id: 'deepseek/deepseek-flash',
+    name: 'deepseek-flash',
+    aliases: [],
+    protocol: 'openai',
+    baseUrl: 'https://api.deepseek.com',
+    headers: {},
+    capabilities: {
+      image_in: false,
+      video_in: false,
+      audio_in: false,
+      thinking: true,
+      tool_use: true,
+      max_context_tokens: 1_048_576,
+      dynamically_loaded_tools: false,
+    },
+    maxContextSize: 1_048_576,
+    alwaysThinking: false,
+    providerType: 'openai',
+    providerName: 'deepseek',
+    supportEfforts: ['low', 'high', 'max'],
+    defaultEffort: 'high',
+  };
+
+  function routedThinking(model: unknown): unknown {
+    const requester = new ProtocolAdapterRegistry().request(model as never);
+    const contents = contentsOf(requester) as {
+      protocol?: { base?: { thinking?: unknown } };
+    };
+    return contents.protocol?.base?.thinking;
+  }
+
+  it('routes the official DeepSeek host to the DeepSeek protocol patch', () => {
+    expect(routedThinking(baseModel)).toBe(
+      (deepseekOpenAIProtocol as { thinking?: unknown }).thinking,
+    );
+  });
+
+  it('keeps other OpenAI-compatible hosts on the plain OpenAI protocol', () => {
+    expect(
+      routedThinking({
+        ...baseModel,
+        id: 'openai/gpt-5',
+        name: 'gpt-5',
+        providerName: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+      }),
+    ).not.toBe((deepseekOpenAIProtocol as { thinking?: unknown }).thinking);
+  });
+});

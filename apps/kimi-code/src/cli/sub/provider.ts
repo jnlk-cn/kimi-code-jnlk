@@ -14,6 +14,7 @@
 
 import {
   applyCatalogProvider,
+  applyDeepSeekModelDefaults,
   catalogProviderModels,
   CatalogFetchError,
   RegistryImportError,
@@ -361,6 +362,7 @@ export async function handleCatalogAdd(
     selectedModelId: opts.defaultModel ?? '',
     thinking: false,
   });
+  config = applyDeepSeekModelDefaults(config);
 
   // Resolve the final `defaultModel`:
   //   - If the caller asked for one, `applyCatalogProvider` already set it.

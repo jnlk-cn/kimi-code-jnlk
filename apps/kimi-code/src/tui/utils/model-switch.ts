@@ -47,8 +47,9 @@ export function lazyModelSelection(
   const patch: Partial<AppState> =
     alias === undefined ? { model: '', maxContextTokens: 0 } : { model: alias };
   const raw = alias === undefined ? undefined : config.models?.[alias];
-  if (raw?.maxContextSize !== undefined) {
-    patch.maxContextTokens = raw.maxContextSize;
+  const contextSize = raw?.maxInputSize ?? raw?.maxContextSize;
+  if (contextSize !== undefined) {
+    patch.maxContextTokens = contextSize;
   }
   const effort = thinkingEffortFromConfig(config.thinking);
   if (effort !== undefined) {

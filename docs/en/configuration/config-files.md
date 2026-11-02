@@ -152,8 +152,8 @@ Each entry in the `models` table defines a model alias (the name used in `defaul
 | `provider` | `string` | Yes | Name of the provider to use; must be defined in `providers` |
 | `model` | `string` | Yes | Model identifier sent to the server when calling the API |
 | `max_context_size` | `integer` | Yes | Maximum context length in tokens; must be at least 1 |
-| `max_input_size` | `integer` | No | Declared per-request input limit; compaction, context-overflow checks, and usage ratios prefer it, completion budgeting keeps the total window |
-| `max_output_size` | `integer` | No | Per-request output token cap (maps to `max_tokens`); currently only the `anthropic` provider reads it |
+| `max_input_size` | `integer` | No | Declared per-request input limit; compaction, context-overflow checks, and usage ratios prefer it, completion budgeting keeps the total window. `/context` writes this field |
+| `max_output_size` | `integer` | No | Per-request output token cap (maps to `max_tokens`); each request is further clamped to the remaining context window |
 | `capabilities` | `array<string>` | No | Capability tags added explicitly: `thinking`, `always_thinking`, `image_in`, `video_in`, `audio_in`, `tool_use`, `dynamically_loaded_tools`; only ever added, never removed |
 | `support_efforts` | `array<string>` | No | Thinking effort levels the model accepts; unsupported values fall back to `default_effort`, out-of-list values fail; managed refreshes may rewrite it (pin via overrides) |
 | `default_effort` | `string` | No | Default thinking effort for the model; managed and open-platform refreshes may rewrite it. Pin via [model overrides](#model-overrides) |
@@ -526,6 +526,8 @@ Changes take effect on `/reload`; a running TUI does not show a startup trust pr
 | `custom_headers` | `table<string, string>` | No | Custom HTTP headers attached to each request |
 
 `base_url` and `api_key` can also come from environment variables, which take priority over the config file: `KIMI_WEB_SEARCH_BASE_URL` / `KIMI_WEB_SEARCH_API_KEY` for `moonshot_search`, and `KIMI_WEB_FETCH_BASE_URL` / `KIMI_WEB_FETCH_API_KEY` for `moonshot_fetch`. An env base URL defines a separate service endpoint, so the persisted API key, OAuth reference, and custom headers are not forwarded to it; set the matching env API key when that endpoint requires authentication. An env API key without an env base URL keeps the configured endpoint and custom headers but replaces both configured credential forms. Setting the base URL and API key through env without any config section also enables the service.
+
+When neither `moonshot_search` nor a managed Kimi provider is available, a provider configured on `api.deepseek.com` enables `WebSearch` through DeepSeek's Search API (`/v1/tools/search`); each successful search is billed by DeepSeek per request.
 
 ```toml
 [services.moonshot_search]

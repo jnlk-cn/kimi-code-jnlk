@@ -1,6 +1,7 @@
 import type { KimiConfig } from '#/index';
 import { describe, expect, it, vi } from 'vitest';
 
+import { applyDeepSeekModelDefaults } from '../src/deepseek/defaults';
 import {
   applyCatalogProvider,
   catalogModelToAlias,
@@ -317,5 +318,76 @@ describe('applyCatalogProvider', () => {
 
     expect(config.models?.['anthropic/stale']).toBeUndefined();
     expect(config.models?.['other/keep']).toBeDefined();
+  });
+});
+
+describe('applyDeepSeekModelDefaults', () => {
+  function deepSeekConfig(): KimiConfig {
+    const config = { providers: {} } as KimiConfig;
+    applyCatalogProvider(config, {
+      providerId: 'deepseek',
+      wire: 'openai',
+      baseUrl: 'https://api.deepseek.com',
+      apiKey: 'sk',
+      models: catalogProviderModels({
+        id: 'deepseek',
+        models: {
+          'deepseek-v4-pro': {
+            id: 'deepseek-v4-pro',
+            name: 'DeepSeek V4 Pro',
+            limit: { context: 1048576, output: 393216 },
+            reasoning: true,
+            tool_call: true,
+          },
+        },
+      }),
+      selectedModelId: 'deepseek-v4-pro',
+      thinking: false,
+    });
+    return config;
+  }
+
+  it('gives DeepSeek aliases a 256K working budget without touching declared limits', () => {
+    const config = applyDeepSeekModelDefaults(deepSeekConfig());
+    expect(config.models?.['deepseek/deepseek-v4-pro']).toMatchObject({
+      maxContextSize: 1048576,
+      maxInputSize: 262144,
+      maxOutputSize: 393216,
+    });
+  });
+
+  it('leaves providers outside api.deepseek.com untouched', () => {
+    const config = { providers: {} } as KimiConfig;
+    applyCatalogProvider(config, {
+      providerId: 'anthropic',
+      wire: 'anthropic',
+      baseUrl: 'https://api.anthropic.com',
+      apiKey: 'sk',
+      models: [model],
+      selectedModelId: 'm1',
+      thinking: false,
+    });
+    const next = applyDeepSeekModelDefaults(config);
+    expect(next.models?.['anthropic/m1']?.maxInputSize).toBeUndefined();
+    expect(next.models?.['anthropic/m1']?.maxOutputSize).toBe(64000);
+  });
+
+  it('never raises the input budget above what the model declares', () => {
+    const config = {
+      providers: { deepseek: { type: 'openai', baseUrl: 'https://api.deepseek.com' } },
+      models: {
+        'deepseek/tiny': {
+          provider: 'deepseek',
+          model: 'tiny',
+          maxContextSize: 65536,
+          maxOutputSize: 4096,
+        },
+      },
+    } as unknown as KimiConfig;
+    const next = applyDeepSeekModelDefaults(config);
+    expect(next.models?.['deepseek/tiny']).toMatchObject({
+      maxInputSize: 65536,
+      maxOutputSize: 4096,
+    });
   });
 });

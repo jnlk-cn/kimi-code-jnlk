@@ -8,7 +8,7 @@
 
 Compared with upstream 2.4.0:
 
-- **DeepSeek V4 on the official API** (`api.deepseek.com`): thinking levels `high` / `max`, `off` disabling thinking explicitly, and reasoning round-trips across tool-call turns through the `openai` provider.
+- **DeepSeek V4 on the official API** (`api.deepseek.com`): `deepseek-flash` and `deepseek-v4-pro`, thinking levels `low` / `high` / `max`, `off` disabling thinking explicitly, a 384K output ceiling, reasoning round-trips across tool-call turns, and `WebSearch` backed by DeepSeek's Search API.
 - **Verified built-in catalog**: provider discovery fetches the official models.dev catalog, while the catalog inlined into release builds is filtered by [`catalog-allowlist.json`](apps/kimi-code/scripts/catalog-allowlist.json) so only providers verified against their official API ship offline.
 - **Installs as `ganycode`, not `kimi`**: the binary, install directory (`~/.ganycode`), and data directory (`~/.ganycode`) are separate from Kimi Code, so installing this never replaces an existing Kimi CLI.
 - **Installs as `ganycode`, not `kimi`**: the binary, install directory (`~/.ganycode`), and data directory (`~/.ganycode`) are separate from Kimi Code, so installing this never replaces an existing Kimi CLI.
