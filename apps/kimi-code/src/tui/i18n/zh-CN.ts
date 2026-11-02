@@ -55,8 +55,10 @@ export const ZH_CN_DICTIONARY: Readonly<Record<string, string>> = {
   'Context window set to {size} (compaction at about {compaction}).':
     '上下文窗口已设为 {size}（约 {compaction} 触发压缩）。',
   'Already using a {size} context window.': '当前已是 {size} 上下文窗口。',
-  'Current usage ({used}) already exceeds that budget; the next step compacts.':
-    '当前已用 {used}，已超过该预算；下一步就会压缩。',
+  'Cannot change the context window while a turn is running. Try again once it finishes.':
+    '本轮还在执行，等结束后再调整上下文预算。',
+  'Current usage ({used}) already exceeds that budget; run /compact to condense now.':
+    '当前已用 {used}，已超过该预算；可运行 /compact 立即压缩。',
   'Working budget of 128k tokens': '128k 工作预算',
   'Working budget of 256k tokens': '256k 工作预算',
   'Working budget of 320k tokens': '320k 工作预算',

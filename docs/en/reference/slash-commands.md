@@ -19,7 +19,7 @@ Some commands are only available in the idle state. Executing these commands whi
 | `/model` | — | Switch the LLM model used in the current session | Yes |
 | `/secondary-model` | `/subagent-model` | Pick the default model for subagents (writes `[secondary_model] default_model`; see the [subagent model pool](../configuration/config-files.md#subagent-model-pool)) | Yes |
 | `/effort [<effort>]` | `/thinking` | Switch the thinking effort of the current model; without an argument, opens the effort picker | Yes |
-| `/context [<size>]` | — | Switch how much context the current model fills before auto-compaction: `128k`, `256k`, `320k`, `512k`, `768k`, or `1m`, capped by the model's declared window. The choice is saved as [`max_input_size`](../configuration/config-files.md#models) and takes effect in the running session | Yes |
+| `/context [<size>]` | — | Switch how much context the current model fills before auto-compaction: `128k`, `256k`, `320k`, `512k`, `768k`, or `1m`, capped by the model's declared window. The choice is saved as [`max_input_size`](../configuration/config-files.md#models) and takes effect in the running session immediately; while a turn is running it asks you to wait until the turn finishes | Yes |
 | `/settings` | `/config` | Open the settings panel inside the TUI | Yes |
 | `/experiments` | `/experimental` | Open the experimental feature panel | Yes |
 | `/permission` | — | Select a permission mode | Yes |

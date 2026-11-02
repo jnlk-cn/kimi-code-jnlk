@@ -6,6 +6,7 @@ import { defineState } from '#/state/state';
 import { UNKNOWN_CAPABILITY, type ModelCapability } from '#/llm-adapter/contract/capability';
 import { type ThinkingEffort } from '#human/llm-requester/thinking';
 import { IModelCatalog, type Model } from '#/llm-adapter/model/catalog';
+import { IModelService } from '#/llm-adapter/model/model';
 import { type ModelOverrides } from '#/llm-adapter/model/model.types';
 import { type ModelRequestParams, type SamplingOptions } from '#/llm-adapter/model/generate';
 import { IProtocolAdapterRegistry } from '#/llm-adapter/protocol/protocol';
@@ -156,6 +157,7 @@ export class AgentProfileService extends Disposable implements IAgentProfileServ
     @ITelemetryService private readonly telemetry: ITelemetryService,
     @IConfigService private readonly config: IConfigService,
     @IModelCatalog private readonly modelCatalog: IModelCatalog,
+    @IModelService private readonly models: IModelService,
     @IProtocolAdapterRegistry private readonly protocolAdapters: IProtocolAdapterRegistry,
     @IAgentEnvironmentService private readonly environment: IAgentEnvironmentService,
     @ISessionContext private readonly sessionContext: ISessionContext,
@@ -213,6 +215,15 @@ export class AgentProfileService extends Disposable implements IAgentProfileServ
     this._register(
       this.discovery.onDidRetireModel(({ from, to }) => {
         if (this.modelAlias === from) void this.setModel(to).catch(() => {});
+      }),
+    );
+    this._register(
+      this.models.onDidChangeModels(({ added, changed }) => {
+        const alias = this.modelAlias;
+        if (alias === undefined) return;
+        if (!added.includes(alias) && !changed.includes(alias)) return;
+        this.modelCatalog.notifyConfigChanged();
+        this.republishStatus();
       }),
     );
   }

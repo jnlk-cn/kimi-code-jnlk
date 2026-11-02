@@ -17,6 +17,8 @@ import { IBootstrapService } from '#/app/bootstrap/bootstrap';
 import { IConfigService } from '#/app/config/config';
 import { IProviderDiscoveryService } from '#/app/kosongConfig/discovery';
 import { IModelCatalog, type Model } from '#/llm-adapter/model/catalog';
+import { IModelService } from '#/llm-adapter/model/model';
+import { ModelService } from '#/llm-adapter/model/model-service';
 import { IProtocolAdapterRegistry, type Protocol } from '#/llm-adapter/protocol/protocol';
 import { ITelemetryService } from '#/app/telemetry/telemetry';
 import { IAgentScopeContext, makeAgentScopeContext } from '#/agent/scopeContext/scopeContext';
@@ -100,6 +102,7 @@ function createTestModel(
 function createModelCatalogStub(models: Readonly<Record<string, Model>> = {}): IModelCatalog {
   return {
     _serviceBrand: undefined,
+    notifyConfigChanged: () => {},
     get: (id) => {
       const model = models[id];
       if (model === undefined) throw new Error(`Unknown model: ${id}`);
@@ -234,6 +237,7 @@ function buildHost(key: string): {
     setDisabledTools: () => Promise.resolve(),
   });
   host.stub(IProviderDiscoveryService, discovery);
+  host.set(IModelService, new ModelService());
   host.set(IAgentStateService, new AgentStateService());
   host.set(IAgentProfileService, new SyncDescriptor(AgentProfileService));
   registerTestAgentWire(host, testWireScope(SCOPE, key), {

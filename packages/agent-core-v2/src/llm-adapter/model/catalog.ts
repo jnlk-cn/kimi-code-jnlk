@@ -179,6 +179,8 @@ export interface IModelCatalog {
   get(id: string): Model;
   findByName(name: string): readonly string[];
 
+  notifyConfigChanged(): void;
+
   listModels(): Promise<readonly ModelCatalogItem[]>;
   listProviders(): Promise<readonly ProviderCatalogItem[]>;
   getProvider(providerId: string): Promise<ProviderCatalogItem>;

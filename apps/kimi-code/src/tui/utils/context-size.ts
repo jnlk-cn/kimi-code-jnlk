@@ -64,7 +64,8 @@ export function contextSizeChoices(): string {
 /**
  * Persists `max_input_size` for the current model and points the running UI at
  * the new window. The engine reads the budget from config, so a live session
- * picks it up through its model catalog without a restart.
+ * picks it up through its model catalog without a restart — unless a turn is
+ * already streaming with the old budget, which is why that case is refused.
  */
 export async function applyContextSize(host: SlashCommandHost, size: number): Promise<void> {
   const alias = host.state.appState.model;
@@ -80,6 +81,12 @@ export async function applyContextSize(host: SlashCommandHost, size: number): Pr
     );
     return;
   }
+  if (host.state.appState.streamingPhase !== 'idle' || host.state.appState.isCompacting) {
+    host.showError(
+      t('Cannot change the context window while a turn is running. Try again once it finishes.'),
+    );
+    return;
+  }
   try {
     await host.harness.setConfig({ models: { [alias]: { maxInputSize: size } } });
   } catch (error) {
@@ -88,9 +95,11 @@ export async function applyContextSize(host: SlashCommandHost, size: number): Pr
     );
     return;
   }
+  const used = host.state.appState.contextTokens;
   host.setAppState({
     availableModels: { ...host.state.appState.availableModels, [alias]: { ...model, maxInputSize: size } },
     maxContextTokens: size,
+    contextUsage: size > 0 ? used / size : 0,
   });
   host.track('context_size_switch', { size });
   host.showStatus(
@@ -100,12 +109,12 @@ export async function applyContextSize(host: SlashCommandHost, size: number): Pr
     }),
     'success',
   );
-  const used = host.state.appState.contextTokens;
   if (used > size * COMPACTION_TRIGGER_RATIO) {
     host.showStatus(
-      tFormat('Current usage ({used}) already exceeds that budget; the next step compacts.', {
-        used: contextSizeLabel(used),
-      }),
+      tFormat(
+        'Current usage ({used}) already exceeds that budget; run /compact to condense now.',
+        { used: contextSizeLabel(used) },
+      ),
       'warning',
     );
   }

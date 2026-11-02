@@ -103,7 +103,10 @@ describe('applyContextSize', () => {
       models: { 'deepseek/deepseek-v4-pro': { maxInputSize: 262_144 } },
     });
     expect(host.setAppState).toHaveBeenCalledWith(
-      expect.objectContaining({ maxContextTokens: 262_144 }),
+      expect.objectContaining({
+        maxContextTokens: 262_144,
+        contextUsage: 10_000 / 262_144,
+      }),
     );
     expect(host.state.appState.availableModels['deepseek/deepseek-v4-pro']?.maxInputSize).toBe(
       262_144,
@@ -115,13 +118,34 @@ describe('applyContextSize', () => {
     expect(host.showError).not.toHaveBeenCalled();
   });
 
-  it('warns that the next step compacts when usage already exceeds the new budget', async () => {
+  it('refuses the switch while a turn is streaming', async () => {
+    const host = makeHost(deepSeek);
+    host.state.appState.streamingPhase = 'composing';
+
+    await applyContextSize(host, 262_144);
+
+    expect(host.harness.setConfig).not.toHaveBeenCalled();
+    expect(host.state.appState.maxContextTokens).toBe(1_048_576);
+    expect(host.showError).toHaveBeenCalledWith(expect.stringContaining('turn is running'));
+  });
+
+  it('refuses the switch while an explicit compaction is running', async () => {
+    const host = makeHost(deepSeek);
+    host.state.appState.isCompacting = true;
+
+    await applyContextSize(host, 262_144);
+
+    expect(host.harness.setConfig).not.toHaveBeenCalled();
+    expect(host.showError).toHaveBeenCalledWith(expect.stringContaining('turn is running'));
+  });
+
+  it('points at /compact when usage already exceeds the new budget', async () => {
     const host = makeHost(deepSeek, 300_000);
 
     await applyContextSize(host, 131_072);
 
     expect(host.showStatus).toHaveBeenLastCalledWith(
-      expect.stringContaining('already exceeds that budget'),
+      expect.stringContaining('/compact'),
       'warning',
     );
   });

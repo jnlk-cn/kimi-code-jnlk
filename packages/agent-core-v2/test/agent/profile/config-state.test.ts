@@ -6,6 +6,7 @@ import { IAgentLoopService } from '#/agent/loop/loop';
 import { IAgentProfileService } from '#/agent/profile/profile';
 import { ITelemetryService } from '#/app/telemetry/telemetry';
 import type { ModelRecord } from '#/llm-adapter/model/model';
+import { IModelService } from '#/llm-adapter/model/model';
 import {
   configServices,
   createTestAgent,
@@ -127,6 +128,50 @@ describe('ConfigState model capabilities', () => {
       model: 'kimi-code/kimi-for-coding',
       maxContextTokens: 1_000_000,
     });
+  });
+
+  it('republishes the model status slice when the model record changes', async () => {
+    kimiConfig = {
+      providers: {
+        kimi: {
+          type: 'kimi',
+          apiKey: 'test-key',
+          baseUrl: 'https://api.example.test/v1',
+        },
+      },
+      models: {
+        'kimi-code/kimi-for-coding': {
+          provider: 'kimi',
+          model: 'kimi-for-coding',
+          maxContextSize: 1_000_000,
+        },
+      },
+    };
+    profile.update({ modelAlias: 'kimi-code/kimi-for-coding' });
+    const before = ctx.allEvents.filter((entry) => entry.event === 'agent.status.updated').length;
+
+    kimiConfig = {
+      ...kimiConfig,
+      models: {
+        'kimi-code/kimi-for-coding': {
+          provider: 'kimi',
+          model: 'kimi-for-coding',
+          maxContextSize: 1_000_000,
+          maxInputSize: 262_144,
+        },
+      },
+    };
+    await ctx.get(IModelService).set('kimi-code/kimi-for-coding', {
+      provider: 'kimi',
+      model: 'kimi-for-coding',
+      maxContextSize: 1_000_000,
+      maxInputSize: 262_144,
+    });
+
+    const statuses = ctx.allEvents.filter((entry) => entry.event === 'agent.status.updated');
+    expect(statuses.length).toBeGreaterThan(before);
+    expect(statuses[before]?.args).toMatchObject({ maxContextTokens: 262_144 });
+    expect(statuses.at(-1)?.args).toMatchObject({ maxContextTokens: 262_144 });
   });
 
   it('omits maxContextTokens when the bound model no longer resolves', () => {

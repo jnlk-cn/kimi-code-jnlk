@@ -282,6 +282,7 @@ interface ModelConfigForConfig {
   readonly provider: string;
   readonly model: string;
   readonly maxContextSize: number;
+  readonly maxInputSize?: number;
   readonly maxOutputSize?: number;
   readonly capabilities?: readonly string[];
   readonly supportEfforts?: readonly string[];

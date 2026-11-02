@@ -81,6 +81,7 @@ export class ModelCatalog extends Disposable implements IModelCatalog {
   }
 
   notifyConfigChanged(): void {
+    this.cache.clear();
     this.runtime.resync();
   }
 
