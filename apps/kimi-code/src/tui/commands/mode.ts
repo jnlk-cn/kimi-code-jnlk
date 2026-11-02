@@ -1,5 +1,3 @@
-import type { Session } from '@moonshot-ai/kimi-code-sdk';
-
 import { t, tFormat } from '#/tui/i18n';
 
 import { AgentModeSelectorComponent } from '../components/dialogs/agent-mode-selector';
@@ -7,6 +5,7 @@ import { NO_ACTIVE_SESSION_MESSAGE } from '../constant/kimi-tui';
 import {
   agentModeAppStatePatch,
   currentAgentMode,
+  exitAgentMode,
   type AgentMode,
 } from '../utils/agent-mode';
 import { agentModeLabel } from '../utils/agent-mode-display';
@@ -20,12 +19,6 @@ function modeDetail(mode: AgentMode): string | undefined {
   }
   if (mode === 'agent') return t('Agent mode: full access again.');
   return undefined;
-}
-
-async function exitAgentMode(session: Session, mode: AgentMode): Promise<void> {
-  if (mode === 'plan') await session.setPlanMode(false);
-  else if (mode === 'ask') await session.setAskMode(false);
-  else if (mode === 'debug') await session.setDebugMode(false);
 }
 
 export async function applyAgentModeSelection(
@@ -45,9 +38,8 @@ export async function applyAgentModeSelection(
 
   let detail = modeDetail(mode);
   try {
-    if (mode === 'agent') {
-      await exitAgentMode(session, current);
-    } else if (mode === 'plan') {
+    await exitAgentMode(session, current);
+    if (mode === 'plan') {
       await session.setPlanMode(true);
       const plan = await session.getPlan().catch(() => null);
       if (typeof plan?.path === 'string') {
@@ -55,7 +47,7 @@ export async function applyAgentModeSelection(
       }
     } else if (mode === 'ask') {
       await session.setAskMode(true);
-    } else {
+    } else if (mode === 'debug') {
       await session.setDebugMode(true);
     }
   } catch (error) {

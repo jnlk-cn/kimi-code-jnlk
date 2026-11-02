@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SlashCommandHost } from '#/tui/commands/dispatch';
-import { handleAskCommand, handleDebugCommand, handleModeCommand } from '#/tui/commands/index';
+import {
+  handleAskCommand,
+  handleDebugCommand,
+  handleModeCommand,
+  handlePlanCommand,
+} from '#/tui/commands/index';
 import { currentTheme } from '#/tui/theme';
 
 interface TestComponent {
@@ -59,12 +64,31 @@ describe('agent mode commands', () => {
     const { host, session } = makeHost({ planMode: true });
     await handleAskCommand(host, '');
 
+    expect(session.setPlanMode).toHaveBeenCalledWith(false);
     expect(session.setAskMode).toHaveBeenCalledWith(true);
     expect(host.state.appState).toMatchObject({ planMode: false, askMode: true, debugMode: false });
     expect(host.showNotice).toHaveBeenCalledWith(
       expect.stringContaining('Ask'),
       expect.stringContaining('read-only'),
     );
+  });
+
+  it('leaves Ask mode when switching straight to Debug mode', async () => {
+    const { host, session } = makeHost({ askMode: true });
+    await handleDebugCommand(host, '');
+
+    expect(session.setAskMode).toHaveBeenCalledWith(false);
+    expect(session.setDebugMode).toHaveBeenCalledWith(true);
+    expect(host.state.appState).toMatchObject({ planMode: false, askMode: false, debugMode: true });
+  });
+
+  it('leaves Ask mode when Plan mode is turned on', async () => {
+    const { host, session } = makeHost({ askMode: true });
+    await handlePlanCommand(host, 'on');
+
+    expect(session.setAskMode).toHaveBeenCalledWith(false);
+    expect(session.setPlanMode).toHaveBeenCalledWith(true);
+    expect(host.state.appState).toMatchObject({ planMode: true, askMode: false, debugMode: false });
   });
 
   it('returns to Agent mode when Ask mode is toggled off', async () => {
@@ -87,6 +111,7 @@ describe('agent mode commands', () => {
     const { host, session } = makeHost({ askMode: true });
     await handleDebugCommand(host, 'on');
 
+    expect(session.setAskMode).toHaveBeenCalledWith(false);
     expect(session.setDebugMode).toHaveBeenCalledWith(true);
     expect(host.state.appState).toMatchObject({ planMode: false, askMode: false, debugMode: true });
   });

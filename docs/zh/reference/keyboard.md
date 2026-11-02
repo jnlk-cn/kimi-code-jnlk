@@ -24,10 +24,10 @@ Kimi Code CLI 的 TUI 交互模式支持一套键盘快捷键。键位按使用�
 
 | 快捷键 | 功能 |
 | --- | --- |
-| `Shift-Tab` | 循环切换 Agent 模式：Agent → Plan → Ask → Debug |
+| `Shift-Tab` | 循环切换 Agent 模式：Agent → Plan → 聊天 → 调试 |
 | `!` | 在空输入框中进入 Shell 模式 |
 
-按 `Shift-Tab` 在四种 Agent 模式间循环。Plan 模式下，Agent 会优先使用只读工具进行研究和规划，并可写入当前计划文件；`Bash` 按当前权限模式和普通规则处理，不会因 Plan 模式额外发起独立审批。单纯切换模式不会创建空计划文件。Ask 模式下不能做任何改动——修改文件、执行命令、派生子 Agent 的工具调用都会被拒绝。Debug 模式下 Agent 会先复现并取证，再修复。详见 [Agent 模式](../guides/interaction.md#agent-模式)。
+按 `Shift-Tab` 在四种 Agent 模式间循环。Plan 模式下，Agent 会优先使用只读工具进行研究和规划，并可写入当前计划文件；`Bash` 按当前权限模式和普通规则处理，不会因 Plan 模式额外发起独立审批。单纯切换模式不会创建空计划文件。聊天模式下不能做任何改动——修改文件、执行命令、派生子 Agent 的工具调用都会被拒绝。调试模式下 Agent 会先复现并取证，再修复。详见 [Agent 模式](../guides/interaction.md#agent-模式)。
 
 在空输入框中键入 `!` 进入 Shell 模式，可直接运行终端命令；命令运行期间按 `Ctrl+B` 可将其转为后台任务。详见[交互与输入](../guides/interaction.md#shell-模式)。
 

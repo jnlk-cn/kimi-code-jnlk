@@ -4,6 +4,8 @@ export const FRAGMENT: Readonly<Record<string, string>> = {
 
   '[goal ': '[目标 ',
   plan: '计划',
+  ask: '聊天',
+  debug: '调试',
   swarm: '集群',
   thinking: '思考',
   'thinking: {effort}': '思考档位：{effort}',

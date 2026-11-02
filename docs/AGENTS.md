@@ -71,8 +71,8 @@ Term mapping (Chinese <-> English, and proper noun handling):
 | subagent | subagent | no | no |
 | Shell | shell | yes | no |
 | Plan 模式 | Plan mode | yes | yes (Plan mode) |
-| Ask 模式 | Ask mode | yes | yes (Ask mode) |
-| Debug 模式 | Debug mode | yes | yes (Debug mode) |
+| 聊天模式 | Ask mode | yes | yes (Ask mode) |
+| 调试模式 | Debug mode | yes | yes (Debug mode) |
 | 始终询问 | Always Ask | yes | yes |
 | 必要时询问 | Ask When Needed | yes | yes |
 | 完全自动 | Never Ask | yes | yes |

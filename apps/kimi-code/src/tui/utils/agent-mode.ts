@@ -1,3 +1,5 @@
+import type { Session } from '@moonshot-ai/kimi-code-sdk';
+
 import type { AgentMode, AppState } from '#/tui/types';
 
 export type { AgentMode } from '#/tui/types';
@@ -24,4 +26,10 @@ export function agentModeAppStatePatch(mode: AgentMode): Partial<AppState> {
     askMode: mode === 'ask',
     debugMode: mode === 'debug',
   };
+}
+
+export async function exitAgentMode(session: Session, mode: AgentMode): Promise<void> {
+  if (mode === 'plan') await session.setPlanMode(false);
+  else if (mode === 'ask') await session.setAskMode(false);
+  else if (mode === 'debug') await session.setDebugMode(false);
 }
